@@ -1096,6 +1096,14 @@ void PartialPasteDlg::applyPaste (rtengine::procparams::ProcParams* dstPP, Param
         filterPE.raw.xtranssensor.method  = falsePE.raw.xtranssensor.method;
         filterPE.raw.xtranssensor.dualDemosaicAutoContrast = falsePE.raw.xtranssensor.dualDemosaicAutoContrast;
         filterPE.raw.xtranssensor.dualDemosaicContrast = falsePE.raw.xtranssensor.dualDemosaicContrast;
+        filterPE.raw.xtranssensor.rafinazariSigma = falsePE.raw.xtranssensor.rafinazariSigma;
+        filterPE.raw.xtranssensor.rafinazariNearRadius = falsePE.raw.xtranssensor.rafinazariNearRadius;
+        filterPE.raw.xtranssensor.rafinazariMiddleRadius = falsePE.raw.xtranssensor.rafinazariMiddleRadius;
+        filterPE.raw.xtranssensor.rafinazariFarRadius = falsePE.raw.xtranssensor.rafinazariFarRadius;
+        filterPE.raw.xtranssensor.rafinazariEnergySigma = falsePE.raw.xtranssensor.rafinazariEnergySigma;
+        filterPE.raw.xtranssensor.rafinazariEnergyRadius = falsePE.raw.xtranssensor.rafinazariEnergyRadius;
+        filterPE.raw.xtranssensor.rafinazariEnergyBoxRadius = falsePE.raw.xtranssensor.rafinazariEnergyBoxRadius;
+        filterPE.raw.xtranssensor.rafinazariEnergyFloor = falsePE.raw.xtranssensor.rafinazariEnergyFloor;
     }
 
     if (!raw_border->get_active ()) {

@@ -3671,6 +3671,14 @@ RAWParams::XTransSensor::XTransSensor() :
     dualDemosaicContrast(20),
     border(7),
     ccSteps(0),
+    rafinazariSigma(2.32),
+    rafinazariNearRadius(7),
+    rafinazariMiddleRadius(7),
+    rafinazariFarRadius(7),
+    rafinazariEnergySigma(2.32),
+    rafinazariEnergyRadius(7),
+    rafinazariEnergyBoxRadius(2),
+    rafinazariEnergyFloor(0.0),
     blackred(0.0),
     blackgreen(0.0),
     blackblue(0.0),
@@ -3687,6 +3695,14 @@ bool RAWParams::XTransSensor::operator ==(const XTransSensor& other) const
         && dualDemosaicContrast == other.dualDemosaicContrast
         && border == other.border
         && ccSteps == other.ccSteps
+        && rafinazariSigma == other.rafinazariSigma
+        && rafinazariNearRadius == other.rafinazariNearRadius
+        && rafinazariMiddleRadius == other.rafinazariMiddleRadius
+        && rafinazariFarRadius == other.rafinazariFarRadius
+        && rafinazariEnergySigma == other.rafinazariEnergySigma
+        && rafinazariEnergyRadius == other.rafinazariEnergyRadius
+        && rafinazariEnergyBoxRadius == other.rafinazariEnergyBoxRadius
+        && rafinazariEnergyFloor == other.rafinazariEnergyFloor
         && blackred == other.blackred
         && blackgreen == other.blackgreen
         && blackblue == other.blackblue
@@ -3705,6 +3721,7 @@ const std::vector<const char*>& RAWParams::XTransSensor::getMethodStrings()
         "3-pass (best)",
         "2-pass",
         "1-pass (medium)",
+        "rafinazari-adaptive",
         "fast",
         "mono",
         "none"
@@ -5106,6 +5123,14 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.dualDemosaicContrast, "RAW X-Trans", "DualDemosaicContrast", raw.xtranssensor.dualDemosaicContrast, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.border, "RAW X-Trans", "Border", raw.xtranssensor.border, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.ccSteps, "RAW X-Trans", "CcSteps", raw.xtranssensor.ccSteps, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariSigma, "RAW X-Trans", "RafinazariSigma", raw.xtranssensor.rafinazariSigma, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariNearRadius, "RAW X-Trans", "RafinazariNearRadius", raw.xtranssensor.rafinazariNearRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariMiddleRadius, "RAW X-Trans", "RafinazariMiddleRadius", raw.xtranssensor.rafinazariMiddleRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariFarRadius, "RAW X-Trans", "RafinazariFarRadius", raw.xtranssensor.rafinazariFarRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariEnergySigma, "RAW X-Trans", "RafinazariEnergySigma", raw.xtranssensor.rafinazariEnergySigma, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariEnergyRadius, "RAW X-Trans", "RafinazariEnergyRadius", raw.xtranssensor.rafinazariEnergyRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariEnergyBoxRadius, "RAW X-Trans", "RafinazariEnergyBoxRadius", raw.xtranssensor.rafinazariEnergyBoxRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.rafinazariEnergyFloor, "RAW X-Trans", "RafinazariEnergyFloor", raw.xtranssensor.rafinazariEnergyFloor, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.exBlackRed, "RAW X-Trans", "PreBlackRed", raw.xtranssensor.blackred, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.exBlackGreen, "RAW X-Trans", "PreBlackGreen", raw.xtranssensor.blackgreen, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.exBlackBlue, "RAW X-Trans", "PreBlackBlue", raw.xtranssensor.blackblue, keyFile);
@@ -7237,6 +7262,14 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
             assignFromKeyfile(keyFile, "RAW X-Trans", "DualDemosaicContrast", raw.xtranssensor.dualDemosaicContrast, pedited->raw.xtranssensor.dualDemosaicContrast);
             assignFromKeyfile(keyFile, "RAW X-Trans", "Border", raw.xtranssensor.border, pedited->raw.xtranssensor.border);
             assignFromKeyfile(keyFile, "RAW X-Trans", "CcSteps", raw.xtranssensor.ccSteps, pedited->raw.xtranssensor.ccSteps);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariSigma", raw.xtranssensor.rafinazariSigma, pedited->raw.xtranssensor.rafinazariSigma);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariNearRadius", raw.xtranssensor.rafinazariNearRadius, pedited->raw.xtranssensor.rafinazariNearRadius);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariMiddleRadius", raw.xtranssensor.rafinazariMiddleRadius, pedited->raw.xtranssensor.rafinazariMiddleRadius);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariFarRadius", raw.xtranssensor.rafinazariFarRadius, pedited->raw.xtranssensor.rafinazariFarRadius);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariEnergySigma", raw.xtranssensor.rafinazariEnergySigma, pedited->raw.xtranssensor.rafinazariEnergySigma);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariEnergyRadius", raw.xtranssensor.rafinazariEnergyRadius, pedited->raw.xtranssensor.rafinazariEnergyRadius);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariEnergyBoxRadius", raw.xtranssensor.rafinazariEnergyBoxRadius, pedited->raw.xtranssensor.rafinazariEnergyBoxRadius);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "RafinazariEnergyFloor", raw.xtranssensor.rafinazariEnergyFloor, pedited->raw.xtranssensor.rafinazariEnergyFloor);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackRed", raw.xtranssensor.blackred, pedited->raw.xtranssensor.exBlackRed);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackGreen", raw.xtranssensor.blackgreen, pedited->raw.xtranssensor.exBlackGreen);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackBlue", raw.xtranssensor.blackblue, pedited->raw.xtranssensor.exBlackBlue);

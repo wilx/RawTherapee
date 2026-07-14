@@ -116,6 +116,7 @@ set(RTENGINESOURCEFILES
     tmo_fattal02.cc
     utils.cc
     vng4_demosaic_RT.cc
+    xtrans_rafinazari.cc
     xtrans_demosaic.cc
     ${PROCPARAM_SRCS}
 )

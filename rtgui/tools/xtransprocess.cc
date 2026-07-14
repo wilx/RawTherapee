@@ -35,6 +35,7 @@ XTransProcess::XTransProcess () : FoldableToolPanel(this, TOOL_NAME, M("TP_RAW_L
     EvDemosaicBorder = m->newEvent(DEMOSAIC, "HISTORY_MSG_RAW_BORDER");
     EvDemosaicContrast = m->newEvent(DEMOSAIC, "HISTORY_MSG_DUALDEMOSAIC_CONTRAST");
     EvDemosaicAutoContrast = m->newEvent(DEMOSAIC, "HISTORY_MSG_DUALDEMOSAIC_AUTO_CONTRAST");
+    EvRafinazariSettings = m->newEvent(DEMOSAIC, "HISTORY_MSG_RAFINAZARI_SETTINGS");
 
     Gtk::Box* hb1 = Gtk::manage (new Gtk::Box ());
     hb1->pack_start (*Gtk::manage (new Gtk::Label ( M("TP_RAW_DMETHOD") + ": ")), Gtk::PACK_SHRINK, 4);
@@ -88,6 +89,27 @@ XTransProcess::XTransProcess () : FoldableToolPanel(this, TOOL_NAME, M("TP_RAW_L
     dualDemosaicOptions->pack_start(*dualDemosaicContrast);
     pack_start( *dualDemosaicOptions, Gtk::PACK_SHRINK, 4);
 
+    rafinazariOptions = Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_VERTICAL));
+    rafinazariSigma = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_SIGMA"), 0.50, 5.00, 0.01, 2.32));
+    rafinazariNearRadius = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_NEAR_RADIUS"), 1, 24, 1, 7));
+    rafinazariMiddleRadius = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_MIDDLE_RADIUS"), 1, 24, 1, 7));
+    rafinazariFarRadius = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_FAR_RADIUS"), 1, 24, 1, 7));
+    rafinazariEnergySigma = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_ENERGY_SIGMA"), 0.50, 5.00, 0.01, 2.32));
+    rafinazariEnergyRadius = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_ENERGY_RADIUS"), 1, 24, 1, 7));
+    rafinazariEnergyBoxRadius = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_ENERGY_BOX_RADIUS"), 0, 12, 1, 2));
+    rafinazariEnergyFloor = Gtk::manage(new Adjuster(M("TP_RAW_RAFINAZARI_ENERGY_FLOOR"), 0.0, 10.0, 0.001, 0.0));
+
+    for (Adjuster* adjuster : {rafinazariSigma, rafinazariNearRadius, rafinazariMiddleRadius,
+                               rafinazariFarRadius, rafinazariEnergySigma, rafinazariEnergyRadius,
+                               rafinazariEnergyBoxRadius, rafinazariEnergyFloor}) {
+        adjuster->setAdjusterListener(this);
+        adjuster->setDelay(std::max(options.adjusterMinDelay, options.adjusterMaxDelay));
+        adjuster->show();
+        rafinazariOptions->pack_start(*adjuster);
+    }
+    rafinazariOptions->set_tooltip_markup(M("TP_RAW_RAFINAZARI_TOOLTIP"));
+    pack_start(*rafinazariOptions, Gtk::PACK_SHRINK, 4);
+
     borderbox = Gtk::manage(new Gtk::Box());
     border = Gtk::manage(new Adjuster(M("TP_RAW_BORDER"), 0, 16, 1, 7));
     border->setAdjusterListener (this);
@@ -120,6 +142,14 @@ void XTransProcess::read(const rtengine::procparams::ProcParams* pp, const Param
     methodconn.block (true);
 
     border->setValue(pp->raw.xtranssensor.border);
+    rafinazariSigma->setValue(pp->raw.xtranssensor.rafinazariSigma);
+    rafinazariNearRadius->setValue(pp->raw.xtranssensor.rafinazariNearRadius);
+    rafinazariMiddleRadius->setValue(pp->raw.xtranssensor.rafinazariMiddleRadius);
+    rafinazariFarRadius->setValue(pp->raw.xtranssensor.rafinazariFarRadius);
+    rafinazariEnergySigma->setValue(pp->raw.xtranssensor.rafinazariEnergySigma);
+    rafinazariEnergyRadius->setValue(pp->raw.xtranssensor.rafinazariEnergyRadius);
+    rafinazariEnergyBoxRadius->setValue(pp->raw.xtranssensor.rafinazariEnergyBoxRadius);
+    rafinazariEnergyFloor->setValue(pp->raw.xtranssensor.rafinazariEnergyFloor);
     for (size_t i = 0; i < RAWParams::XTransSensor::getMethodStrings().size(); ++i)
         if( pp->raw.xtranssensor.method == RAWParams::XTransSensor::getMethodStrings()[i]) {
             method->set_active(i);
@@ -132,6 +162,14 @@ void XTransProcess::read(const rtengine::procparams::ProcParams* pp, const Param
         dualDemosaicContrast->setAutoInconsistent   (multiImage && !pedited->raw.xtranssensor.dualDemosaicAutoContrast);
         dualDemosaicContrast->setEditedState ( pedited->raw.xtranssensor.dualDemosaicContrast ? Edited : UnEdited);
         ccSteps->setEditedState (pedited->raw.xtranssensor.ccSteps ? Edited : UnEdited);
+        rafinazariSigma->setEditedState(pedited->raw.xtranssensor.rafinazariSigma ? Edited : UnEdited);
+        rafinazariNearRadius->setEditedState(pedited->raw.xtranssensor.rafinazariNearRadius ? Edited : UnEdited);
+        rafinazariMiddleRadius->setEditedState(pedited->raw.xtranssensor.rafinazariMiddleRadius ? Edited : UnEdited);
+        rafinazariFarRadius->setEditedState(pedited->raw.xtranssensor.rafinazariFarRadius ? Edited : UnEdited);
+        rafinazariEnergySigma->setEditedState(pedited->raw.xtranssensor.rafinazariEnergySigma ? Edited : UnEdited);
+        rafinazariEnergyRadius->setEditedState(pedited->raw.xtranssensor.rafinazariEnergyRadius ? Edited : UnEdited);
+        rafinazariEnergyBoxRadius->setEditedState(pedited->raw.xtranssensor.rafinazariEnergyBoxRadius ? Edited : UnEdited);
+        rafinazariEnergyFloor->setEditedState(pedited->raw.xtranssensor.rafinazariEnergyFloor ? Edited : UnEdited);
 
         if( !pedited->raw.xtranssensor.method ) {
             method->set_active_text(M("GENERAL_UNCHANGED"));
@@ -146,6 +184,7 @@ void XTransProcess::read(const rtengine::procparams::ProcParams* pp, const Param
     if (!batchMode) {
         dualDemosaicOptions->set_visible(pp->raw.xtranssensor.method == procparams::RAWParams::XTransSensor::getMethodString(procparams::RAWParams::XTransSensor::Method::FOUR_PASS)
                                          || pp->raw.xtranssensor.method == procparams::RAWParams::XTransSensor::getMethodString(procparams::RAWParams::XTransSensor::Method::TWO_PASS));
+        rafinazariOptions->set_visible(pp->raw.xtranssensor.method == procparams::RAWParams::XTransSensor::getMethodString(procparams::RAWParams::XTransSensor::Method::RAFINAZARI));
     }
 
     methodconn.block (false);
@@ -159,6 +198,14 @@ void XTransProcess::write( rtengine::procparams::ProcParams* pp, ParamsEdited* p
     pp->raw.xtranssensor.dualDemosaicContrast = dualDemosaicContrast->getValue();
     pp->raw.xtranssensor.border = border->getIntValue();
     pp->raw.xtranssensor.ccSteps = ccSteps->getIntValue();
+    pp->raw.xtranssensor.rafinazariSigma = rafinazariSigma->getValue();
+    pp->raw.xtranssensor.rafinazariNearRadius = rafinazariNearRadius->getIntValue();
+    pp->raw.xtranssensor.rafinazariMiddleRadius = rafinazariMiddleRadius->getIntValue();
+    pp->raw.xtranssensor.rafinazariFarRadius = rafinazariFarRadius->getIntValue();
+    pp->raw.xtranssensor.rafinazariEnergySigma = rafinazariEnergySigma->getValue();
+    pp->raw.xtranssensor.rafinazariEnergyRadius = rafinazariEnergyRadius->getIntValue();
+    pp->raw.xtranssensor.rafinazariEnergyBoxRadius = rafinazariEnergyBoxRadius->getIntValue();
+    pp->raw.xtranssensor.rafinazariEnergyFloor = rafinazariEnergyFloor->getValue();
 
     int currentRow = method->get_active_row_number();
 
@@ -172,6 +219,14 @@ void XTransProcess::write( rtengine::procparams::ProcParams* pp, ParamsEdited* p
         pedited->raw.xtranssensor.dualDemosaicAutoContrast = !dualDemosaicContrast->getAutoInconsistent ();
         pedited->raw.xtranssensor.dualDemosaicContrast = dualDemosaicContrast->getEditedState ();
         pedited->raw.xtranssensor.ccSteps = ccSteps->getEditedState ();
+        pedited->raw.xtranssensor.rafinazariSigma = rafinazariSigma->getEditedState();
+        pedited->raw.xtranssensor.rafinazariNearRadius = rafinazariNearRadius->getEditedState();
+        pedited->raw.xtranssensor.rafinazariMiddleRadius = rafinazariMiddleRadius->getEditedState();
+        pedited->raw.xtranssensor.rafinazariFarRadius = rafinazariFarRadius->getEditedState();
+        pedited->raw.xtranssensor.rafinazariEnergySigma = rafinazariEnergySigma->getEditedState();
+        pedited->raw.xtranssensor.rafinazariEnergyRadius = rafinazariEnergyRadius->getEditedState();
+        pedited->raw.xtranssensor.rafinazariEnergyBoxRadius = rafinazariEnergyBoxRadius->getEditedState();
+        pedited->raw.xtranssensor.rafinazariEnergyFloor = rafinazariEnergyFloor->getEditedState();
     }
 }
 
@@ -180,6 +235,14 @@ void XTransProcess::setAdjusterBehavior (bool falsecoloradd, bool dualDemosaicCo
     border->setAddMode(false);
     dualDemosaicContrast->setAddMode(dualDemosaicContrastAdd);
     ccSteps->setAddMode(falsecoloradd);
+    rafinazariSigma->setAddMode(false);
+    rafinazariNearRadius->setAddMode(false);
+    rafinazariMiddleRadius->setAddMode(false);
+    rafinazariFarRadius->setAddMode(false);
+    rafinazariEnergySigma->setAddMode(false);
+    rafinazariEnergyRadius->setAddMode(false);
+    rafinazariEnergyBoxRadius->setAddMode(false);
+    rafinazariEnergyFloor->setAddMode(false);
 }
 
 void XTransProcess::setBatchMode(bool batchMode)
@@ -190,6 +253,14 @@ void XTransProcess::setBatchMode(bool batchMode)
     dualDemosaicContrast->showEditedCB ();
     border->showEditedCB ();
     ccSteps->showEditedCB ();
+    rafinazariSigma->showEditedCB();
+    rafinazariNearRadius->showEditedCB();
+    rafinazariMiddleRadius->showEditedCB();
+    rafinazariFarRadius->showEditedCB();
+    rafinazariEnergySigma->showEditedCB();
+    rafinazariEnergyRadius->showEditedCB();
+    rafinazariEnergyBoxRadius->showEditedCB();
+    rafinazariEnergyFloor->showEditedCB();
 }
 
 void XTransProcess::setDefaults(const rtengine::procparams::ProcParams* defParams, const ParamsEdited* pedited)
@@ -197,15 +268,39 @@ void XTransProcess::setDefaults(const rtengine::procparams::ProcParams* defParam
     dualDemosaicContrast->setDefault( defParams->raw.xtranssensor.dualDemosaicContrast);
     border->setDefault (defParams->raw.xtranssensor.border);
     ccSteps->setDefault (defParams->raw.xtranssensor.ccSteps);
+    rafinazariSigma->setDefault(defParams->raw.xtranssensor.rafinazariSigma);
+    rafinazariNearRadius->setDefault(defParams->raw.xtranssensor.rafinazariNearRadius);
+    rafinazariMiddleRadius->setDefault(defParams->raw.xtranssensor.rafinazariMiddleRadius);
+    rafinazariFarRadius->setDefault(defParams->raw.xtranssensor.rafinazariFarRadius);
+    rafinazariEnergySigma->setDefault(defParams->raw.xtranssensor.rafinazariEnergySigma);
+    rafinazariEnergyRadius->setDefault(defParams->raw.xtranssensor.rafinazariEnergyRadius);
+    rafinazariEnergyBoxRadius->setDefault(defParams->raw.xtranssensor.rafinazariEnergyBoxRadius);
+    rafinazariEnergyFloor->setDefault(defParams->raw.xtranssensor.rafinazariEnergyFloor);
 
     if (pedited) {
         dualDemosaicContrast->setDefaultEditedState( pedited->raw.xtranssensor.dualDemosaicContrast ? Edited : UnEdited);
         border->setDefaultEditedState(pedited->raw.xtranssensor.border ? Edited : UnEdited);
         ccSteps->setDefaultEditedState(pedited->raw.xtranssensor.ccSteps ? Edited : UnEdited);
+        rafinazariSigma->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariSigma ? Edited : UnEdited);
+        rafinazariNearRadius->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariNearRadius ? Edited : UnEdited);
+        rafinazariMiddleRadius->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariMiddleRadius ? Edited : UnEdited);
+        rafinazariFarRadius->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariFarRadius ? Edited : UnEdited);
+        rafinazariEnergySigma->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariEnergySigma ? Edited : UnEdited);
+        rafinazariEnergyRadius->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariEnergyRadius ? Edited : UnEdited);
+        rafinazariEnergyBoxRadius->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariEnergyBoxRadius ? Edited : UnEdited);
+        rafinazariEnergyFloor->setDefaultEditedState(pedited->raw.xtranssensor.rafinazariEnergyFloor ? Edited : UnEdited);
     } else {
         dualDemosaicContrast->setDefaultEditedState(Irrelevant );
         border->setDefaultEditedState(Irrelevant);
         ccSteps->setDefaultEditedState(Irrelevant );
+        rafinazariSigma->setDefaultEditedState(Irrelevant);
+        rafinazariNearRadius->setDefaultEditedState(Irrelevant);
+        rafinazariMiddleRadius->setDefaultEditedState(Irrelevant);
+        rafinazariFarRadius->setDefaultEditedState(Irrelevant);
+        rafinazariEnergySigma->setDefaultEditedState(Irrelevant);
+        rafinazariEnergyRadius->setDefaultEditedState(Irrelevant);
+        rafinazariEnergyBoxRadius->setDefaultEditedState(Irrelevant);
+        rafinazariEnergyFloor->setDefaultEditedState(Irrelevant);
     }
 }
 
@@ -218,6 +313,8 @@ void XTransProcess::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvDemosaicContrast, a->getTextValue() );
         } else if (a == border) {
             listener->panelChanged (EvDemosaicBorder, a->getTextValue() );
+        } else {
+            listener->panelChanged(EvRafinazariSettings, a->getTextValue());
         }
     }
 }
@@ -262,6 +359,7 @@ void XTransProcess::methodChanged ()
         } else {
             dualDemosaicOptions->hide();
         }
+        rafinazariOptions->set_visible(currentMethod == procparams::RAWParams::XTransSensor::Method::RAFINAZARI);
 
     }
     if (listener && method->get_active_row_number() >= 0) {

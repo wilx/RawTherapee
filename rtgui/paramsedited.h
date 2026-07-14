@@ -1740,6 +1740,14 @@ struct RAWParamsEdited {
         bool dualDemosaicContrast;
         bool border;
         bool ccSteps;
+        bool rafinazariSigma;
+        bool rafinazariNearRadius;
+        bool rafinazariMiddleRadius;
+        bool rafinazariFarRadius;
+        bool rafinazariEnergySigma;
+        bool rafinazariEnergyRadius;
+        bool rafinazariEnergyBoxRadius;
+        bool rafinazariEnergyFloor;
         bool exBlackRed;
         bool exBlackGreen;
         bool exBlackBlue;

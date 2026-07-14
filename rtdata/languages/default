@@ -1443,6 +1443,7 @@ HISTORY_MSG_DISTORTION_DEFISH;De-fish
 HISTORY_MSG_DISTORTION_DEFISH_FOCAL;De-fish - Focal length
 HISTORY_MSG_DUALDEMOSAIC_AUTO_CONTRAST;Dual demosaic - Auto threshold
 HISTORY_MSG_DUALDEMOSAIC_CONTRAST;Dual demosaic - Contrast threshold
+HISTORY_MSG_RAFINAZARI_SETTINGS;Rafinazari demosaic settings
 HISTORY_MSG_EDGEFFECT;Edge Attenuation response
 HISTORY_MSG_FF_FROMMETADATA;Flat-Field - From Metadata
 HISTORY_MSG_FILMNEGATIVE_BALANCE;FN - Reference output
@@ -4290,6 +4291,16 @@ TP_RAW_PIXELSHIFTSMOOTH_TOOLTIP;Smooth transitions between areas with motion and
 TP_RAW_RCD;RCD
 TP_RAW_RCDBILINEAR;RCD+Bilinear
 TP_RAW_RCDVNG4;RCD+VNG4
+TP_RAW_RAFINAZARIADAPTIVE;Rafinazari adaptive (experimental)
+TP_RAW_RAFINAZARI_SIGMA;Reconstruction Gaussian sigma
+TP_RAW_RAFINAZARI_NEAR_RADIUS;Near-chroma support radius
+TP_RAW_RAFINAZARI_MIDDLE_RADIUS;Middle-chroma support radius
+TP_RAW_RAFINAZARI_FAR_RADIUS;Far-chroma support radius
+TP_RAW_RAFINAZARI_ENERGY_SIGMA;Adaptive-energy Gaussian sigma
+TP_RAW_RAFINAZARI_ENERGY_RADIUS;Adaptive-energy support radius
+TP_RAW_RAFINAZARI_ENERGY_BOX_RADIUS;Energy averaging radius
+TP_RAW_RAFINAZARI_ENERGY_FLOOR;Minimum energy (%)
+TP_RAW_RAFINAZARI_TOOLTIP;Experimental frequency-domain X-Trans demosaicer based on Rafinazari and Dubois. The published reconstruction sigma is 2.32; the support and adaptive-energy parameters were not published and can be adjusted here.
 TP_RAW_SENSOR_BAYER_LABEL;Sensor with Bayer Matrix
 TP_RAW_SENSOR_XTRANS_DMETHOD_TOOLTIP;3-pass gives best results (recommended for low ISO images).\n1-pass is almost undistinguishable from 3-pass for high ISO images and is faster.\n+fast gives less artifacts in flat areas.
 TP_RAW_SENSOR_XTRANS_LABEL;Sensor with X-Trans Matrix

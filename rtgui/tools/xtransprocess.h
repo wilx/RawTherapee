@@ -41,6 +41,15 @@ protected:
     Adjuster* ccSteps;
     Gtk::Box* dualDemosaicOptions;
     Adjuster* dualDemosaicContrast;
+    Gtk::Box* rafinazariOptions;
+    Adjuster* rafinazariSigma;
+    Adjuster* rafinazariNearRadius;
+    Adjuster* rafinazariMiddleRadius;
+    Adjuster* rafinazariFarRadius;
+    Adjuster* rafinazariEnergySigma;
+    Adjuster* rafinazariEnergyRadius;
+    Adjuster* rafinazariEnergyBoxRadius;
+    Adjuster* rafinazariEnergyFloor;
     bool lastAutoContrast;
 
     int oldSelection;
@@ -50,6 +59,7 @@ protected:
     rtengine::ProcEvent EvDemosaicBorder;
     rtengine::ProcEvent EvDemosaicAutoContrast;
     rtengine::ProcEvent EvDemosaicContrast;
+    rtengine::ProcEvent EvRafinazariSettings;
 
 public:
     static const Glib::ustring TOOL_NAME;

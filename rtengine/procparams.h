@@ -1789,6 +1789,7 @@ struct RAWParams {
             THREE_PASS,
             TWO_PASS,
             ONE_PASS,
+            RAFINAZARI,
             FAST,
             MONO,
             NONE
@@ -1799,6 +1800,14 @@ struct RAWParams {
         double dualDemosaicContrast;
         int border;
         int ccSteps;
+        double rafinazariSigma;
+        int rafinazariNearRadius;
+        int rafinazariMiddleRadius;
+        int rafinazariFarRadius;
+        double rafinazariEnergySigma;
+        int rafinazariEnergyRadius;
+        int rafinazariEnergyBoxRadius;
+        double rafinazariEnergyFloor;
         double blackred;
         double blackgreen;
         double blackblue;

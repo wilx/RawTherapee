@@ -1848,6 +1848,10 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             xtrans_interpolate(1, false, options.chunkSizeXT, options.measure);
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::THREE_PASS)) {
             xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+        } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {
+            if (!rafinazari_xtrans_interpolate(raw.xtranssensor)) {
+                xtrans_interpolate(1, false, options.chunkSizeXT, options.measure);
+            }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::FOUR_PASS) || raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::TWO_PASS)) {
             if (!autoContrast) {
                 double threshold = raw.xtranssensor.dualDemosaicContrast;

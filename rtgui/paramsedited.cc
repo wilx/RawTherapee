@@ -782,6 +782,14 @@ void ParamsEdited::set(bool v)
     raw.xtranssensor.dualDemosaicContrast = v;
     raw.xtranssensor.border = v;
     raw.xtranssensor.ccSteps = v;
+    raw.xtranssensor.rafinazariSigma = v;
+    raw.xtranssensor.rafinazariNearRadius = v;
+    raw.xtranssensor.rafinazariMiddleRadius = v;
+    raw.xtranssensor.rafinazariFarRadius = v;
+    raw.xtranssensor.rafinazariEnergySigma = v;
+    raw.xtranssensor.rafinazariEnergyRadius = v;
+    raw.xtranssensor.rafinazariEnergyBoxRadius = v;
+    raw.xtranssensor.rafinazariEnergyFloor = v;
     raw.xtranssensor.exBlackRed = v;
     raw.xtranssensor.exBlackGreen = v;
     raw.xtranssensor.exBlackBlue = v;
@@ -2438,6 +2446,14 @@ void ParamsEdited::initFrom(const std::vector<rtengine::procparams::ProcParams>&
         raw.xtranssensor.dualDemosaicContrast = raw.xtranssensor.dualDemosaicContrast && p.raw.xtranssensor.dualDemosaicContrast == other.raw.xtranssensor.dualDemosaicContrast;
         raw.xtranssensor.border = raw.xtranssensor.border && p.raw.xtranssensor.border == other.raw.xtranssensor.border;
         raw.xtranssensor.ccSteps = raw.xtranssensor.ccSteps && p.raw.xtranssensor.ccSteps == other.raw.xtranssensor.ccSteps;
+        raw.xtranssensor.rafinazariSigma = raw.xtranssensor.rafinazariSigma && p.raw.xtranssensor.rafinazariSigma == other.raw.xtranssensor.rafinazariSigma;
+        raw.xtranssensor.rafinazariNearRadius = raw.xtranssensor.rafinazariNearRadius && p.raw.xtranssensor.rafinazariNearRadius == other.raw.xtranssensor.rafinazariNearRadius;
+        raw.xtranssensor.rafinazariMiddleRadius = raw.xtranssensor.rafinazariMiddleRadius && p.raw.xtranssensor.rafinazariMiddleRadius == other.raw.xtranssensor.rafinazariMiddleRadius;
+        raw.xtranssensor.rafinazariFarRadius = raw.xtranssensor.rafinazariFarRadius && p.raw.xtranssensor.rafinazariFarRadius == other.raw.xtranssensor.rafinazariFarRadius;
+        raw.xtranssensor.rafinazariEnergySigma = raw.xtranssensor.rafinazariEnergySigma && p.raw.xtranssensor.rafinazariEnergySigma == other.raw.xtranssensor.rafinazariEnergySigma;
+        raw.xtranssensor.rafinazariEnergyRadius = raw.xtranssensor.rafinazariEnergyRadius && p.raw.xtranssensor.rafinazariEnergyRadius == other.raw.xtranssensor.rafinazariEnergyRadius;
+        raw.xtranssensor.rafinazariEnergyBoxRadius = raw.xtranssensor.rafinazariEnergyBoxRadius && p.raw.xtranssensor.rafinazariEnergyBoxRadius == other.raw.xtranssensor.rafinazariEnergyBoxRadius;
+        raw.xtranssensor.rafinazariEnergyFloor = raw.xtranssensor.rafinazariEnergyFloor && p.raw.xtranssensor.rafinazariEnergyFloor == other.raw.xtranssensor.rafinazariEnergyFloor;
         raw.xtranssensor.exBlackRed = raw.xtranssensor.exBlackRed && p.raw.xtranssensor.blackred == other.raw.xtranssensor.blackred;
         raw.xtranssensor.exBlackGreen = raw.xtranssensor.exBlackGreen && p.raw.xtranssensor.blackgreen == other.raw.xtranssensor.blackgreen;
         raw.xtranssensor.exBlackBlue = raw.xtranssensor.exBlackBlue && p.raw.xtranssensor.blackblue == other.raw.xtranssensor.blackblue;
@@ -8010,6 +8026,31 @@ void ParamsEdited::combine(rtengine::procparams::ProcParams& toEdit, const rteng
         toEdit.raw.xtranssensor.ccSteps = mods.raw.xtranssensor.ccSteps;
     }
 
+    if (raw.xtranssensor.rafinazariSigma) {
+        toEdit.raw.xtranssensor.rafinazariSigma = mods.raw.xtranssensor.rafinazariSigma;
+    }
+    if (raw.xtranssensor.rafinazariNearRadius) {
+        toEdit.raw.xtranssensor.rafinazariNearRadius = mods.raw.xtranssensor.rafinazariNearRadius;
+    }
+    if (raw.xtranssensor.rafinazariMiddleRadius) {
+        toEdit.raw.xtranssensor.rafinazariMiddleRadius = mods.raw.xtranssensor.rafinazariMiddleRadius;
+    }
+    if (raw.xtranssensor.rafinazariFarRadius) {
+        toEdit.raw.xtranssensor.rafinazariFarRadius = mods.raw.xtranssensor.rafinazariFarRadius;
+    }
+    if (raw.xtranssensor.rafinazariEnergySigma) {
+        toEdit.raw.xtranssensor.rafinazariEnergySigma = mods.raw.xtranssensor.rafinazariEnergySigma;
+    }
+    if (raw.xtranssensor.rafinazariEnergyRadius) {
+        toEdit.raw.xtranssensor.rafinazariEnergyRadius = mods.raw.xtranssensor.rafinazariEnergyRadius;
+    }
+    if (raw.xtranssensor.rafinazariEnergyBoxRadius) {
+        toEdit.raw.xtranssensor.rafinazariEnergyBoxRadius = mods.raw.xtranssensor.rafinazariEnergyBoxRadius;
+    }
+    if (raw.xtranssensor.rafinazariEnergyFloor) {
+        toEdit.raw.xtranssensor.rafinazariEnergyFloor = mods.raw.xtranssensor.rafinazariEnergyFloor;
+    }
+
     if (raw.xtranssensor.border) {
         toEdit.raw.xtranssensor.border = mods.raw.xtranssensor.border;
     }
@@ -8815,7 +8856,11 @@ bool RAWParamsEdited::BayerSensor::isUnchanged() const
 
 bool RAWParamsEdited::XTransSensor::isUnchanged() const
 {
-    return method && border && exBlackRed && exBlackGreen && exBlackBlue && dualDemosaicAutoContrast && dualDemosaicContrast;
+    return method && border && ccSteps && exBlackRed && exBlackGreen && exBlackBlue
+            && dualDemosaicAutoContrast && dualDemosaicContrast
+            && rafinazariSigma && rafinazariNearRadius && rafinazariMiddleRadius
+            && rafinazariFarRadius && rafinazariEnergySigma && rafinazariEnergyRadius
+            && rafinazariEnergyBoxRadius && rafinazariEnergyFloor;
 }
 
 bool RAWParamsEdited::isUnchanged() const
