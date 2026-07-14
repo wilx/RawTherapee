@@ -10,9 +10,10 @@ Rafinazari and three-pass Markesteijn methods, and reports PSNR, SSIM, elapsed
 time, and peak child RSS.  The generated files live in a temporary directory
 unless --work-dir is specified.
 
-A build configured with WITH_BENCHMARK=ON also accepts
-RT_RAFINAZARI_VARIANT=literal to exercise the ambiguous literal weighting
-equation. Normal builds always use the normalized conjugate-pair formulation.
+The --variant option also exercises the fixed and restricted weighting choices
+discussed on dissertation p. 44. A build configured with WITH_BENCHMARK=ON is
+required only for the ambiguous literal equation; the other development
+variants are available in ordinary builds of the experimental demosaicer.
 """
 
 from __future__ import annotations
@@ -254,6 +255,12 @@ def main():
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--literal", action="store_true", help="benchmark literal weighting in a WITH_BENCHMARK build")
     parser.add_argument(
+        "--variant",
+        choices=("adaptive-all", "fixed-c2", "far-balanced", "q1213-only", "far-adaptive"),
+        default="adaptive-all",
+        help="Rafinazari weighting experiment (default: adaptive-all)",
+    )
+    parser.add_argument(
         "--validate-patterns",
         action="store_true",
         help="also smoke-test every unique rotation/reflection/phase of the 6x6 CFA",
@@ -283,8 +290,8 @@ def main():
 
     environment = os.environ.copy()
     environment["XDG_CONFIG_HOME"] = str(work / "config")
-    if args.literal:
-        environment["RT_RAFINAZARI_VARIANT"] = "literal"
+    selected_variant = "literal" if args.literal else args.variant
+    environment["RT_RAFINAZARI_VARIANT"] = selected_variant
 
     report = []
     for name, reference in synthetic_images(np, args.size).items():
@@ -295,9 +302,12 @@ def main():
             elapsed, max_rss = run_rawtherapee(cli, profile, source, output, environment)
             image = tifffile.imread(output)
             psnr, ssim = metrics(np, structural_similarity, reference, image)
+            reported_method = (
+                f"rafinazari-{selected_variant}" if method == "rafinazari" else method
+            )
             row = {
                 "image": name,
-                "method": method,
+                "method": reported_method,
                 "psnr_db": round(psnr, 4),
                 "ssim": round(ssim, 6),
                 "seconds": round(elapsed, 4),

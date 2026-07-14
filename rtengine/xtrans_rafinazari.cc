@@ -107,6 +107,43 @@ struct ThreadWorkspace {
     WorkspaceBuffer<double> integral;
 };
 
+// Hidden development variants used to evaluate the fixed and restricted
+// weighting choices discussed after dissertation equation 3.49 (p. 44).
+// They deliberately are not processing-profile parameters: experimental
+// results should select one stable formulation before it becomes user-facing.
+enum class WeightingVariant {
+    ADAPTIVE_ALL,
+    FIXED_C2,
+    FAR_BALANCED,
+    Q1213_ONLY,
+    FAR_ADAPTIVE
+};
+
+WeightingVariant weightingVariant()
+{
+    const char* value = std::getenv("RT_RAFINAZARI_VARIANT");
+
+    if (!value) {
+        return WeightingVariant::ADAPTIVE_ALL;
+    }
+
+    const std::string name(value);
+    if (name == "fixed-c2") {
+        return WeightingVariant::FIXED_C2;
+    }
+    if (name == "far-balanced") {
+        return WeightingVariant::FAR_BALANCED;
+    }
+    if (name == "q1213-only") {
+        return WeightingVariant::Q1213_ONLY;
+    }
+    if (name == "far-adaptive") {
+        return WeightingVariant::FAR_ADAPTIVE;
+    }
+
+    return WeightingVariant::ADAPTIVE_ALL;
+}
+
 // The twelve nonzero chroma carrier locations d_i from dissertation equation
 // 3.11 (q4, q5, q8, q9, and q18 are zero). Frequencies are cycles per pixel.
 constexpr std::array<Frequency, 12> CHROMA_FREQUENCIES {{
@@ -423,14 +460,15 @@ float normalizedC1(const std::array<Complex, 12>& q, const std::array<float, 4>&
     // Conjugate-pair formulation of dissertation equation 3.47. Equations
     // 3.41-3.43 explain why each pair sum is real when symmetric filters are
     // used. The scale factors invert the pair coefficients following 3.43.
+    // The weights are stored in the equation's wa, wb, wc, wd order.
     const float s23 = (q[0] + q[1]).real();
     const float s67 = (q[2] + q[3]).real();
     const float s1011 = (q[4] + q[5]).real();
     const float s1213 = (q[6] + q[7]).real();
 
     return 4.5f * weights[0] * s23
-         - 2.25f * weights[1] * s67
-         + 4.5f * weights[2] * s1011
+         + 4.5f * weights[1] * s1011
+         - 2.25f * weights[2] * s67
          + 1.125f * weights[3] * s1213;
 }
 
@@ -447,8 +485,8 @@ float literalC1(const std::array<Complex, 12>& q, const std::array<float, 4>& we
     // Literal interpretation of the earlier adaptive update, equation 3.31.
     // It is retained only in benchmark builds because that equation combines
     // components with different gains without the normalization of 3.47.
-    const Complex q2 = weights[0] * q[0] + weights[1] * q[2]
-                     + weights[2] * q[4] + weights[3] * q[6];
+    const Complex q2 = weights[0] * q[0] + weights[2] * q[2]
+                     + weights[1] * q[4] + weights[3] * q[6];
     return (q2 / C1_COEFFICIENTS[0]).real();
 }
 #endif
@@ -511,6 +549,7 @@ bool RawImageSource::rafinazari_xtrans_interpolate(const procparams::RAWParams::
 
     const int tilesX = (W + TILE_SIZE - 1) / TILE_SIZE;
     const int tilesY = (H + TILE_SIZE - 1) / TILE_SIZE;
+    const WeightingVariant weighting = weightingVariant();
 
 #ifdef BENCHMARK
     const char* variant = std::getenv("RT_RAFINAZARI_VARIANT");
@@ -552,14 +591,53 @@ bool RawImageSource::rafinazari_xtrans_interpolate(const procparams::RAWParams::
                     }
 
                     const std::array<float, 4> c1Energy {{
-                        workspace.energies[0].data[index], workspace.energies[1].data[index],
-                        workspace.energies[2].data[index], workspace.energies[3].data[index]
+                        workspace.energies[0].data[index], workspace.energies[2].data[index],
+                        workspace.energies[1].data[index], workspace.energies[3].data[index]
                     }};
                     const std::array<float, 2> c2Energy {{
                         workspace.energies[4].data[index], workspace.energies[5].data[index]
                     }};
-                    const auto c1Weights = inverseEnergyWeights(c1Energy, energyFloor);
-                    const auto c2Weights = inverseEnergyWeights(c2Energy, energyFloor);
+                    std::array<float, 4> c1Weights;
+                    std::array<float, 2> c2Weights;
+
+                    switch (weighting) {
+                        case WeightingVariant::FIXED_C2:
+                            c1Weights = inverseEnergyWeights(c1Energy, energyFloor);
+                            c2Weights = {{0.5f, 0.5f}};
+                            break;
+
+                        case WeightingVariant::FAR_BALANCED:
+                            // Dissertation p. 44: wa=wb=0 and wc=wd=0.5 gave
+                            // 36.0 dB mean CPSNR with the Gaussian filters.
+                            c1Weights = {{0.f, 0.f, 0.5f, 0.5f}};
+                            c2Weights = {{0.5f, 0.5f}};
+                            break;
+
+                        case WeightingVariant::Q1213_ONLY:
+                            // Dissertation p. 44: wd=1 was the best reported
+                            // fixed Gaussian choice (36.1 dB mean CPSNR).
+                            c1Weights = {{0.f, 0.f, 0.f, 1.f}};
+                            c2Weights = {{0.5f, 0.5f}};
+                            break;
+
+                        case WeightingVariant::FAR_ADAPTIVE: {
+                            // Restrict equation 3.47 to the two pairs that
+                            // suffer less luma crosstalk (discussion after
+                            // equation 3.45), while retaining equation 3.30's
+                            // local inverse-energy selection between them.
+                            const std::array<float, 2> farEnergy {{c1Energy[2], c1Energy[3]}};
+                            const auto farWeights = inverseEnergyWeights(farEnergy, energyFloor);
+                            c1Weights = {{0.f, 0.f, farWeights[0], farWeights[1]}};
+                            c2Weights = {{0.5f, 0.5f}};
+                            break;
+                        }
+
+                        case WeightingVariant::ADAPTIVE_ALL:
+                        default:
+                            c1Weights = inverseEnergyWeights(c1Energy, energyFloor);
+                            c2Weights = inverseEnergyWeights(c2Energy, energyFloor);
+                            break;
+                    }
 
                     // Production uses the normalized conjugate-pair equations
                     // 3.47 and 3.49. Equation 3.31 remains benchmark-only.
