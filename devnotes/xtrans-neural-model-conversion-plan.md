@@ -70,7 +70,7 @@ converted model may be distributed with RawTherapee is a separate licensing
 decision; local development can proceed with a downloaded checkpoint whose
 origin and digest are recorded.
 
-## Phase 1: create the isolated converter
+## Phase 1: create the isolated checkpoint-intake tool
 
 ### Proposed repository layout
 
@@ -79,31 +79,29 @@ existing benchmark script:
 
     tools/neural_demosaic/
         README.md
-        convert_checkpoint.py
-        inspect_model.py
+        __init__.py
+        inspect_checkpoint.py
+        schema.py
         requirements.txt
-        schemas/
-            demosaicnet_xtrans_v1.py
+        requirements-torch.txt
         tests/
-            test_conversion.py
-            test_invalid_checkpoint.py
+            test_inspect_checkpoint.py
 
-Proposed generated output, subject to the redistribution decision:
+Phase 1 writes only a deterministic inspection manifest to a developer-selected
+location outside tracked source, for example:
 
-    rtdata/models/
-        demosaicnet-xtrans-v1.rtnn
-        demosaicnet-xtrans-v1.manifest.json
-        demosaicnet-xtrans-LICENSE.txt
+    /tmp/demosaicnet-xtrans-v1.manifest.json
 
-If the model is not distributable, keep generated output under an ignored build
-directory and let developers install it explicitly. The C++ loader should use
-the same model filename and search contract in either case.
+RTNN output and its install/search contract remain Phase 3 work. This keeps the
+safe checkpoint boundary independently testable before freezing the binary
+container.
 
 ### Python environment
 
-The converter is a developer tool, not a runtime dependency. Pin a supported
-Python and PyTorch version in requirements.txt and record both versions in the
-manifest. Prefer a CPU-only PyTorch package.
+The inspector is a developer tool, not a runtime dependency. Its verified
+environment is Python 3.12 with CPU-only PyTorch 2.12.1, NumPy 2.3.5, and
+pytest 8.4.2. The PyTorch dependency is kept in a separate requirements file so
+it can be installed exclusively from the official CPU wheel index.
 
 Load the state dictionary using the safest available API:
 
@@ -113,25 +111,31 @@ Do not import or execute the upstream model module merely to deserialize the
 checkpoint. The artifact is an OrderedDict of tensors and should not require
 upstream Python classes.
 
-The converter must:
+The Phase 1 inspector must:
 
 1. read the source as bytes and compute SHA-256 before deserialization;
 2. verify the expected source hash;
 3. use weights-only loading and force all storage to CPU;
 4. require an OrderedDict or mapping containing exactly the expected keys;
 5. reject sparse, quantized, complex, non-floating, or non-finite tensors;
-6. detach, convert to float32, and make each tensor contiguous;
+6. require float32, then detach and make each tensor contiguous without
+   changing its bit pattern;
 7. retain canonical PyTorch OIHW convolution order;
-8. serialize fields explicitly in little-endian order; and
-9. write to a temporary file, validate it, then atomically rename it.
+8. hash canonical little-endian float32 tensor bytes;
+9. emit canonical JSON without timestamps or local paths; and
+10. write to a temporary file, validate it, then atomically rename it.
 
-The converter should never overwrite an existing artifact with different
-content unless an explicit output path or replace option is given.
+The inspector never overwrites an existing manifest unless an explicit force
+option is given. The pinned checkpoint currently produces 26 tensors, 409,923
+parameters, 1,639,692 payload bytes, and canonical manifest SHA-256
+`371a3e20bac66877238e44d36e349078953c0b6c4e256299f64d66bbd8b72848`.
 
-## Phase 2: define and enforce the Gharbi tensor schema
+## Phase 2: freeze the RTNN semantic tensor schema
 
-Version 1 must validate model semantics, not just total byte size. The expected
-state-dictionary keys are:
+Phase 1 validates these source keys and shapes before producing its inspection
+manifest. Phase 2 assigns stable RTNN semantic tensor IDs and freezes their
+mapping; the binary format must not depend on PyTorch key strings at runtime.
+The source state-dictionary keys are:
 
     main_processor.conv1.weight
     main_processor.conv1.bias

@@ -10,6 +10,8 @@
 .idea
 .env
 .venv
+__pycache__/
+*.py[cod]
 
 CMakeUserPresets.json
 CMakeCache.txt
