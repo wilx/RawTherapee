@@ -16,6 +16,7 @@ from tools.neural_demosaic.inspect_checkpoint import (
     CheckpointError,
     canonical_manifest_bytes,
     inspect_checkpoint,
+    load_validated_checkpoint,
     write_manifest,
 )
 from tools.neural_demosaic.schema import (
@@ -85,6 +86,27 @@ def test_valid_checkpoint_summary_and_tensor_digests(valid_fixture) -> None:
         independent_payload = np.asarray(tensor, dtype="<f4", order="C").tobytes(order="C")
         assert entry["sha256"] == hashlib.sha256(independent_payload).hexdigest()
         assert entry["payload_bytes"] == len(independent_payload)
+
+
+def test_validated_checkpoint_exposes_the_same_canonical_tensor_bytes(
+    valid_fixture,
+) -> None:
+    path, schema, original = valid_fixture
+    validated = load_validated_checkpoint(path, schema)
+
+    assert validated.manifest == inspect_checkpoint(path, schema)
+    assert len(validated.tensor_payloads) == len(schema.tensors)
+
+    for spec, payload in zip(schema.tensors, validated.tensor_payloads, strict=True):
+        independent = (
+            original[spec.name]
+            .detach()
+            .contiguous()
+            .numpy()
+            .astype("<f4", copy=False)
+            .tobytes(order="C")
+        )
+        assert payload == independent
 
 
 def test_manifest_is_deterministic_and_has_no_local_path(valid_fixture, tmp_path: Path) -> None:

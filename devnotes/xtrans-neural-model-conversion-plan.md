@@ -199,87 +199,41 @@ existing IDs are never renumbered or repurposed.
 
 ## Phase 3: RawTherapee neural-model file format version 1
 
-Use a small container format, provisionally named RTNN. Its purpose is safe
-transport of validated tensors, not graph execution.
+RTNN v1 is now frozen and implemented. Its authoritative byte-level contract is
+`devnotes/rtnn-v1-format.md`. The format transports validated tensor values and
+identity metadata only; it does not describe or execute a graph.
 
-### Design rules
+The fixed layout uses a 192-byte header, 26 ascending 96-byte semantic tensor
+records, and one 64-byte-aligned payload region. All integers and IEEE-754
+float32 values are little-endian. Convolution tensors remain in canonical OIHW
+order, vector tensors remain contiguous, and every gap and trailing alignment
+byte is zero. The header binds architecture ID 1, model revision 1, the Phase 2
+semantic-schema digest, the source-checkpoint digest, and the SHA-256 of the
+complete padded payload. Every directory record also contains its tensor's
+SHA-256.
 
-* All integers and floats are explicitly little-endian.
-* No C or C++ structure is written with a direct memory dump.
-* Every offset and length is an unsigned fixed-width integer.
-* All offset-plus-length operations use checked arithmetic.
-* Tensor payloads are float32 in canonical OIHW order.
-* Tensor payload starts are aligned to at least 64 bytes.
-* Runtime code reads no JSON and executes no embedded instructions.
-* Unknown format versions, architectures, scalar types, flags, or tensor IDs
-  are rejected.
-* Text fields have fixed maximum sizes and are UTF-8 only.
+The current artifact has 1,639,692 tensor bytes, a 1,639,744-byte padded payload
+region, and a total size of 1,642,432 bytes. Its deterministic identities are:
 
-### Proposed header
-
-The exact byte layout must be frozen in a format document before implementation.
-The logical fields are:
-
-| Field | Purpose |
+| Artifact | SHA-256 |
 | --- | --- |
-| Magic | Eight-byte RTNN file signature |
-| Format major/minor | Container compatibility |
-| Header size | Allows safe extension within a major version |
-| Endian marker | Detects byte-order mistakes |
-| Architecture ID | DemosaicNet X-Trans v1 |
-| Scalar type | IEEE-754 float32 |
-| Tensor count | Must be 26 for this architecture |
-| Directory offset/size | Bounds for tensor records |
-| Payload offset/size | Bounds for tensor values |
-| Payload digest | Detects corruption |
-| Model UUID/revision | Identifies the converted logical model |
-| Flags | Must contain only known bits |
+| RTNN | `b4dd6ea4ba535e7f4aea249a2d589a80ca8584f60a605a5bce468c989529ccc2` |
+| Padded payload | `e0e501a3f3a4905e3c7bb1ab1f0e3acb5598da818d6406d5cf6ed030ab5af606` |
+| Companion manifest | `f9b5d784356a455327304cfbfe302b2041a5a1a1eb2970134e3c1dfb621ec447` |
 
-Use a cryptographic digest for build/provenance verification. If adding SHA-256
-to the runtime would introduce an unwanted dependency, use a small reviewed
-implementation or a strong non-cryptographic corruption checksum at runtime
-and keep SHA-256 in the generated manifest and build verification. Length,
-shape, overlap, and bounds validation remain mandatory regardless of checksum.
+The converter regenerates and validates the Phase 1 manifest in memory, checks
+it against the authenticated Phase 2 schema, and only then serializes the
+canonical tensor bytes. It publishes a canonical JSON companion next to the
+RTNN file. That manifest records stable upstream provenance, semantic IDs,
+source keys, shapes, layouts, offsets, sizes, and digests. It excludes
+timestamps, local paths, output filenames, host information, and Python
+environment details so both generated files are byte-identical across output
+directories.
 
-### Tensor directory record
-
-Each record should contain:
-
-| Field | Purpose |
-| --- | --- |
-| Semantic tensor ID | Stable enum, not an arbitrary runtime name |
-| Rank | One or four in version 1 |
-| Dimensions | Up to four uint32 dimensions |
-| Layout | Vector or OIHW |
-| Scalar type | Must agree with the header |
-| Payload offset | Relative to the payload region |
-| Element count | Independently checked against dimensions |
-| Byte length | Must equal element count times four |
-| Optional tensor digest | Useful for conversion diagnostics |
-
-Names may be present in the developer manifest, but the C++ loader should bind
-weights by semantic enum. This avoids string lookup and ambiguous renamed
-PyTorch keys while still enforcing one exact architecture schema.
-
-### Manifest
-
-Generate a human-readable JSON manifest next to the binary. Runtime code does
-not need to parse it. It should contain:
-
-* upstream project URL and revision;
-* source path, byte size, and SHA-256;
-* upstream license identifier and notice path;
-* converter repository revision;
-* Python, PyTorch, NumPy, and converter versions;
-* conversion UTC timestamp, excluded from reproducibility comparisons;
-* architecture name and schema version;
-* output filename, size, and SHA-256;
-* every source key, semantic ID, shape, dtype, element count, and tensor
-  SHA-256; and
-* golden-reference identifiers produced from this model.
-
-To preserve reproducible binary output, timestamps and machine-specific paths
-belong only in the manifest, never in the RTNN binary.
+Generated `.rtnn` and `.rtnn.json` files remain ignored local artifacts until
+the licensing and packaging gate is resolved. Runtime C++ will bind tensors by
+numeric semantic enum and will parse neither the Phase 2 schema nor the
+companion JSON.
 
 ## Phase 4: prove that conversion is lossless and deterministic
 
@@ -296,9 +250,9 @@ SHA-256 values.
 
 Convert the same checkpoint twice into different temporary directories.
 The RTNN files must be byte-for-byte identical and have identical SHA-256
-digests. Manifests may differ only in explicitly non-reproducible fields such as
-timestamp and local source path; provide a canonical manifest mode that omits
-those fields for tests and release generation.
+digests. The canonical companion manifests must also be byte-for-byte identical;
+their format contains no timestamp, local source path, filename, or other
+machine-dependent field.
 
 ### Independent network parity
 

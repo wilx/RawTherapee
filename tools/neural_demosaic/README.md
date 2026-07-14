@@ -1,7 +1,8 @@
 # Neural demosaicer development tools
 
-This directory contains development-only tooling for inspecting published
-neural demosaicing checkpoints. It is not part of the RawTherapee runtime.
+This directory contains development-only tooling for authenticating and
+converting published neural demosaicing checkpoints. It is not part of the
+RawTherapee runtime.
 
 Phase 1 supports only the Gharbi DemosaicNet X-Trans checkpoint from upstream
 revision `959e9d1630976b421d5af5e35b2e2a01f5630e5c`. The tool reads the complete
@@ -9,8 +10,8 @@ checkpoint, verifies its pinned size and SHA-256 before deserialization, loads
 only tensor weights on the CPU, validates the exact tensor schema, and emits a
 deterministic JSON inspection manifest.
 
-It does not download the checkpoint, run neural inference, or create an RTNN
-file. Keep the `.pth` file and generated manifests outside tracked source.
+The tools do not download checkpoints or run neural inference. Keep `.pth`,
+`.rtnn`, and generated manifest files outside tracked source.
 
 ## Environment
 
@@ -81,9 +82,38 @@ The tracked canonical semantic schema has SHA-256:
 0ec34ea3d563f1357097181cb0dd90586a65e8d4c85b644b45c6fd3f81bcc151
 ```
 
-The JSON is development-time input for the future converter. Phase 3 will
-serialize only numeric semantic IDs into RTNN. RawTherapee C++ code will mirror
-the stable enum values and will not parse this JSON at runtime.
+The JSON is development-time input for the converter. Phase 3 serializes only
+numeric semantic IDs into RTNN. Future RawTherapee C++ code will mirror the
+stable enum values and will not parse this JSON at runtime.
+
+## Convert to RTNN v1
+
+Convert the authenticated checkpoint and write a deterministic companion
+manifest as `<output>.json`:
+
+```sh
+.venv/bin/python -m tools.neural_demosaic.convert_checkpoint \
+    /path/to/demosaicnet/data/xtrans.pth \
+    --output /tmp/demosaicnet-xtrans-v1.rtnn
+```
+
+Existing RTNN or companion files are not replaced unless `--force` is used.
+Both generated suffixes are ignored by Git pending the model-redistribution
+decision. The exact container ABI is documented in
+`devnotes/rtnn-v1-format.md`.
+
+The pinned conversion produces:
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| RTNN | 1,642,432 | `b4dd6ea4ba535e7f4aea249a2d589a80ca8584f60a605a5bce468c989529ccc2` |
+| Padded payload | 1,639,744 | `e0e501a3f3a4905e3c7bb1ab1f0e3acb5598da818d6406d5cf6ed030ab5af606` |
+| Canonical manifest | 10,919 | `f9b5d784356a455327304cfbfe302b2041a5a1a1eb2970134e3c1dfb621ec447` |
+
+RTNN stores all 409,923 float32 parameters without changing their bit
+patterns. The manifest deliberately omits timestamps, local paths, filenames,
+host details, and Python environment versions so conversions in different
+directories remain byte-identical.
 
 ## Tests
 

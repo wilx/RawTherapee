@@ -12,6 +12,8 @@
 .venv
 __pycache__/
 *.py[cod]
+*.rtnn
+*.rtnn.json
 
 CMakeUserPresets.json
 CMakeCache.txt

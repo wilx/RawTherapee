@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 import hashlib
 import io
 import json
@@ -29,6 +30,14 @@ MANIFEST_FORMAT = INSPECTION_MANIFEST_FORMAT
 
 class CheckpointError(RuntimeError):
     """The checkpoint is not the expected safe, pinned tensor dictionary."""
+
+
+@dataclass(frozen=True)
+class ValidatedCheckpoint:
+    """Authenticated manifest and canonical tensor bytes from one checkpoint."""
+
+    manifest: dict[str, Any]
+    tensor_payloads: tuple[bytes, ...]
 
 
 def _read_pinned_checkpoint(path: Path, schema: CheckpointSchema) -> tuple[bytes, str]:
@@ -112,7 +121,7 @@ def _canonical_tensor_bytes(tensor: torch.Tensor) -> bytes:
     return payload
 
 
-def _inspect_tensor(value: Any, spec: TensorSpec) -> dict[str, Any]:
+def _inspect_tensor(value: Any, spec: TensorSpec) -> tuple[dict[str, Any], bytes]:
     if not isinstance(value, torch.Tensor):
         raise CheckpointError(
             f"tensor {spec.name} is {type(value).__name__}; expected torch.Tensor"
@@ -147,29 +156,34 @@ def _inspect_tensor(value: Any, spec: TensorSpec) -> dict[str, Any]:
 
     payload = _canonical_tensor_bytes(value)
 
-    return {
-        "dtype": "float32",
-        "element_count": value.numel(),
-        "layout": spec.layout,
-        "name": spec.name,
-        "payload_bytes": len(payload),
-        "rank": value.ndim,
-        "sha256": hashlib.sha256(payload).hexdigest(),
-        "shape": list(shape),
-    }
+    return (
+        {
+            "dtype": "float32",
+            "element_count": value.numel(),
+            "layout": spec.layout,
+            "name": spec.name,
+            "payload_bytes": len(payload),
+            "rank": value.ndim,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "shape": list(shape),
+        },
+        payload,
+    )
 
 
-def inspect_checkpoint(
+def load_validated_checkpoint(
     path: str | Path,
     schema: CheckpointSchema = GHARBI_XTRANS_V1,
-) -> dict[str, Any]:
-    """Validate a checkpoint and return its deterministic inspection manifest."""
+) -> ValidatedCheckpoint:
+    """Validate a checkpoint and return its manifest and canonical tensor bytes."""
 
     checkpoint_path = Path(path)
     data, source_digest = _read_pinned_checkpoint(checkpoint_path, schema)
     state = _load_weights_only(data)
     _validate_keys(state, schema.tensors)
-    tensors = [_inspect_tensor(state[spec.name], spec) for spec in schema.tensors]
+    inspected = tuple(_inspect_tensor(state[spec.name], spec) for spec in schema.tensors)
+    tensors = [entry for entry, _ in inspected]
+    tensor_payloads = tuple(payload for _, payload in inspected)
     parameter_count = sum(tensor["element_count"] for tensor in tensors)
     payload_bytes = sum(tensor["payload_bytes"] for tensor in tensors)
 
@@ -183,7 +197,7 @@ def inspect_checkpoint(
             f"checkpoint has {payload_bytes} payload bytes; expected {schema.payload_bytes}"
         )
 
-    return {
+    manifest = {
         "format": MANIFEST_FORMAT,
         "model": {
             "architecture": {
@@ -212,6 +226,17 @@ def inspect_checkpoint(
         },
         "tensors": tensors,
     }
+
+    return ValidatedCheckpoint(manifest=manifest, tensor_payloads=tensor_payloads)
+
+
+def inspect_checkpoint(
+    path: str | Path,
+    schema: CheckpointSchema = GHARBI_XTRANS_V1,
+) -> dict[str, Any]:
+    """Validate a checkpoint and return its deterministic inspection manifest."""
+
+    return load_validated_checkpoint(path, schema).manifest
 
 
 def canonical_manifest_bytes(manifest: Mapping[str, Any]) -> bytes:
