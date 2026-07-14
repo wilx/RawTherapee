@@ -18,10 +18,11 @@ from tools.neural_demosaic.inspect_checkpoint import (
     inspect_checkpoint,
     write_manifest,
 )
-from tools.neural_demosaic.schema import CheckpointSchema, GHARBI_XTRANS_V1
-
-
-PINNED_MANIFEST_SHA256 = "371a3e20bac66877238e44d36e349078953c0b6c4e256299f64d66bbd8b72848"
+from tools.neural_demosaic.schema import (
+    CheckpointSchema,
+    GHARBI_XTRANS_V1,
+    GHARBI_XTRANS_V1_MANIFEST_SHA256,
+)
 
 
 def make_state_dict() -> OrderedDict[str, torch.Tensor]:
@@ -275,4 +276,4 @@ def test_pinned_gharbi_checkpoint() -> None:
     assert manifest["summary"]["parameter_count"] == 409_923
     assert manifest["summary"]["payload_bytes"] == 1_639_692
     payload = canonical_manifest_bytes(manifest)
-    assert hashlib.sha256(payload).hexdigest() == PINNED_MANIFEST_SHA256
+    assert hashlib.sha256(payload).hexdigest() == GHARBI_XTRANS_V1_MANIFEST_SHA256

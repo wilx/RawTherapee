@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from math import prod
 
 
+INSPECTION_MANIFEST_FORMAT = "rawtherapee-neural-checkpoint-inspection-v1"
+GHARBI_XTRANS_V1_MANIFEST_SHA256 = (
+    "371a3e20bac66877238e44d36e349078953c0b6c4e256299f64d66bbd8b72848"
+)
+
+
 @dataclass(frozen=True)
 class TensorSpec:
     name: str

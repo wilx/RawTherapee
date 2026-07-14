@@ -135,6 +135,30 @@ parameters, 1,639,692 payload bytes, and canonical manifest SHA-256
 Phase 1 validates these source keys and shapes before producing its inspection
 manifest. Phase 2 assigns stable RTNN semantic tensor IDs and freezes their
 mapping; the binary format must not depend on PyTorch key strings at runtime.
+The authoritative contract is the canonical, language-neutral file
+`tools/neural_demosaic/schemas/demosaicnet-xtrans-v1.json`, whose SHA-256 is
+`0ec34ea3d563f1357097181cb0dd90586a65e8d4c85b644b45c6fd3f81bcc151`.
+
+Architecture ID `1` identifies `DEMOSAICNET_XTRANS_V1`; ID `0` is invalid.
+Tensor IDs are scoped to that architecture and assigned in execution order:
+
+* main convolution layer `n` weight: `2n-1`, for `n=1..11`;
+* main convolution layer `n` bias: `2n`;
+* post-convolution weight and bias: `23` and `24`; and
+* output weight and bias: `25` and `26`.
+
+The schema also freezes the network graph: eleven valid 3x3 convolution-plus-
+ReLU layers at width 64, centered sparse-input crop and concatenation, valid
+3x3 post-convolution plus ReLU, and 1x1 RGB output. The result is 24 pixels
+smaller in each dimension and has receptive-field radius 12.
+
+The schema is bound to the pinned checkpoint SHA-256 and the unchanged Phase 1
+manifest SHA-256
+`371a3e20bac66877238e44d36e349078953c0b6c4e256299f64d66bbd8b72848`.
+The Python validator cross-checks every source name, shape, layout, count, and
+tensor digest. This JSON remains development-time input: Phase 3 serializes
+numeric IDs, and C++ never parses it at runtime.
+
 The source state-dictionary keys are:
 
     main_processor.conv1.weight
@@ -167,6 +191,11 @@ Reject missing keys, additional keys, reordered semantic IDs, wrong ranks,
 wrong dimensions, integer tensors, NaNs, and infinities. A future upstream
 checkpoint with a different schema is a new model review, not an automatic
 upgrade.
+
+New weights with the same graph reuse architecture ID `1` and the existing
+tensor IDs but require a separately reviewed model binding. Any graph,
+tensor-role, shape, layout, or ID change requires a new architecture ID;
+existing IDs are never renumbered or repurposed.
 
 ## Phase 3: RawTherapee neural-model file format version 1
 

@@ -16,10 +16,15 @@ from typing import Any
 
 import torch
 
-from .schema import CheckpointSchema, GHARBI_XTRANS_V1, TensorSpec
+from .schema import (
+    CheckpointSchema,
+    GHARBI_XTRANS_V1,
+    INSPECTION_MANIFEST_FORMAT,
+    TensorSpec,
+)
 
 
-MANIFEST_FORMAT = "rawtherapee-neural-checkpoint-inspection-v1"
+MANIFEST_FORMAT = INSPECTION_MANIFEST_FORMAT
 
 
 class CheckpointError(RuntimeError):
