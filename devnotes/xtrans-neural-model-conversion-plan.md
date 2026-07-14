@@ -237,58 +237,44 @@ companion JSON.
 
 ## Phase 4: prove that conversion is lossless and deterministic
 
-The Python tests should perform four levels of verification.
+Phase 4 is implemented as a writer-independent Python reader plus an exact
+local PyTorch reference graph. The reader intentionally imports no Phase 3
+writer constants or parsing helpers and never reads the companion JSON. Its
+public entry points accept only the reviewed Gharbi binding: architecture ID 1,
+model revision 1, the exact schema and checkpoint identities, all 26 tensor
+roles, and the pinned complete-file SHA-256.
 
-### Tensor equivalence
+The reader validates the fixed header and directory, bounded counts and sizes,
+checked uint64 arithmetic, canonical record order, shapes, layouts, offsets,
+64-byte alignment, non-overlap, minimal zero padding, tensor and payload
+digests, finite float32 values, and finally the complete artifact digest. It
+returns immutable canonical tensor bytes and exposes stable error categories
+for I/O, format, limit, range, schema, digest, and finite-value failures.
 
-After writing RTNN, read it back using a separate minimal Python reader and
-compare every element with the normalized source tensor. Since source tensors
-are already float32, equality should be bit-for-bit. Also compare tensor-level
-SHA-256 values.
+An inspection CLI emits canonical metadata derived from the RTNN and its
+reviewed binding without including a local path, timestamp, hostname, or
+companion-manifest input. Its artifact, model, summary, and tensor sections
+match the corresponding Phase 3 conversion-manifest sections exactly.
 
-### Deterministic output
+The local `DemosaicNetXTransReference` reproduces the pinned upstream graph
+without importing upstream executable code. Separate factories populate it
+from Phase 1 checkpoint bytes and from the strict RTNN reader. Under
+single-threaded deterministic CPU execution with oneDNN disabled, all tensor
+bytes and network outputs are bit-identical for seven fixed sparse inputs:
 
-Convert the same checkpoint twice into different temporary directories.
-The RTNN files must be byte-for-byte identical and have identical SHA-256
-digests. The canonical companion manifests must also be byte-for-byte identical;
-their format contains no timestamp, local source path, filename, or other
-machine-dependent field.
+* zero, 32 by 32;
+* constant observed R/G/B values, 31 by 35;
+* seeded random observed values, 37 by 38;
+* red, green, and blue impulses, each 36 by 36; and
+* alternating zero/saturated observed samples, 35 by 36.
 
-### Independent network parity
-
-Implement a small reference reader that reconstructs the PyTorch module from
-RTNN tensors, without consulting the original .pth file. Compare its output
-against the module loaded from the original state dictionary on fixed inputs:
-
-* all zero;
-* constant sampled values;
-* deterministic pseudorandom sparse RGB;
-* impulse at each CFA colour;
-* saturated samples; and
-* odd and even input sizes larger than the 24-pixel valid border.
-
-The outputs should be bit-identical where PyTorch uses the same operations, or
-within a documented tiny floating-point tolerance if backend differences
-prevent exact equality.
-
-### Negative and corruption tests
-
-Test rejection of:
-
-* incorrect source SHA-256;
-* a non-state-dictionary pickle;
-* missing and additional keys;
-* wrong tensor shapes and dtypes;
-* NaN and infinity;
-* truncated header, directory, and payload;
-* offset overflow and overlapping tensor ranges;
-* duplicate or unknown semantic tensor IDs;
-* unsupported version, architecture, layout, and scalar type;
-* payload bit corruption; and
-* unreasonable tensor count or allocation sizes.
-
-Do not make test fixtures by executing untrusted pickle code. Construct invalid
-state dictionaries locally and serialize only ordinary tensors.
+Every output is finite and exactly 24 pixels smaller in each spatial dimension.
+The corruption suite uses an independently assembled synthetic RTNN and
+exercises every header and directory field, truncation and extension, hard
+limits, arithmetic overflow, order, dimensions, gaps, overlaps, alignment,
+padding, internal hashes, full-file identity, and non-finite payloads without
+requiring the external checkpoint. Checkpoint/pickle rejection remains Phase 1
+coverage rather than being duplicated here.
 
 ## Phase 5: C++ loader
 

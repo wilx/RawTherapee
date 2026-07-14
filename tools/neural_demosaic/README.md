@@ -115,6 +115,31 @@ patterns. The manifest deliberately omits timestamps, local paths, filenames,
 host details, and Python environment versions so conversions in different
 directories remain byte-identical.
 
+## Authenticate and inspect RTNN v1
+
+Phase 4 adds a reader that is intentionally independent from the writer. It
+duplicates the reviewed wire constants, parses every field explicitly, reads
+no companion JSON, applies bounded checked arithmetic before copying tensor
+payloads, and accepts only the pinned Gharbi model binding by default.
+
+Inspect a converted file with:
+
+```sh
+.venv/bin/python -m tools.neural_demosaic.inspect_rtnn \
+    /tmp/demosaicnet-xtrans-v1.rtnn
+```
+
+The command emits canonical JSON derived from the authenticated RTNN and its
+reviewed semantic binding. It reports stable format, model, tensor, offset,
+size, and digest metadata without recording the input path, timestamp, or host.
+Malformed input is rejected with a stable error category.
+
+The Phase 4 PyTorch reference locally reproduces the eleven main valid
+convolutions, centered sparse-input crop and concatenation, post-convolution,
+and RGB output layer without importing upstream executable model code. Against
+the pinned checkpoint, checkpoint-backed and RTNN-backed models have identical
+tensor bytes and bit-identical output on seven fixed sparse X-Trans inputs.
+
 ## Tests
 
 Unit tests generate ordinary local tensor dictionaries and never execute
@@ -132,3 +157,6 @@ GHARBI_XTRANS_CHECKPOINT=/path/to/demosaicnet/data/xtrans.pth \
 ```
 
 The integration tests are skipped when `GHARBI_XTRANS_CHECKPOINT` is unset.
+They cover conversion identities, strict RTNN reading, metadata equivalence,
+and bit-exact reference-network parity. The reader and corruption suite do not
+require the external checkpoint.
