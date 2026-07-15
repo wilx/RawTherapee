@@ -1,0 +1,557 @@
+{
+  "cases": [
+    {
+      "cfa": [
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0,
+          2,
+          1,
+          2
+        ],
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          1,
+          2,
+          0,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ]
+      ],
+      "domain": "linear",
+      "id": "canonical-linear-43x41",
+      "input": {
+        "byte_length": 7052,
+        "element_count": 1763,
+        "file": "cases/canonical-linear-43x41.raw.f32le",
+        "sha256": "051e96b73cf483e52a473d1a76c1f4ac1e33292a6bb1e43b7acd40a980fb126f",
+        "shape": [
+          41,
+          43
+        ]
+      },
+      "output": {
+        "byte_length": 21156,
+        "element_count": 5289,
+        "file": "cases/canonical-linear-43x41.rgb.f32le",
+        "sha256": "53ec2fcdaf78077f3e8698711ac866180856ba0818e043b08df26e5e2489bbec",
+        "shape": [
+          3,
+          41,
+          43
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0,
+          2,
+          1,
+          2
+        ],
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          1,
+          2,
+          0,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ]
+      ],
+      "domain": "gamma22",
+      "id": "canonical-gamma22-43x41",
+      "input": {
+        "byte_length": 7052,
+        "element_count": 1763,
+        "file": "cases/canonical-gamma22-43x41.raw.f32le",
+        "sha256": "b084bb16d5fcdbc21ad8c396a4e7aca57fe6bfa303eb0c419b3ddad14cdfe3f2",
+        "shape": [
+          41,
+          43
+        ]
+      },
+      "output": {
+        "byte_length": 21156,
+        "element_count": 5289,
+        "file": "cases/canonical-gamma22-43x41.rgb.f32le",
+        "sha256": "b1c4907e4cd4ae23331f8c91a98236111b100c5b73af729595dc4aa591ea1581",
+        "shape": [
+          3,
+          41,
+          43
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          1,
+          2,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          1,
+          1,
+          2
+        ],
+        [
+          0,
+          2,
+          1,
+          2,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0,
+          1,
+          1,
+          2
+        ],
+        [
+          1,
+          1,
+          2,
+          1,
+          1,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          0,
+          2,
+          1
+        ]
+      ],
+      "domain": "linear",
+      "id": "translated-linear-47x37",
+      "input": {
+        "byte_length": 6956,
+        "element_count": 1739,
+        "file": "cases/translated-linear-47x37.raw.f32le",
+        "sha256": "496ce3fdd14aecdc374538a7fa21823a563ebba288b6f95f0f95eee94171c3bf",
+        "shape": [
+          37,
+          47
+        ]
+      },
+      "output": {
+        "byte_length": 20868,
+        "element_count": 5217,
+        "file": "cases/translated-linear-47x37.rgb.f32le",
+        "sha256": "3354400efc37feee818088e768b3bd18c6fc35608b432716cff33c75d5ae4c7f",
+        "shape": [
+          3,
+          37,
+          47
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          0,
+          2,
+          1,
+          2,
+          0
+        ],
+        [
+          2,
+          1,
+          1,
+          0,
+          1,
+          1
+        ],
+        [
+          0,
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        [
+          1,
+          2,
+          0,
+          1,
+          0,
+          2
+        ],
+        [
+          0,
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        [
+          2,
+          1,
+          1,
+          0,
+          1,
+          1
+        ]
+      ],
+      "domain": "gamma22",
+      "id": "rotated-gamma22-45x39",
+      "input": {
+        "byte_length": 7020,
+        "element_count": 1755,
+        "file": "cases/rotated-gamma22-45x39.raw.f32le",
+        "sha256": "2138c7b6cbad401935d96f98800ef2932e0eb1c46e6c1afa181cc741f60d8e58",
+        "shape": [
+          39,
+          45
+        ]
+      },
+      "output": {
+        "byte_length": 21060,
+        "element_count": 5265,
+        "file": "cases/rotated-gamma22-45x39.rgb.f32le",
+        "sha256": "cbc89085a89ea645d1497ad6fa8821eb181e44e3e889d3cd4ad7f6bdc94a7079",
+        "shape": [
+          3,
+          39,
+          45
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          1,
+          2,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          1,
+          1,
+          2
+        ],
+        [
+          0,
+          2,
+          1,
+          2,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0,
+          1,
+          1,
+          2
+        ],
+        [
+          1,
+          1,
+          2,
+          1,
+          1,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          0,
+          2,
+          1
+        ]
+      ],
+      "domain": "linear",
+      "id": "reflected-linear-49x35",
+      "input": {
+        "byte_length": 6860,
+        "element_count": 1715,
+        "file": "cases/reflected-linear-49x35.raw.f32le",
+        "sha256": "e18d94c554d03cade395a0fd473be7924b2978b16942a5d487c23c6bcc6f506f",
+        "shape": [
+          35,
+          49
+        ]
+      },
+      "output": {
+        "byte_length": 20580,
+        "element_count": 5145,
+        "file": "cases/reflected-linear-49x35.rgb.f32le",
+        "sha256": "454448703d19b71aceee82c3c6fc7940de31eefbf7bf3735a7218dd05e2df85e",
+        "shape": [
+          3,
+          35,
+          49
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          2,
+          0,
+          1,
+          0,
+          2
+        ],
+        [
+          0,
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        [
+          2,
+          1,
+          1,
+          0,
+          1,
+          1
+        ],
+        [
+          1,
+          0,
+          2,
+          1,
+          2,
+          0
+        ],
+        [
+          2,
+          1,
+          1,
+          0,
+          1,
+          1
+        ],
+        [
+          0,
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      ],
+      "domain": "linear",
+      "id": "horizontal-seam-linear-173x31",
+      "input": {
+        "byte_length": 21452,
+        "element_count": 5363,
+        "file": "cases/horizontal-seam-linear-173x31.raw.f32le",
+        "sha256": "c976d6fb13a3d335d9ad35cf134f2bcf9fd14d2ef9ad31992912ad57f113bc13",
+        "shape": [
+          31,
+          173
+        ]
+      },
+      "output": {
+        "byte_length": 64356,
+        "element_count": 16089,
+        "file": "cases/horizontal-seam-linear-173x31.rgb.f32le",
+        "sha256": "3281f5f6b74beadb24963343942db6580f2f50a453a37501b61214fd3bee70e6",
+        "shape": [
+          3,
+          31,
+          173
+        ]
+      }
+    },
+    {
+      "cfa": [
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ],
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          1,
+          0,
+          2,
+          1,
+          2
+        ],
+        [
+          1,
+          2,
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          1,
+          2,
+          0,
+          1,
+          0
+        ]
+      ],
+      "domain": "gamma22",
+      "id": "vertical-seam-gamma22-31x173",
+      "input": {
+        "byte_length": 21452,
+        "element_count": 5363,
+        "file": "cases/vertical-seam-gamma22-31x173.raw.f32le",
+        "sha256": "ca91002131aa89a439760113b1bb3b3a7776dec4f8bef5875b564cc33399f0d0",
+        "shape": [
+          173,
+          31
+        ]
+      },
+      "output": {
+        "byte_length": 64356,
+        "element_count": 16089,
+        "file": "cases/vertical-seam-gamma22-31x173.rgb.f32le",
+        "sha256": "b2c69e7fa1755ff529ef710f4b1a74911bccd52231ff88692382dc74e49bdf42",
+        "shape": [
+          3,
+          173,
+          31
+        ]
+      }
+    }
+  ],
+  "execution": {
+    "boundary": "reflect-without-edge-repetition",
+    "byte_order": "little-endian",
+    "input_contract": "scaled-scalar-rawData",
+    "input_scale": 65535,
+    "output_contract": "full-size-normalized-rgb",
+    "output_layout": "CHW",
+    "receptive_halo": 12,
+    "scalar_type": "float32",
+    "torch_version": "2.12.1+cpu"
+  },
+  "format": "rawtherapee-xtrans-raw-wrapper-corpus-v1",
+  "model": {
+    "architecture_id": 1,
+    "checkpoint_sha256": "3759a13296fecebae83a36a8f0c3890d8a2f7d33e5f8149ed9b76a70f8285bc7",
+    "model_revision": 1,
+    "rtnn_sha256": "b4dd6ea4ba535e7f4aea249a2d589a80ca8584f60a605a5bce468c989529ccc2",
+    "semantic_schema_sha256": "0ec34ea3d563f1357097181cb0dd90586a65e8d4c85b644b45c6fd3f81bcc151"
+  },
+  "phase_bindings": {
+    "phase7_golden_manifest_sha256": "ed4b6ff5544ef361d3613fdf354544acd89db56059de249468ac416c238f3b92",
+    "phase8_native_trace_manifest_sha256": "1415ffa3c8c072740f39b2c084525483910cb09e71dcfba22061901f0cf1bf66"
+  },
+  "summary": {
+    "case_count": 7,
+    "float_blob_bytes": 311376,
+    "float_blob_count": 14
+  }
+}

@@ -17,7 +17,9 @@
  *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <cassert>
+#include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
@@ -46,6 +48,7 @@
 #include "rtlensfun.h"
 #include "lensmetadata.h"
 #include "rtgui/options.h"
+#include "xtrans_demosaicnet.h"
 
 //#define BENCHMARK
 #include "StopWatch.h"
@@ -58,6 +61,18 @@
 
 namespace
 {
+
+std::string digestToHex(const rtengine::neural::Sha256Digest &digest)
+{
+    static const char digits[] = "0123456789abcdef";
+    std::string result;
+    result.reserve(digest.size() * 2);
+    for (const std::uint8_t byte : digest) {
+        result.push_back(digits[byte >> 4]);
+        result.push_back(digits[byte & 15]);
+    }
+    return result;
+}
 
 float clipitc(float x)
 {
@@ -1793,6 +1808,62 @@ void RawImageSource::preprocess(const RAWParams &raw, const LensProfParams &lens
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+bool RawImageSource::demosaicnet_xtrans_interpolate(bool gamma22)
+{
+    const char *const method = gamma22
+        ? DEMOSAICNET_XTRANS_GAMMA22_METHOD
+        : DEMOSAICNET_XTRANS_LINEAR_METHOD;
+    const char *const modelPath = std::getenv("RT_DEMOSAICNET_XTRANS_MODEL");
+    const auto started = std::chrono::steady_clock::now();
+    const neural::DemosaicNetXTransLoadResult loaded =
+        loadCachedDemosaicNetXTransModel(modelPath ? Glib::ustring(modelPath) : Glib::ustring());
+    if (!loaded) {
+        std::fprintf(
+            stderr,
+            "DemosaicNet X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(loaded.error.code),
+            loaded.error.message.c_str());
+        return false;
+    }
+
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const DemosaicNetXTransRunResult run = demosaicDemosaicNetXTrans(
+        rawData,
+        red,
+        green,
+        blue,
+        W,
+        H,
+        xtrans,
+        gamma22 ? DemosaicNetXTransDomain::GAMMA22 : DemosaicNetXTransDomain::LINEAR,
+        loaded.model);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "DemosaicNet X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(run.error.code),
+            run.error.message.c_str());
+        return false;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    std::fprintf(
+        stderr,
+        "DemosaicNet X-Trans completed: method=%s artifact=%s input_tile=192x192 "
+        "output_core=168x168 tiles=%llu workers=%u workspace_per_worker=%llu "
+        "workspace_total=%llu elapsed_us=%lld\n",
+        method,
+        digestToHex(loaded.model->artifactSha256()).c_str(),
+        static_cast<unsigned long long>(run.tileCount),
+        run.workerCount,
+        static_cast<unsigned long long>(run.workspaceBytesPerWorker),
+        static_cast<unsigned long long>(run.workspaceBytesPerWorker * run.workerCount),
+        static_cast<long long>(elapsed));
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -1848,6 +1919,12 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             xtrans_interpolate(1, false, options.chunkSizeXT, options.measure);
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::THREE_PASS)) {
             xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+        } else if (raw.xtranssensor.method == DEMOSAICNET_XTRANS_LINEAR_METHOD ||
+                   raw.xtranssensor.method == DEMOSAICNET_XTRANS_GAMMA22_METHOD) {
+            const bool gamma22 = raw.xtranssensor.method == DEMOSAICNET_XTRANS_GAMMA22_METHOD;
+            if (!demosaicnet_xtrans_interpolate(gamma22)) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {
             if (!rafinazari_xtrans_interpolate(raw.xtranssensor)) {
                 xtrans_interpolate(1, false, options.chunkSizeXT, options.measure);

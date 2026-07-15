@@ -468,11 +468,34 @@ pipeline and GUI.
 
 ## Phase 9: developer-only demosaic integration and quality gate
 
-Add CFA canonicalization, explicit direct-linear and gamma-wrapped contracts,
-phase-stable tiling, model discovery/caching, and a PP3/CLI-selectable developer
-method that is deliberately absent from the GUI. Establish parity before
-comparing synthetic cases and real RAF files, including `DSCF0771.RAF`, with
-Markesteijn.
+Phase 9 now provides two hidden PP3/CLI identifiers,
+`demosaicnet-xtrans-linear` and `demosaicnet-xtrans-gamma22`, while keeping the
+public method enum, GUI, translations, defaults, and history unchanged. It
+requires an explicit `RT_DEMOSAICNET_XTRANS_MODEL` path and strongly caches
+only successfully authenticated models. Any model, CFA, allocation,
+non-finite, or inference error emits a stable diagnostic and reruns
+Markesteijn three-pass.
+
+The wrapper shares the deterministic 18-matrix CFA canonicalizer with the
+Rafinazari experiment, scatters scaled raw values into sparse canonical RGB,
+uses reflect-without-edge-repetition boundaries, and executes fixed 192x192
+inputs with non-overlapping 168x168 cores. Core origins preserve the six-pixel
+CFA phase. OpenMP creates one reusable executor only for workers that receive
+a tile; no full-frame feature activation exists. Linear and the authors'
+gamma-2.2 RAW wrapper add no reinjection or undocumented processing.
+
+The independent tracked raw-wrapper corpus has manifest SHA-256
+`bd415eb33ecb10c01c7ef127039e6ef69267d9398d01edbb7a339a661790b526`.
+All seven native cases, including both seam orientations, pass the Phase 8
+tolerance. The benchmark writes neutral profiles, rejects loud fallback,
+supports analytical DNGs, external RGB ground truth, repeated RAFs and named
+crops, and records quality, time, RSS, model, and workspace data.
+
+The current quality gate fails. On `DSCF0771.RAF`, one completed direct-linear
+40 MP warm-up took at least 584 seconds versus 3.94 seconds for Markesteijn
+(greater than 148x) and showed strong CFA-phase texture. See
+`devnotes/xtrans-neural-phase9-report.md`. Phase 10 must not begin on this
+implementation.
 
 ## Phase 10: packaging and GUI
 

@@ -1,5 +1,6 @@
 #include "rtnn_inspection.h"
 #include "demosaicnet_inference_tests.h"
+#include "xtrans_demosaicnet_tests.h"
 
 #include "rtengine/demosaicnetxtransmodel.h"
 #include "rtengine/neuralmodel.h"
@@ -659,6 +660,12 @@ int main(int argc, char **argv)
         }
         if (mode == "inference-trace") {
             return demosaicnet_inference_test::reviewedTrace();
+        }
+        if (mode == "xtrans-raw-contract") {
+            return xtrans_demosaicnet_test::cfaAndContract();
+        }
+        if (mode == "xtrans-raw-reviewed") {
+            return xtrans_demosaicnet_test::reviewedRawWrapper();
         }
         if (mode == "inference-benchmark") {
             return demosaicnet_inference_test::benchmark();

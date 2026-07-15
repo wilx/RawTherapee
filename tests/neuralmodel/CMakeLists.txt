@@ -2,16 +2,18 @@ set(NEURALMODEL_TEST_SOURCES
     demosaicnet_inference_tests.cc
     neuralmodel_tests.cc
     rtnn_inspection.cc
+    xtrans_demosaicnet_tests.cc
 )
 
 add_executable(rawtherapee-neuralmodel-tests ${NEURALMODEL_TEST_SOURCES})
-target_link_libraries(rawtherapee-neuralmodel-tests PRIVATE rtengine-neuralmodel-inference)
+target_link_libraries(rawtherapee-neuralmodel-tests PRIVATE rtengine rtengine-neuralmodel-inference)
 target_include_directories(rawtherapee-neuralmodel-tests PRIVATE ${PROJECT_SOURCE_DIR})
 target_compile_definitions(
     rawtherapee-neuralmodel-tests
     PRIVATE
         RT_NEURAL_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/golden/demosaicnet-xtrans-v1"
         RT_NEURAL_TRACE_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/native_trace"
+        RT_NEURAL_RAW_WRAPPER_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/golden/demosaicnet-xtrans-raw-wrapper-v1"
 )
 rt_setup_target(rawtherapee-neuralmodel-tests)
 
@@ -48,13 +50,24 @@ add_neuralmodel_test(rtengine.neural_model.inference_synthetic inference-synthet
 add_neuralmodel_test(rtengine.neural_model.inference_errors inference-errors)
 add_neuralmodel_test(rtengine.neural_model.inference_golden inference-golden)
 add_neuralmodel_test(rtengine.neural_model.inference_trace inference-trace)
+add_neuralmodel_test(rtengine.neural_model.xtrans_raw_contract xtrans-raw-contract)
+add_neuralmodel_test(rtengine.neural_model.xtrans_raw_reviewed xtrans-raw-reviewed)
 
 set_tests_properties(
     rtengine.neural_model.reviewed_artifact
     rtengine.neural_model.inspection_parity
     rtengine.neural_model.inference_golden
     rtengine.neural_model.inference_trace
+    rtengine.neural_model.xtrans_raw_reviewed
     PROPERTIES SKIP_RETURN_CODE 77
+)
+
+# The portable direct convolution is intentionally unoptimized in Debug. The
+# seven reviewed raw-wrapper cases still run there, but need a wider timeout
+# than the ordinary loader and optimized-inference cases.
+set_tests_properties(
+    rtengine.neural_model.xtrans_raw_reviewed
+    PROPERTIES TIMEOUT 300
 )
 
 # The benchmark is deliberately not registered with CTest. It has no stable

@@ -261,6 +261,61 @@ GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
 It reports median execution time, output throughput, and retained workspace
 bytes without imposing a machine-dependent performance threshold.
 
+## Phase 9 raw wrapper and CLI experiment
+
+Phase 9 adds two PP3 strings for command-line development only:
+
+```text
+demosaicnet-xtrans-linear
+demosaicnet-xtrans-gamma22
+```
+
+They intentionally do not appear in the public X-Trans method list or GUI.
+Supply the reviewed artifact explicitly:
+
+```sh
+RT_DEMOSAICNET_XTRANS_MODEL=/tmp/demosaicnet-xtrans-v1.rtnn \
+    build/dev/rtgui/rawtherapee-cli -p linear.pp3 -o output.tif -c input.RAF
+```
+
+Success and fallback are both unconditional diagnostics. The benchmark treats
+`falling back to 3-pass (Markesteijn)` as failure even when the CLI export
+succeeds. Successful models are retained in a thread-safe process cache;
+failed loads can be retried.
+
+The independent raw-wrapper corpus lives under
+`golden/demosaicnet-xtrans-raw-wrapper-v1/`. Its fourteen little-endian float32
+blobs contain seven scaled scalar mosaics and full-size normalized CHW RGB
+outputs. The canonical manifest SHA-256 is:
+
+```text
+bd415eb33ecb10c01c7ef127039e6ef69267d9398d01edbb7a339a661790b526
+```
+
+Regenerate it only from the strict RTNN reader:
+
+```sh
+.venv/bin/python -m tools.neural_demosaic.export_raw_wrapper_corpus \
+    /tmp/demosaicnet-xtrans-v1.rtnn --output /tmp/raw-wrapper-corpus
+```
+
+Run the analytical/external/RAF benchmark with development-only image
+dependencies installed:
+
+```sh
+.venv/bin/python tools/benchmark_xtrans_demosaicnet.py \
+    --rawtherapee-cli build/dev/rtgui/rawtherapee-cli \
+    --model /tmp/demosaicnet-xtrans-v1.rtnn \
+    --ground-truth-dir /path/to/upstream-ten-images \
+    --raf /path/to/DSCF0771.RAF \
+    --crop DSCF0771:3450,1750,700,500 \
+    --work-dir /tmp/xtrans-phase9
+```
+
+The native raw-wrapper CTest is unconditional; reviewed numerical parity skips
+with code 77 unless `GHARBI_XTRANS_RTNN` is set. The current real-image and
+performance verdict is recorded in `devnotes/xtrans-neural-phase9-report.md`.
+
 ## Tests
 
 Unit tests generate ordinary local tensor dictionaries and never execute
