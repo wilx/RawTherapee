@@ -21,6 +21,8 @@ endif()
 
 project(RawTherapee)
 
+include(CTest)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -454,6 +456,10 @@ include(cmake/Compile.cmake)
 add_subdirectory(rtengine)
 add_subdirectory(rtgui)
 add_subdirectory(rtdata)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests/neuralmodel)
+endif()
 
 include(cmake/AboutThisBuild.cmake)
 rt_generate_about_command(ABOUT_COMMAND_WITH_ARGS rtengine rth)

@@ -31,7 +31,6 @@ set(RTENGINESOURCEFILES
     dcraw.cc
     dcrop.cc
     demosaic_algos.cc
-    demosaicnetxtransmodel.cc
     dfmanager.cc
     diagonalcurves.cc
     dirpyr_equalizer.cc
@@ -91,7 +90,6 @@ set(RTENGINESOURCEFILES
     metadata.cc
     munselllch.cc
     myfile.cc
-    neuralmodel.cc
     panasonic_decoders.cc
     pdaflinesfilter.cc
     perspectivecorrection.cc
@@ -110,7 +108,6 @@ set(RTENGINESOURCEFILES
     rtapp.cc
     rtlensfun.cc
     rtthumbnail.cc
-    rtnnreader.cc
     shmap.cc
     simpleprocess.cc
     spot.cc
@@ -163,6 +160,20 @@ if(NOT WITH_SYSTEM_KLT)
     )
     set(KLT_LIBRARIES)
 endif()
+
+add_library(
+    rtengine-neuralmodel-loader STATIC
+    demosaicnetxtransmodel.cc
+    neuralmodel.cc
+    rtnnreader.cc
+)
+target_include_directories(
+    rtengine-neuralmodel-loader
+    PUBLIC ${PROJECT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(rtengine-neuralmodel-loader PUBLIC PkgConfig::GLIBMM)
+rt_setup_target(rtengine-neuralmodel-loader)
 
 add_library(rtengine STATIC "${RTENGINESOURCEFILES}")
 
@@ -218,6 +229,8 @@ target_link_libraries(rtengine
         TIFF::TIFF
         ZLIB::ZLIB
         ${EXTRA_LIB}
+    PRIVATE
+        rtengine-neuralmodel-loader
 )
 
 # Atomic is required in some builds: #6821

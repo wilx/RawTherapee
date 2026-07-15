@@ -140,6 +140,40 @@ and RGB output layer without importing upstream executable model code. Against
 the pinned checkpoint, checkpoint-backed and RTNN-backed models have identical
 tensor bytes and bit-identical output on seven fixed sparse X-Trans inputs.
 
+## Native RTNN verification
+
+Phase 6 adds dependency-free C++ tests around the production Phase 5 loader.
+They are built only with the standard CMake `BUILD_TESTING` option enabled:
+
+```sh
+cmake --preset dev
+cmake --build build/dev \
+    --target rawtherapee-neuralmodel-tests rawtherapee-rtnn-inspect
+ctest --test-dir build/dev -L neural-model --output-on-failure
+```
+
+The mandatory synthetic and corruption tests require no checkpoint, RTNN,
+Torch, Python, or third-party test framework. The reviewed-artifact and
+inspection-parity cases skip when `GHARBI_XTRANS_RTNN` is absent. Enable them
+with:
+
+```sh
+GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
+    ctest --test-dir build/dev -L neural-model --output-on-failure
+```
+
+Inspect the reviewed artifact from C++ with:
+
+```sh
+build/dev/tests/neuralmodel/rawtherapee-rtnn-inspect \
+    /tmp/demosaicnet-xtrans-v1.rtnn
+```
+
+The native output is byte-identical to `inspect_rtnn` and has pinned SHA-256
+`026f992aa9fbc7277e16b1f13c4f55c56aeadf7457b5cd2090cc181847bb069b`.
+It contains no path, filename, timestamp, hostname, or companion-manifest data.
+Invalid input is reported as `error [CODE]: message` with exit status 2.
+
 ## Tests
 
 Unit tests generate ordinary local tensor dictionaries and never execute

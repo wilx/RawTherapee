@@ -330,33 +330,57 @@ size failures. It is not considered a completed security gate until the Phase
 6 independent fixtures, full corruption matrix, sanitizers, and CTest suite
 pass.
 
-## Phase 6: C++ loader tests
+## Phase 6: native loader verification and CTest
 
-Introduce CTest as part of this work. The top-level CMake configuration should
-include CTest, use its standard BUILD_TESTING option, and add the model-test
-subdirectory only when testing is enabled. Normal RawTherapee binaries must not
-depend on the test executable or test-only libraries.
+Phase 6 introduces CTest through its standard `BUILD_TESTING` option. When the
+option is enabled, CMake builds two non-installed development executables:
+`rawtherapee-neuralmodel-tests` and `rawtherapee-rtnn-inspect`. When it is
+disabled, neither target nor the test subdirectory enters the build graph, and
+normal RawTherapee binaries remain unchanged.
 
-Register the model loader and corruption tests with add_test so they run through
-the normal command:
+The three production loader sources form the private static
+`rtengine-neuralmodel-loader` target. Both `rtengine` and the native test tools
+consume that same implementation. This permits strict and sanitizer builds of
+the security boundary without compiling unrelated `dcraw.cc`, which triggers a
+known GCC 13 internal compiler error under those configurations.
+
+The native tests run through:
 
     ctest --test-dir build/dev --output-on-failure
 
-Keep the initial harness small and native to the repository. It should exercise
-the production loader directly, rather than duplicating parsing code in a
-standalone developer utility. Test names should be stable and grouped with a
-neural-model or rtengine label so they can be selected independently.
+All seven stable test names carry both the `rtengine` and `neural-model` labels.
+Five mandatory tests use a dependency-free C++ fixture assembled independently
+of the Phase 3 writer. The fixture has the frozen 26 tensor shapes and 409,923
+parameters, deterministic finite float bits, independently calculated GLib
+SHA-256 values, and a private parser binding. Its corruption tables exercise
+the header, directory, payload, digest, limits, checked arithmetic, padding,
+non-finite values, and file-I/O paths while asserting exact stable error names.
 
-Required checks:
+The frozen tensor lengths happen to be multiples of 64 except for the final
+three-float bias. Therefore this model has no inter-tensor padding bytes: the
+suite asserts that invariant, rejects inserted gaps as noncanonical, and tests
+nonzero padding using the actual 52-byte trailing region.
 
-* every tensor has the expected semantic ID, shape, and element count;
-* selected first, middle, and last float bit patterns match the Python manifest;
-* total parameter count is 409,923;
-* C++ reports the expected artifact digest;
-* every negative/corrupt RTNN fixture fails with the expected error class;
-* no malformed input requests an unbounded allocation;
-* loading is clean under ASan and UBSan; and
-* repeated loads produce identical in-memory canonical values.
+The two optional cases read `GHARBI_XTRANS_RTNN`. They return CTest skip code 77
+when it is absent, keeping the complete mandatory suite self-contained. When it
+is present, the tests authenticate the reviewed file, compare first, middle,
+and last values of every tensor against an independent little-endian decode of
+the raw RTNN payload, require every pointer to be 64-byte aligned, and compare
+two complete loads bit-for-bit. The Phase 3 companion manifest contains tensor
+digests rather than selected float samples; raw-payload comparison plus the
+pinned whole-file digest is the intended independent value check.
+
+The native inspection utility accepts one reviewed artifact and emits the same
+canonical JSON as the Python Phase 4 inspector. Architecture symbols, tensor
+symbols, and Python source keys live only in its tool sources, not in the
+runtime model. Its output SHA-256 is pinned as
+`026f992aa9fbc7277e16b1f13c4f55c56aeadf7457b5cd2090cc181847bb069b`.
+Failures use `error [CODE]: message` and exit status 2.
+
+Run the optional cases with:
+
+    GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
+        ctest --test-dir build/dev -L neural-model --output-on-failure
 
 The eventual convolution tests should consume the same immutable model object,
 but convolution implementation is the following project stage.
