@@ -1,0 +1,511 @@
+{
+  "activations": [
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu1.samples.f32le",
+      "full_activation_sha256": "6736a63961f0a6bb5cef74e93dfa3544b00a51846d39d25edefbb702a7aae10c",
+      "name": "main_processor.relu1",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          35
+        ],
+        [
+          17,
+          18
+        ],
+        [
+          34,
+          0
+        ],
+        [
+          34,
+          35
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "e2bb042bbdee2c6b7eefafdde18bc9cda1f24c6933a66d28f74f9e2bf32e395e",
+      "shape": [
+        1,
+        64,
+        35,
+        36
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu2.samples.f32le",
+      "full_activation_sha256": "5d4fe29269084af70485f186ba339abb7fc475e76c470a0797de9697f75a02f9",
+      "name": "main_processor.relu2",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          33
+        ],
+        [
+          16,
+          17
+        ],
+        [
+          32,
+          0
+        ],
+        [
+          32,
+          33
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "3ce3aaec1693b9e6cefe60b8d8575f5c3d1eb81466d86604b71442c5b1d6f650",
+      "shape": [
+        1,
+        64,
+        33,
+        34
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu3.samples.f32le",
+      "full_activation_sha256": "f6e06b994d922e6b5e39b9f6e237c547f5a62faa5e09dad7cfc339880c8a9935",
+      "name": "main_processor.relu3",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          31
+        ],
+        [
+          15,
+          16
+        ],
+        [
+          30,
+          0
+        ],
+        [
+          30,
+          31
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "74ade838436e8deb544f65850c07d2cc5c8ab408bdf51e3e65675340f62917ce",
+      "shape": [
+        1,
+        64,
+        31,
+        32
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu4.samples.f32le",
+      "full_activation_sha256": "ea059eb568969a2ab25516f767306ef22ed2449f03066afbb3e786a27900152c",
+      "name": "main_processor.relu4",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          29
+        ],
+        [
+          14,
+          15
+        ],
+        [
+          28,
+          0
+        ],
+        [
+          28,
+          29
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "7c203875058c7b6ecf82ed2783ef1fff1cbb91cb9bd1365ed5abf015aa1728bd",
+      "shape": [
+        1,
+        64,
+        29,
+        30
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu5.samples.f32le",
+      "full_activation_sha256": "5886f76a1502d235806ae774915baaacc8c38bb534d939597ca292a6452c06c7",
+      "name": "main_processor.relu5",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          27
+        ],
+        [
+          13,
+          14
+        ],
+        [
+          26,
+          0
+        ],
+        [
+          26,
+          27
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "b8d7baaa4a5943b58d9c8d1066bda2326568ad1a3ed08ec3891c582b784466ec",
+      "shape": [
+        1,
+        64,
+        27,
+        28
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu6.samples.f32le",
+      "full_activation_sha256": "dba3868977b8d1cf404abfa8b473c0ac9aa15b72e17f02ad3258a9208cd5ab37",
+      "name": "main_processor.relu6",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          25
+        ],
+        [
+          12,
+          13
+        ],
+        [
+          24,
+          0
+        ],
+        [
+          24,
+          25
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "c4b3b51fd1f60b39f15cd8bf45a77bb06baeba97c6b7d284ce2fa13f3b13144d",
+      "shape": [
+        1,
+        64,
+        25,
+        26
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu7.samples.f32le",
+      "full_activation_sha256": "ba462f495c8a6822cc8f67c7cb5b1d8fd25c8d3f8a24affaae8b75ee9d52652f",
+      "name": "main_processor.relu7",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          23
+        ],
+        [
+          11,
+          12
+        ],
+        [
+          22,
+          0
+        ],
+        [
+          22,
+          23
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "42daff4578415570f359104e14d6d4e698f4dda8ce726decd88369b40114fbd5",
+      "shape": [
+        1,
+        64,
+        23,
+        24
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu8.samples.f32le",
+      "full_activation_sha256": "2b97085066e780feaffda8565d4b9c06481698b6ad7a40475624e5540b0dda43",
+      "name": "main_processor.relu8",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          21
+        ],
+        [
+          10,
+          11
+        ],
+        [
+          20,
+          0
+        ],
+        [
+          20,
+          21
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "f960faf2521b2f0fc87aeb5554d0d191a63f82bea0e7b191fc22dd2f0400ecd4",
+      "shape": [
+        1,
+        64,
+        21,
+        22
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu9.samples.f32le",
+      "full_activation_sha256": "c87b432470787496d3d519285727c449aed1ee6c7ddcf08ae2b5575fe74db564",
+      "name": "main_processor.relu9",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          19
+        ],
+        [
+          9,
+          10
+        ],
+        [
+          18,
+          0
+        ],
+        [
+          18,
+          19
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "79dcb3f022a17715c954d0686b52d6b343ddf7b96cde7f311e91c7268d965e0f",
+      "shape": [
+        1,
+        64,
+        19,
+        20
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu10.samples.f32le",
+      "full_activation_sha256": "9a50f6b07d912c176d40fd6a885de96055b4b6be10f2d4e28530591f4f2787ce",
+      "name": "main_processor.relu10",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          17
+        ],
+        [
+          8,
+          9
+        ],
+        [
+          16,
+          0
+        ],
+        [
+          16,
+          17
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "bd3a6626dc12f073a16407fee456e51a5534a6159d833a66c3b12c6b9c72db47",
+      "shape": [
+        1,
+        64,
+        17,
+        18
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/main_processor.relu11.samples.f32le",
+      "full_activation_sha256": "5704db821f570076ef64338c3224579c3068cb8454a3838acc35cb6fe5e77209",
+      "name": "main_processor.relu11",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          15
+        ],
+        [
+          7,
+          8
+        ],
+        [
+          14,
+          0
+        ],
+        [
+          14,
+          15
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "82e462f0ba58b5d5cae01f8245818ab586929c598576544f9d66868e224891a0",
+      "shape": [
+        1,
+        64,
+        15,
+        16
+      ]
+    },
+    {
+      "byte_length": 1340,
+      "channels": 67,
+      "file": "activations/fullres_processor.input_concat.samples.f32le",
+      "full_activation_sha256": "31c831aa734316bd65dae35b8df509693033f6e4f960286f4714dba2933e0e51",
+      "name": "fullres_processor.input_concat",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          15
+        ],
+        [
+          7,
+          8
+        ],
+        [
+          14,
+          0
+        ],
+        [
+          14,
+          15
+        ]
+      ],
+      "sample_count": 335,
+      "sample_sha256": "fa2fcb8e924ebff881dd89d7e7a194b49dc709d2c1ece1f8f7b8d5b7067ee56f",
+      "shape": [
+        1,
+        67,
+        15,
+        16
+      ]
+    },
+    {
+      "byte_length": 1280,
+      "channels": 64,
+      "file": "activations/fullres_processor.post_relu.samples.f32le",
+      "full_activation_sha256": "0f965399ca0bbf523637515b377a32ab774902ab2fbb5fd8b76a1c57a1faa56a",
+      "name": "fullres_processor.post_relu",
+      "positions": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          13
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          12,
+          0
+        ],
+        [
+          12,
+          13
+        ]
+      ],
+      "sample_count": 320,
+      "sample_sha256": "3155ee363195a4357f866b761cb94bbf6f77a1ce3e14ae757c8bf99be04385a7",
+      "shape": [
+        1,
+        64,
+        13,
+        14
+      ]
+    }
+  ],
+  "case": {
+    "id": "random-37x38",
+    "input_sha256": "76fe5e6ccfba24d58262bf9531e6e181c39061e420c6bf76fbf095d8236cdeae"
+  },
+  "format": "rawtherapee-neural-native-parity-trace-v1",
+  "model": {
+    "architecture_id": 1,
+    "architecture_symbol": "DEMOSAICNET_XTRANS_V1",
+    "checkpoint_sha256": "3759a13296fecebae83a36a8f0c3890d8a2f7d33e5f8149ed9b76a70f8285bc7",
+    "id": "demosaicnet-xtrans-v1",
+    "revision": 1,
+    "rtnn_sha256": "b4dd6ea4ba535e7f4aea249a2d589a80ca8584f60a605a5bce468c989529ccc2",
+    "semantic_schema_sha256": "0ec34ea3d563f1357097181cb0dd90586a65e8d4c85b644b45c6fd3f81bcc151"
+  },
+  "phase7_manifest_sha256": "ed4b6ff5544ef361d3613fdf354544acd89db56059de249468ac416c238f3b92",
+  "sampling": {
+    "channel_order": "all-channels-ascending",
+    "position_order": "top-left,top-right,center,bottom-left,bottom-right",
+    "scalar_type": "float32",
+    "storage": "little-endian-position-major-channel-minor"
+  },
+  "summary": {
+    "activation_count": 13,
+    "sample_bytes": 16700,
+    "sample_count": 4175
+  }
+}

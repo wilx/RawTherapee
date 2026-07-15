@@ -21,6 +21,8 @@ namespace rtengine
 namespace neural
 {
 
+class DemosaicNetXTransModel;
+
 namespace detail
 {
 
@@ -71,6 +73,13 @@ struct InternalLoadResult final {
     {
         return static_cast<bool>(model);
     }
+};
+
+class DemosaicNetXTransModelAccess final
+{
+public:
+    static std::shared_ptr<const DemosaicNetXTransModel> create(
+        std::unique_ptr<ParsedRtnn> parsed);
 };
 
 InternalLoadResult parseRtnnBytes(

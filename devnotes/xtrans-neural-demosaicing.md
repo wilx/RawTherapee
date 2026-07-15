@@ -300,8 +300,13 @@ or emit partly initialized pixels.
 
 ### 4. Implement fixed, tiled C++ Gharbi inference
 
-First prove the fixed graph against the tracked golden corpus without entering
-the raw pipeline. Then add a developer-only PP3/CLI-selectable method such as
+The fixed graph is now proven by the standalone Phase 8 executor against every
+tracked final output and compact intermediate samples. The portable
+compiler-vectorized kernel uses bounded numeric parity because PyTorch's
+MKL-backed convolution has a different float32 accumulation implementation;
+the measured maximum final difference is `2.98023224e-6`.
+
+Next add a developer-only PP3/CLI-selectable method such as
 `demosaicnet-xtrans`; deliberately omit it from the GUI until the real-image
 quality gate passes. The demosaic wrapper should:
 

@@ -420,9 +420,51 @@ directories and require byte-identical corpus files.
 
 ## Phase 8: native fixed-graph inference
 
-Implement the fixed C++ convolution graph against the immutable Phase 5 model
-and prove final and intermediate results against Phase 7. Keep this stage out
-of the raw demosaic pipeline and GUI.
+Phase 8 implements the fixed graph as a standalone
+`DemosaicNetXTransExecutor` against the immutable Phase 5 model. The fallible
+factory accepts only architecture 1, revision 1 with the complete frozen tensor
+contract. Each non-copyable executor shares the model, owns two reusable
+64-byte-aligned workspaces, accepts contiguous planar CHW float32 tensors, and
+is deliberately not thread-safe. Phase 9 will use one executor per tile
+worker.
+
+The kernel consumes canonical OIHW weights directly. It accumulates in fixed
+input-channel and kernel-tap order while the compiler vectorizes independent
+output columns. Fast math and floating-point contraction are disabled. No
+Boost/BLAS, `im2col`, handwritten SIMD, OpenMP, or architecture-specific
+repacking is used. The centered three-channel crop is accumulated before the
+64 feature channels without allocating the logical 67-channel activation in
+production. Only a private diagnostic path materializes it for tests.
+
+The standalone API accepts inputs of at least 25 by 25 and at most 262,144
+input pixels, checks every size product and buffer count, rejects non-finite
+input or activations, and copies the final result to the caller only after the
+complete graph succeeds. The output is always 24 pixels smaller in both axes.
+This cap enforces the Phase 9 tiling boundary rather than permitting accidental
+full-frame feature allocation.
+
+MKL and portable direct convolution use different float32 accumulation
+implementations, so native parity is numerical rather than byte-exact. Every
+value must satisfy `abs(native-reference) <= 5e-6 + 1e-5*abs(reference)`.
+The current optimized GCC 13 build measured all 2,661 final values at maximum
+`2.98023224e-6`, mean `1.69540432e-7`, and RMS `3.93236628e-7`. Repeated native
+runs remain bit-identical.
+
+A separate 16,700-byte Phase 8 trace samples all channels at the four corners
+and center of the thirteen seeded-random activations. It is bound to the
+unchanged Phase 7 manifest and full-activation hashes; its canonical manifest
+SHA-256 is
+`1415ffa3c8c072740f39b2c084525483910cb09e71dcfba22061901f0cf1bf66`.
+Across its 4,175 values the current native maximum is `6.85453415e-7`.
+
+Dependency-free CTest cases cover synthetic graph paths, ReLU and final signed
+output, crop/concatenation order, dimensions, limits, workspace reuse,
+non-finite rejection, unchanged output on failure, and repeated execution.
+Optional reviewed-artifact cases compare all final and sampled intermediate
+values and print maximum, mean, RMS, p90, and p99 statistics. A non-registered
+developer benchmark reports the 64, 128, 192, and 256 input sizes without a
+machine-dependent threshold. This phase remains outside the raw demosaic
+pipeline and GUI.
 
 ## Phase 9: developer-only demosaic integration and quality gate
 

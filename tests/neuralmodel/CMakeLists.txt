@@ -1,11 +1,18 @@
 set(NEURALMODEL_TEST_SOURCES
+    demosaicnet_inference_tests.cc
     neuralmodel_tests.cc
     rtnn_inspection.cc
 )
 
 add_executable(rawtherapee-neuralmodel-tests ${NEURALMODEL_TEST_SOURCES})
-target_link_libraries(rawtherapee-neuralmodel-tests PRIVATE rtengine-neuralmodel-loader)
+target_link_libraries(rawtherapee-neuralmodel-tests PRIVATE rtengine-neuralmodel-inference)
 target_include_directories(rawtherapee-neuralmodel-tests PRIVATE ${PROJECT_SOURCE_DIR})
+target_compile_definitions(
+    rawtherapee-neuralmodel-tests
+    PRIVATE
+        RT_NEURAL_GOLDEN_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/golden/demosaicnet-xtrans-v1"
+        RT_NEURAL_TRACE_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/native_trace"
+)
 rt_setup_target(rawtherapee-neuralmodel-tests)
 
 add_executable(
@@ -37,9 +44,18 @@ add_neuralmodel_test(rtengine.neural_model.payload_and_digest_corruption payload
 add_neuralmodel_test(rtengine.neural_model.limits_and_file_io limits-io)
 add_neuralmodel_test(rtengine.neural_model.reviewed_artifact reviewed-artifact)
 add_neuralmodel_test(rtengine.neural_model.inspection_parity inspection-parity)
+add_neuralmodel_test(rtengine.neural_model.inference_synthetic inference-synthetic)
+add_neuralmodel_test(rtengine.neural_model.inference_errors inference-errors)
+add_neuralmodel_test(rtengine.neural_model.inference_golden inference-golden)
+add_neuralmodel_test(rtengine.neural_model.inference_trace inference-trace)
 
 set_tests_properties(
     rtengine.neural_model.reviewed_artifact
     rtengine.neural_model.inspection_parity
+    rtengine.neural_model.inference_golden
+    rtengine.neural_model.inference_trace
     PROPERTIES SKIP_RETURN_CODE 77
 )
+
+# The benchmark is deliberately not registered with CTest. It has no stable
+# machine-independent timing threshold and is run explicitly by developers.

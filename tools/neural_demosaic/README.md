@@ -152,10 +152,10 @@ cmake --build build/dev \
 ctest --test-dir build/dev -L neural-model --output-on-failure
 ```
 
-The mandatory synthetic and corruption tests require no checkpoint, RTNN,
-Torch, Python, or third-party test framework. The reviewed-artifact and
-inspection-parity cases skip when `GHARBI_XTRANS_RTNN` is absent. Enable them
-with:
+The mandatory synthetic, corruption, and native-graph tests require no
+checkpoint, RTNN, Torch, Python, or third-party test framework. Reviewed
+artifact, inspection parity, golden inference, and activation-trace cases skip
+when `GHARBI_XTRANS_RTNN` is absent. Enable them with:
 
 ```sh
 GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
@@ -206,6 +206,61 @@ orientation transform, clipping, sample reinjection, or postprocessing. The
 tracked attribution and upstream MIT license apply to these generated tests;
 the corpus contains no checkpoint or RTNN weights.
 
+## Native inference and numeric trace
+
+Phase 8 adds a standalone C++ `DemosaicNetXTransExecutor`. It consumes the
+immutable reviewed model and contiguous planar CHW float32 input, runs the
+eleven valid main convolutions, centered sparse-input concatenation, post
+convolution, and RGB output, and returns an image reduced by 24 pixels in each
+dimension. It intentionally defines no raw normalization, CFA orientation,
+boundary, gamma, tiling, or postprocessing policy.
+
+The direct OIHW kernel is single-threaded per executor, compiler-vectorized
+across output columns, and uses two reusable 64-byte-aligned feature buffers.
+It uses neither Boost/BLAS nor an `im2col` buffer. Floating-point contraction
+and fast-math transformations are disabled so every output retains a fixed
+input-channel and kernel-tap accumulation order. Phase 9 will create one
+executor per parallel tile worker.
+
+Portable native output is compared numerically rather than byte-for-byte with
+PyTorch's MKL-backed convolution. Every golden value must satisfy:
+
+```text
+abs(native - reference) <= 5e-6 + 1e-5 * abs(reference)
+```
+
+On the current GCC 13 optimized build, all 2,661 final values have maximum
+absolute error `2.98023224e-6`, mean absolute error `1.69540432e-7`, and RMS
+error `3.93236628e-7`. The 4,175 sampled intermediate values have maximum
+absolute error `6.85453415e-7`.
+
+The compact Phase 8 trace is stored under `native_trace/`. It samples every
+channel at the four corners and center of all thirteen Phase 7 activations.
+Its 10,433-byte canonical manifest has SHA-256:
+
+```text
+1415ffa3c8c072740f39b2c084525483910cb09e71dcfba22061901f0cf1bf66
+```
+
+Regenerate the trace without changing the Phase 7 corpus with:
+
+```sh
+.venv/bin/python -m tools.neural_demosaic.export_native_trace \
+    /tmp/demosaicnet-xtrans-v1.rtnn \
+    --output /tmp/demosaicnet-xtrans-native-trace-v1
+```
+
+Run the non-CTest developer benchmark for 64, 128, 192, and 256 pixel inputs
+with:
+
+```sh
+GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
+    build/dev/tests/neuralmodel/rawtherapee-neuralmodel-tests inference-benchmark
+```
+
+It reports median execution time, output throughput, and retained workspace
+bytes without imposing a machine-dependent performance threshold.
+
 ## Tests
 
 Unit tests generate ordinary local tensor dictionaries and never execute
@@ -226,6 +281,7 @@ GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
 
 The corresponding integration tests skip when either environment variable is
 unset. They cover conversion identities, strict RTNN reading, metadata
-equivalence, bit-exact reference-network parity, and byte-identical golden
-regeneration. Validation of the committed corpus, the independent reader, and
-the corruption suites require no external checkpoint or model artifact.
+equivalence, bit-exact Python reference-network parity, byte-identical golden
+and trace regeneration, and bounded native C++ parity. Validation of the
+committed corpus and trace, the independent reader, and the mandatory native
+and corruption suites require no external checkpoint or model artifact.

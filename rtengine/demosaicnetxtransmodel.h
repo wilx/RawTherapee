@@ -21,6 +21,13 @@ namespace rtengine
 namespace neural
 {
 
+namespace detail
+{
+
+class DemosaicNetXTransModelAccess;
+
+} // namespace detail
+
 enum class DemosaicNetXTransTensorId : std::uint32_t {
     MAIN_CONV1_WEIGHT = 1,
     MAIN_CONV1_BIAS = 2,
@@ -95,6 +102,7 @@ private:
     std::unique_ptr<Implementation> implementation_;
 
     friend DemosaicNetXTransLoadResult loadDemosaicNetXTransModel(const Glib::ustring &path);
+    friend class detail::DemosaicNetXTransModelAccess;
 };
 
 DemosaicNetXTransLoadResult loadDemosaicNetXTransModel(const Glib::ustring &path);

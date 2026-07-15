@@ -175,6 +175,24 @@ target_include_directories(
 target_link_libraries(rtengine-neuralmodel-loader PUBLIC PkgConfig::GLIBMM)
 rt_setup_target(rtengine-neuralmodel-loader)
 
+add_library(
+    rtengine-neuralmodel-inference STATIC
+    demosaicnetxtransinference.cc
+)
+target_include_directories(
+    rtengine-neuralmodel-inference
+    PUBLIC ${PROJECT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(rtengine-neuralmodel-inference PUBLIC rtengine-neuralmodel-loader)
+rt_setup_target(rtengine-neuralmodel-inference)
+target_compile_options(rtengine-neuralmodel-inference PRIVATE ${RTENGINE_CXX_FLAGS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(rtengine-neuralmodel-inference PRIVATE -fno-fast-math -ffp-contract=off)
+elseif(MSVC)
+    target_compile_options(rtengine-neuralmodel-inference PRIVATE /fp:strict)
+endif()
+
 add_library(rtengine STATIC "${RTENGINESOURCEFILES}")
 
 add_dependencies(rtengine UpdateInfo)
@@ -230,7 +248,7 @@ target_link_libraries(rtengine
         ZLIB::ZLIB
         ${EXTRA_LIB}
     PRIVATE
-        rtengine-neuralmodel-loader
+        rtengine-neuralmodel-inference
 )
 
 # Atomic is required in some builds: #6821

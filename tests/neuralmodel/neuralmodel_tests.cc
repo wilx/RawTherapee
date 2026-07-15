@@ -1,4 +1,5 @@
 #include "rtnn_inspection.h"
+#include "demosaicnet_inference_tests.h"
 
 #include "rtengine/demosaicnetxtransmodel.h"
 #include "rtengine/neuralmodel.h"
@@ -646,6 +647,21 @@ int main(int argc, char **argv)
         }
         if (mode == "inspection-parity") {
             return inspectionParity();
+        }
+        if (mode == "inference-synthetic") {
+            return demosaicnet_inference_test::syntheticGraph();
+        }
+        if (mode == "inference-errors") {
+            return demosaicnet_inference_test::errorsAndWorkspace();
+        }
+        if (mode == "inference-golden") {
+            return demosaicnet_inference_test::reviewedGolden();
+        }
+        if (mode == "inference-trace") {
+            return demosaicnet_inference_test::reviewedTrace();
+        }
+        if (mode == "inference-benchmark") {
+            return demosaicnet_inference_test::benchmark();
         }
         std::cerr << "unknown test mode: " << mode << '\n';
         return 2;

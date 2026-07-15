@@ -179,6 +179,15 @@ DemosaicNetXTransLoadResult loadDemosaicNetXTransModel(const Glib::ustring &path
     }
 }
 
+std::shared_ptr<const DemosaicNetXTransModel> detail::DemosaicNetXTransModelAccess::create(
+    std::unique_ptr<detail::ParsedRtnn> parsed)
+{
+    std::unique_ptr<DemosaicNetXTransModel::Implementation> implementation(
+        new DemosaicNetXTransModel::Implementation(std::move(parsed)));
+    return std::shared_ptr<const DemosaicNetXTransModel>(
+        new DemosaicNetXTransModel(std::move(implementation)));
+}
+
 } // namespace neural
 
 } // namespace rtengine
