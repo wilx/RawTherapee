@@ -278,16 +278,22 @@ coverage rather than being duplicated here.
 
 ## Phase 5: C++ loader
 
-Add a loader independent of the demosaicing pipeline, for example:
+Phase 5 adds a C++11 loader independent of the demosaicing pipeline:
 
     rtengine/neuralmodel.h
     rtengine/neuralmodel.cc
+    rtengine/rtnnreader_p.h
+    rtengine/rtnnreader.cc
     rtengine/demosaicnetxtransmodel.h
     rtengine/demosaicnetxtransmodel.cc
 
-Final names should follow existing rtengine conventions. Keep the generic
-container parser small; place the exact 26-tensor schema and architecture
-binding in the DemosaicNet-specific layer.
+`rtnnreader_p.h` is a private binding-driven parser interface retained for the
+independent synthetic fixtures in Phase 6. RawTherapee exposes no generic or
+unverified public RTNN loading mode. The public
+`loadDemosaicNetXTransModel(const Glib::ustring&)` entry point accepts only the
+reviewed architecture 1, model revision 1 artifact and returns either a complete
+immutable model or a structured error. Its stable error names mirror the
+Python reader, with `NONE` and `ALLOCATION` added for the C++ result contract.
 
 The loader must:
 
@@ -297,21 +303,32 @@ The loader must:
 4. validate header, ranges, alignment, non-overlap, counts, and checksums;
 5. validate the exact DemosaicNet X-Trans schema;
 6. copy float32 values into owned aligned storage;
-7. byte-swap on a big-endian host if RawTherapee still supports one;
+7. decode little-endian float bits into native representation without aliasing;
 8. verify all loaded floats are finite;
-9. repack OIHW tensors into the selected internal SIMD layout; and
+9. preserve canonical OIHW/vector order and every 64-byte tensor alignment; and
 10. return a complete immutable model or a structured error, never a partially
     initialized model.
 
-The portable RTNN file should remain OIHW. Architecture- or SIMD-specific
-packing belongs in memory at load time. This keeps one distributed file valid
-for scalar, SSE, AVX, ARM/NEON, and future kernels, and makes conversion parity
-easy to audit. Loading and repacking 1.64 MB once is negligible relative to
-full-image inference.
+The implementation uses glibmm's existing SHA-256 support and parses every
+integer explicitly rather than casting file bytes to native structures. It
+authenticates the complete file before allocating returned tensor storage. A
+portable C++11 over-allocation scheme owns a `float[]` and selects a 64-byte
+aligned float element within it; C++17 `std::aligned_alloc` is neither available
+nor required. Decoding through a little-endian `uint32_t` plus `memcpy` preserves
+the reviewed float bits on little- and big-endian hosts.
 
-Load the model once per process or engine context and share immutable weights.
-Do not reopen or revalidate the file per tile. Report the first model-loading
-failure clearly, but avoid flooding logs during preview recomputation.
+The portable file and Phase 5 in-memory representation both remain canonical
+OIHW/vector data. SIMD-specific repacking is deferred until a convolution
+kernel defines the layout it consumes. Model discovery, process- or
+engine-context caching, first-failure logging, licensing, and packaging are
+also deferred to runtime integration. The Phase 5 loader is stateless and
+performs no logging.
+
+Phase 5 build and local smoke verification cover the reviewed artifact,
+bit-for-bit native tensor values, repeated loads, alignment, and basic I/O and
+size failures. It is not considered a completed security gate until the Phase
+6 independent fixtures, full corruption matrix, sanitizers, and CTest suite
+pass.
 
 ## Phase 6: C++ loader tests
 

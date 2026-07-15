@@ -31,6 +31,7 @@ set(RTENGINESOURCEFILES
     dcraw.cc
     dcrop.cc
     demosaic_algos.cc
+    demosaicnetxtransmodel.cc
     dfmanager.cc
     diagonalcurves.cc
     dirpyr_equalizer.cc
@@ -90,6 +91,7 @@ set(RTENGINESOURCEFILES
     metadata.cc
     munselllch.cc
     myfile.cc
+    neuralmodel.cc
     panasonic_decoders.cc
     pdaflinesfilter.cc
     perspectivecorrection.cc
@@ -108,6 +110,7 @@ set(RTENGINESOURCEFILES
     rtapp.cc
     rtlensfun.cc
     rtthumbnail.cc
+    rtnnreader.cc
     shmap.cc
     simpleprocess.cc
     spot.cc
