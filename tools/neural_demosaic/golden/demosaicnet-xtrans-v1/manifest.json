@@ -1,0 +1,396 @@
+{
+  "cases": [
+    {
+      "id": "zero-even-32x32",
+      "input": {
+        "byte_length": 12288,
+        "element_count": 3072,
+        "file": "cases/zero-even-32x32.input.f32le",
+        "sha256": "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "shape": [
+          1,
+          3,
+          32,
+          32
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 768,
+        "element_count": 192,
+        "file": "cases/zero-even-32x32.output.f32le",
+        "sha256": "630d55859a6ad597cdbd5867f7945271acfcd410147ad32233d2c652d7fbbf82",
+        "shape": [
+          1,
+          3,
+          8,
+          8
+        ]
+      }
+    },
+    {
+      "id": "constant-odd-31x35",
+      "input": {
+        "byte_length": 13020,
+        "element_count": 3255,
+        "file": "cases/constant-odd-31x35.input.f32le",
+        "sha256": "6d360d451440f74bd64451d0bfca92f414ef765138b31f54c7c40aeb32ade162",
+        "shape": [
+          1,
+          3,
+          31,
+          35
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 924,
+        "element_count": 231,
+        "file": "cases/constant-odd-31x35.output.f32le",
+        "sha256": "63d091337f36c6c4a1c04b7028d82b3e97abb0e99afb3336513b9592c4359ab9",
+        "shape": [
+          1,
+          3,
+          7,
+          11
+        ]
+      }
+    },
+    {
+      "id": "random-37x38",
+      "input": {
+        "byte_length": 16872,
+        "element_count": 4218,
+        "file": "cases/random-37x38.input.f32le",
+        "sha256": "76fe5e6ccfba24d58262bf9531e6e181c39061e420c6bf76fbf095d8236cdeae",
+        "shape": [
+          1,
+          3,
+          37,
+          38
+        ]
+      },
+      "intermediate_activations": [
+        {
+          "byte_length": 322560,
+          "element_count": 80640,
+          "name": "main_processor.relu1",
+          "sha256": "6736a63961f0a6bb5cef74e93dfa3544b00a51846d39d25edefbb702a7aae10c",
+          "shape": [
+            1,
+            64,
+            35,
+            36
+          ]
+        },
+        {
+          "byte_length": 287232,
+          "element_count": 71808,
+          "name": "main_processor.relu2",
+          "sha256": "5d4fe29269084af70485f186ba339abb7fc475e76c470a0797de9697f75a02f9",
+          "shape": [
+            1,
+            64,
+            33,
+            34
+          ]
+        },
+        {
+          "byte_length": 253952,
+          "element_count": 63488,
+          "name": "main_processor.relu3",
+          "sha256": "f6e06b994d922e6b5e39b9f6e237c547f5a62faa5e09dad7cfc339880c8a9935",
+          "shape": [
+            1,
+            64,
+            31,
+            32
+          ]
+        },
+        {
+          "byte_length": 222720,
+          "element_count": 55680,
+          "name": "main_processor.relu4",
+          "sha256": "ea059eb568969a2ab25516f767306ef22ed2449f03066afbb3e786a27900152c",
+          "shape": [
+            1,
+            64,
+            29,
+            30
+          ]
+        },
+        {
+          "byte_length": 193536,
+          "element_count": 48384,
+          "name": "main_processor.relu5",
+          "sha256": "5886f76a1502d235806ae774915baaacc8c38bb534d939597ca292a6452c06c7",
+          "shape": [
+            1,
+            64,
+            27,
+            28
+          ]
+        },
+        {
+          "byte_length": 166400,
+          "element_count": 41600,
+          "name": "main_processor.relu6",
+          "sha256": "dba3868977b8d1cf404abfa8b473c0ac9aa15b72e17f02ad3258a9208cd5ab37",
+          "shape": [
+            1,
+            64,
+            25,
+            26
+          ]
+        },
+        {
+          "byte_length": 141312,
+          "element_count": 35328,
+          "name": "main_processor.relu7",
+          "sha256": "ba462f495c8a6822cc8f67c7cb5b1d8fd25c8d3f8a24affaae8b75ee9d52652f",
+          "shape": [
+            1,
+            64,
+            23,
+            24
+          ]
+        },
+        {
+          "byte_length": 118272,
+          "element_count": 29568,
+          "name": "main_processor.relu8",
+          "sha256": "2b97085066e780feaffda8565d4b9c06481698b6ad7a40475624e5540b0dda43",
+          "shape": [
+            1,
+            64,
+            21,
+            22
+          ]
+        },
+        {
+          "byte_length": 97280,
+          "element_count": 24320,
+          "name": "main_processor.relu9",
+          "sha256": "c87b432470787496d3d519285727c449aed1ee6c7ddcf08ae2b5575fe74db564",
+          "shape": [
+            1,
+            64,
+            19,
+            20
+          ]
+        },
+        {
+          "byte_length": 78336,
+          "element_count": 19584,
+          "name": "main_processor.relu10",
+          "sha256": "9a50f6b07d912c176d40fd6a885de96055b4b6be10f2d4e28530591f4f2787ce",
+          "shape": [
+            1,
+            64,
+            17,
+            18
+          ]
+        },
+        {
+          "byte_length": 61440,
+          "element_count": 15360,
+          "name": "main_processor.relu11",
+          "sha256": "5704db821f570076ef64338c3224579c3068cb8454a3838acc35cb6fe5e77209",
+          "shape": [
+            1,
+            64,
+            15,
+            16
+          ]
+        },
+        {
+          "byte_length": 64320,
+          "element_count": 16080,
+          "name": "fullres_processor.input_concat",
+          "sha256": "31c831aa734316bd65dae35b8df509693033f6e4f960286f4714dba2933e0e51",
+          "shape": [
+            1,
+            67,
+            15,
+            16
+          ]
+        },
+        {
+          "byte_length": 46592,
+          "element_count": 11648,
+          "name": "fullres_processor.post_relu",
+          "sha256": "0f965399ca0bbf523637515b377a32ab774902ab2fbb5fd8b76a1c57a1faa56a",
+          "shape": [
+            1,
+            64,
+            13,
+            14
+          ]
+        }
+      ],
+      "output": {
+        "byte_length": 2184,
+        "element_count": 546,
+        "file": "cases/random-37x38.output.f32le",
+        "sha256": "c5ed32fa4f0607de77b0839bdf115456d930de408b05b52f10694e0890f8c01d",
+        "shape": [
+          1,
+          3,
+          13,
+          14
+        ]
+      }
+    },
+    {
+      "id": "impulse-red-36x36",
+      "input": {
+        "byte_length": 15552,
+        "element_count": 3888,
+        "file": "cases/impulse-red-36x36.input.f32le",
+        "sha256": "cf32d6cfed8a3e0f3d37a91592a40c7de321c97463f9f61ed116c6ecdcd157bd",
+        "shape": [
+          1,
+          3,
+          36,
+          36
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 1728,
+        "element_count": 432,
+        "file": "cases/impulse-red-36x36.output.f32le",
+        "sha256": "25d3fc4cc60a3aa259cb8d02393a4a8f4498792485fb170238312e20a7cbd40e",
+        "shape": [
+          1,
+          3,
+          12,
+          12
+        ]
+      }
+    },
+    {
+      "id": "impulse-green-36x36",
+      "input": {
+        "byte_length": 15552,
+        "element_count": 3888,
+        "file": "cases/impulse-green-36x36.input.f32le",
+        "sha256": "a2e449f9437ba00df7a2de085fce70229dfc5e8d27a321c18dd4812d00d5a9df",
+        "shape": [
+          1,
+          3,
+          36,
+          36
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 1728,
+        "element_count": 432,
+        "file": "cases/impulse-green-36x36.output.f32le",
+        "sha256": "9c0d8c9d142df58129745003e392782272c93514dd1b5e57ea24735bdae2f1af",
+        "shape": [
+          1,
+          3,
+          12,
+          12
+        ]
+      }
+    },
+    {
+      "id": "impulse-blue-36x36",
+      "input": {
+        "byte_length": 15552,
+        "element_count": 3888,
+        "file": "cases/impulse-blue-36x36.input.f32le",
+        "sha256": "ad2382650a9fc794e50a5207ad1a8d86cf4efd912ea02dcfa496a8253832f4bf",
+        "shape": [
+          1,
+          3,
+          36,
+          36
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 1728,
+        "element_count": 432,
+        "file": "cases/impulse-blue-36x36.output.f32le",
+        "sha256": "b468e3e27481fba5c2532fa0d5ff5d8c47b629571f32c1109b7a9fd2a3d2a9fb",
+        "shape": [
+          1,
+          3,
+          12,
+          12
+        ]
+      }
+    },
+    {
+      "id": "alternating-saturated-35x36",
+      "input": {
+        "byte_length": 15120,
+        "element_count": 3780,
+        "file": "cases/alternating-saturated-35x36.input.f32le",
+        "sha256": "4b9a5da05e504961fb7862af22e4319bea1973751fc1cf33f065a96c7970579c",
+        "shape": [
+          1,
+          3,
+          35,
+          36
+        ]
+      },
+      "intermediate_activations": [],
+      "output": {
+        "byte_length": 1584,
+        "element_count": 396,
+        "file": "cases/alternating-saturated-35x36.output.f32le",
+        "sha256": "0085dcfc4398cb91e7588a4b74619c7c456ba72c2e99d5fd69674120963fe926",
+        "shape": [
+          1,
+          3,
+          11,
+          12
+        ]
+      }
+    }
+  ],
+  "execution": {
+    "byte_order": "little-endian",
+    "deterministic_algorithms": true,
+    "device": "cpu",
+    "input_contract": "canonical-sparse-xtrans-network-input",
+    "mode": "inference",
+    "onednn_enabled": false,
+    "postprocessing": "none",
+    "preprocessing": "none",
+    "scalar_type": "float32",
+    "tensor_layout": "NCHW",
+    "threads": 1,
+    "torch_version": "2.12.1+cpu"
+  },
+  "format": "rawtherapee-neural-golden-corpus-v1",
+  "model": {
+    "architecture_id": 1,
+    "architecture_symbol": "DEMOSAICNET_XTRANS_V1",
+    "checkpoint_sha256": "3759a13296fecebae83a36a8f0c3890d8a2f7d33e5f8149ed9b76a70f8285bc7",
+    "id": "demosaicnet-xtrans-v1",
+    "revision": 1,
+    "rtnn_sha256": "b4dd6ea4ba535e7f4aea249a2d589a80ca8584f60a605a5bce468c989529ccc2",
+    "semantic_schema_sha256": "0ec34ea3d563f1357097181cb0dd90586a65e8d4c85b644b45c6fd3f81bcc151"
+  },
+  "provenance": {
+    "attribution_file": "ATTRIBUTION.md",
+    "attribution_sha256": "d4f4be70370c90382cef28c36a93814a28facf1ba33f7082341be496d1c5f6ef",
+    "license": "MIT",
+    "license_file": "UPSTREAM-LICENSE.txt",
+    "license_sha256": "989ed6cc1a315afd6f4d4b1862cf3254f136a03030ff7ef2c95854223cac1a4b",
+    "upstream_repository": "https://github.com/mgharbi/demosaicnet",
+    "upstream_revision": "959e9d1630976b421d5af5e35b2e2a01f5630e5c"
+  },
+  "summary": {
+    "case_count": 7,
+    "float_blob_bytes": 114600,
+    "float_blob_count": 14,
+    "trace_case": "random-37x38"
+  }
+}

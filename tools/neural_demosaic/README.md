@@ -174,6 +174,38 @@ The native output is byte-identical to `inspect_rtnn` and has pinned SHA-256
 It contains no path, filename, timestamp, hostname, or companion-manifest data.
 Invalid input is reported as `error [CODE]: message` with exit status 2.
 
+## Golden inference corpus
+
+Phase 7 tracks seven exact network input/output pairs under
+`golden/demosaicnet-xtrans-v1/`. The fourteen `.f32le` files contain contiguous
+little-endian NCHW float32 data and total 114,600 bytes. Their canonical
+10,513-byte manifest has SHA-256:
+
+```text
+ed4b6ff5544ef361d3613fdf354544acd89db56059de249468ac416c238f3b92
+```
+
+The corpus uses the Phase 4 zero, constant, seeded-random, three impulse, and
+alternating-saturated inputs unchanged. The random case also records shapes and
+SHA-256 values after all eleven main ReLUs, the sparse-input concatenation, and
+the post-convolution ReLU. Intermediate activation bytes are not stored.
+
+Regenerate into a new directory from the reviewed RTNN artifact with:
+
+```sh
+.venv/bin/python -m tools.neural_demosaic.export_golden_corpus \
+    /tmp/demosaicnet-xtrans-v1.rtnn \
+    --output /tmp/demosaicnet-xtrans-v1-golden
+```
+
+The exporter refuses an existing output directory. It authenticates RTNN with
+the independent reader and runs only the local reference graph under pinned,
+single-threaded deterministic CPU settings. The fixtures represent exact
+sparse network tensors: they apply no gamma wrapper, raw normalization, CFA
+orientation transform, clipping, sample reinjection, or postprocessing. The
+tracked attribution and upstream MIT license apply to these generated tests;
+the corpus contains no checkpoint or RTNN weights.
+
 ## Tests
 
 Unit tests generate ordinary local tensor dictionaries and never execute
@@ -183,14 +215,17 @@ untrusted pickle content:
 .venv/bin/python -m pytest tools/neural_demosaic/tests
 ```
 
-Run the optional integration tests against the actual pinned checkpoint:
+Run all optional integration tests against the actual pinned checkpoint and
+RTNN artifact:
 
 ```sh
 GHARBI_XTRANS_CHECKPOINT=/path/to/demosaicnet/data/xtrans.pth \
+GHARBI_XTRANS_RTNN=/tmp/demosaicnet-xtrans-v1.rtnn \
     .venv/bin/python -m pytest tools/neural_demosaic/tests
 ```
 
-The integration tests are skipped when `GHARBI_XTRANS_CHECKPOINT` is unset.
-They cover conversion identities, strict RTNN reading, metadata equivalence,
-and bit-exact reference-network parity. The reader and corruption suite do not
-require the external checkpoint.
+The corresponding integration tests skip when either environment variable is
+unset. They cover conversion identities, strict RTNN reading, metadata
+equivalence, bit-exact reference-network parity, and byte-identical golden
+regeneration. Validation of the committed corpus, the independent reader, and
+the corruption suites require no external checkpoint or model artifact.

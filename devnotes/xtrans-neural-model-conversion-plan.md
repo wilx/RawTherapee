@@ -387,23 +387,58 @@ but convolution implementation is the following project stage.
 
 ## Phase 7: golden data for the C++ inference stage
 
-The converter project should also produce small, deterministic golden cases.
-For each input, preserve:
+Phase 7 freezes a small tracked corpus under
+`tools/neural_demosaic/golden/demosaicnet-xtrans-v1`. A development-only
+exporter accepts the reviewed RTNN artifact, loads it through the independent
+Phase 4 reader, and executes the local PyTorch graph without `torch.load` or
+upstream executable code.
 
-* the sparse three-plane input as little-endian float32;
-* input dimensions;
-* the valid output dimensions (input minus 24 in each axis);
-* output RGB float32;
-* input and output SHA-256;
-* whether input is direct-linear or gamma-wrapped; and
-* PyTorch/backend versions.
+The corpus contains the seven Phase 4 sparse inputs and their exact RGB
+outputs as contiguous little-endian NCHW float32 files. The canonical manifest
+binds every shape, byte count, and SHA-256 to the reviewed model, checkpoint,
+semantic schema, RTNN, PyTorch 2.12.1 CPU build, and deterministic execution
+settings. It contains no timestamp, path, filename from the invoking host, or
+model weights. Its SHA-256 is
+`ed4b6ff5544ef361d3613fdf354544acd89db56059de249468ac416c238f3b92`.
 
-At least one case should expose every convolution border and CFA phase. Keep
-fixtures small enough to commit if their provenance permits. Large RAF-derived
-inputs and outputs should remain external benchmark data with recorded hashes.
+For the seeded-random case, the manifest also records shapes and SHA-256 values
+after all eleven main ReLUs, the sparse-input concatenation, and the post ReLU.
+This identifies the first divergent native layer without committing large
+activation buffers. The random input and valid output span all 36 CFA phases
+and exercise both sides of every valid-convolution boundary.
 
-Golden cases prove numerical implementation parity. They do not prove image
-quality and should not be used to select the linear/gamma input contract.
+These are exact network tensors, not a raw-domain policy. No gamma wrapping,
+raw normalization, orientation mapping, clipping, reinjection, or
+postprocessing is represented. Golden parity therefore cannot select between
+the direct-linear and gamma-wrapped wrappers. Attribution and the upstream MIT
+license accompany the roughly 112 KiB of float fixtures; the checkpoint and
+RTNN remain external.
+
+Unconditional tests authenticate the tracked manifest and every blob. Optional
+tests driven by `GHARBI_XTRANS_RTNN` regenerate twice into different
+directories and require byte-identical corpus files.
+
+## Phase 8: native fixed-graph inference
+
+Implement the fixed C++ convolution graph against the immutable Phase 5 model
+and prove final and intermediate results against Phase 7. Keep this stage out
+of the raw demosaic pipeline and GUI.
+
+## Phase 9: developer-only demosaic integration and quality gate
+
+Add CFA canonicalization, explicit direct-linear and gamma-wrapped contracts,
+phase-stable tiling, model discovery/caching, and a PP3/CLI-selectable developer
+method that is deliberately absent from the GUI. Establish parity before
+comparing synthetic cases and real RAF files, including `DSCF0771.RAF`, with
+Markesteijn.
+
+## Phase 10: packaging and GUI
+
+Only if Phase 9 demonstrates useful quality, stability, and acceptable speed,
+resolve model distribution and expose “DemosaicNet X-Trans (experimental)” in
+the demosaic GUI. Complete translations, history, profile editing, partial
+paste, preview/export behavior, and missing-model handling in this phase. If
+the quality gate fails, do not expose the method in the GUI.
 
 ## Updating or upgrading the upstream checkpoint
 
@@ -473,16 +508,16 @@ Keep reviewable changes separated:
    document and Gharbi tensor schema.
 2. **Python converter:** hash pinning, weights-only loading, schema validation,
    deterministic RTNN and manifest generation.
-3. **Python tests and golden cases:** round-trip, parity, reproducibility, and
-   malformed input.
-4. **CTest and C++ container loader:** minimal BUILD_TESTING integration,
-   bounds-checked RTNN parser, registered loader tests, and corruption tests.
-5. **Gharbi model binding:** exact 26-tensor schema, aligned storage, and
-   internal weight repacking.
-6. **Packaging decision:** either install the licensed converted model or
-   document external developer provisioning.
-7. **Inference implementation:** only after all preceding conversion and loader
-   gates pass.
+3. **Python parity and golden corpus:** round-trip, reproducibility, exact
+   network outputs, and intermediate activation digests.
+4. **CTest and C++ container loader:** BUILD_TESTING integration, bounds-checked
+   RTNN parsing, registered loader tests, and corruption tests.
+5. **Native inference:** fixed graph and golden parity without raw-pipeline
+   integration.
+6. **Developer demosaic integration:** CFA mapping, raw wrappers, tiling, and
+   the real-image quality gate without GUI exposure.
+7. **Packaging and GUI:** only after the developer method passes the quality
+   gate.
 
 ## Acceptance criteria
 

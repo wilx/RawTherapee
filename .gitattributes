@@ -16,6 +16,7 @@
 
 # Denote all files that are truly binary and should not be modified.
 *.bmp binary
+*.f32le binary
 *.jpg binary
 *.jpeg binary
 *.ora binary

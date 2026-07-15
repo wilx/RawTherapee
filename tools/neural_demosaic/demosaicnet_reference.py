@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -58,6 +59,44 @@ class DemosaicNetXTransReference(nn.Module):
         cropped = _crop_like(mosaic, features)
         packed = torch.cat((cropped, features), dim=1)
         return self.fullres_processor(packed)
+
+
+@dataclass(frozen=True)
+class ReferenceActivation:
+    """One named execution checkpoint from the fixed reference graph."""
+
+    name: str
+    tensor: torch.Tensor
+
+
+def reference_forward_with_activations(
+    model: DemosaicNetXTransReference,
+    mosaic: torch.Tensor,
+) -> tuple[torch.Tensor, tuple[ReferenceActivation, ...]]:
+    """Execute the reference graph while exposing stable diagnostic points."""
+
+    activations = []
+    features = mosaic
+
+    for index in range(1, 12):
+        convolution = model.main_processor.get_submodule(f"conv{index}")
+        activation = model.main_processor.get_submodule(f"relu{index}")
+        features = activation(convolution(features))
+        activations.append(
+            ReferenceActivation(f"main_processor.relu{index}", features)
+        )
+
+    cropped = _crop_like(mosaic, features)
+    packed = torch.cat((cropped, features), dim=1)
+    activations.append(ReferenceActivation("fullres_processor.input_concat", packed))
+
+    post_convolution = model.fullres_processor.get_submodule("post_conv")
+    post_activation = model.fullres_processor.get_submodule("post_relu")
+    post = post_activation(post_convolution(packed))
+    activations.append(ReferenceActivation("fullres_processor.post_relu", post))
+
+    output_layer = model.fullres_processor.get_submodule("output")
+    return output_layer(post), tuple(activations)
 
 
 def _crop_like(source: torch.Tensor, target: torch.Tensor) -> torch.Tensor:

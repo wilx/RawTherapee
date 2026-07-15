@@ -16,6 +16,7 @@ from tools.neural_demosaic.demosaicnet_reference import (
     deterministic_reference_execution,
     reference_from_checkpoint,
     reference_from_rtnn,
+    reference_forward_with_activations,
     reference_inputs,
 )
 from tools.neural_demosaic.inspect_checkpoint import load_validated_checkpoint
@@ -85,6 +86,27 @@ def test_reference_graph_output_shrinks_by_24_and_is_finite() -> None:
 
     assert output.shape == (1, 3, 7, 11)
     assert bool(torch.isfinite(output).all())
+
+
+def test_activation_trace_matches_ordinary_reference_execution() -> None:
+    model = DemosaicNetXTransReference().eval()
+    input_tensor = dict(reference_inputs())["random-37x38"]
+
+    with deterministic_reference_execution(), torch.inference_mode():
+        traced, activations = reference_forward_with_activations(model, input_tensor)
+        ordinary = model(input_tensor)
+
+    assert torch.equal(traced, ordinary)
+    assert [activation.name for activation in activations] == [
+        *(f"main_processor.relu{index}" for index in range(1, 12)),
+        "fullres_processor.input_concat",
+        "fullres_processor.post_relu",
+    ]
+    assert [tuple(activation.tensor.shape) for activation in activations][-3:] == [
+        (1, 64, 15, 16),
+        (1, 67, 15, 16),
+        (1, 64, 13, 14),
+    ]
 
 
 def test_reference_forward_matches_an_independent_functional_graph() -> None:

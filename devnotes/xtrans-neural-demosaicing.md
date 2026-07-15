@@ -300,8 +300,10 @@ or emit partly initialized pixels.
 
 ### 4. Implement fixed, tiled C++ Gharbi inference
 
-Add a separately selectable method such as demosaicnet-xtrans, shown as
-“DemosaicNet X-Trans (experimental).” It should:
+First prove the fixed graph against the tracked golden corpus without entering
+the raw pipeline. Then add a developer-only PP3/CLI-selectable method such as
+`demosaicnet-xtrans`; deliberately omit it from the GUI until the real-image
+quality gate passes. The demosaic wrapper should:
 
 1. map the actual CFA orientation to the canonical mask;
 2. normalize/scatter scalar raw values into sparse RGB input;
@@ -334,14 +336,16 @@ wrapper must be evidence-driven and documented.
 ### 6. Make the quality decision
 
 If Gharbi is useful on real RAF files at acceptable preview/export speed, retain
-it as a clearly experimental alternative and improve engineering matters such
-as SIMD kernels and model packaging.
+it as a clearly experimental alternative, resolve model packaging, and expose
+“DemosaicNet X-Trans (experimental)” in the GUI. Complete the ordinary PP3,
+history, translation, partial-paste, preview, export, and missing-model behavior
+at that point.
 
 If it has systematic raw-domain artefacts after correct CFA mapping and
 reference-parity validation, train an X-Trans model with the same simple
 architecture but camera-linear input, realistic noise/clipping, and a specified
-target pipeline. Do not attempt to compensate for a mismatched checkpoint by
-tuning unrelated postprocessing.
+target pipeline. Keep the failed method out of the GUI, and do not attempt to
+compensate for a mismatched checkpoint by tuning unrelated postprocessing.
 
 Evaluate Deep Demosaick only after the Gharbi result and after a credible
 compute plan, likely optional GPU acceleration or a carefully validated
