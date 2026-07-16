@@ -340,3 +340,39 @@ equivalence, bit-exact Python reference-network parity, byte-identical golden
 and trace regeneration, and bounded native C++ parity. Validation of the
 committed corpus and trace, the independent reader, and the mandatory native
 and corruption suites require no external checkpoint or model artifact.
+
+## Developer-only X-veon ONNX experiment
+
+X-veon is a separate hidden experiment. Build with ONNX Runtime CPU 1.27.0:
+
+```sh
+/usr/bin/cmake --preset dev \
+    -DWITH_ONNXRUNTIME=ON \
+    -DONNXRUNTIME_ROOT=/path/onnxruntime-linux-x64-1.27.0
+cmake --build build/dev --target rawtherapee-cli rawtherapee-neuralmodel-tests
+```
+
+Use the literal PP3 method `xveon-xtrans-onnx` and provide the external model:
+
+```sh
+RT_XVEON_XTRANS_MODEL=/path/xtrans.onnx \
+    build/dev/rtgui/rawtherapee-cli -p profile.pp3 -o output.tif -c input.RAF
+```
+
+The loader accepts only the 15,536,134-byte model with SHA-256
+`45b1fa22b0027868fd5c20ec7b59234ed5aeb35de89fbc0950a4bec67f328500`
+and verifies its fixed input/output and epoch/base-width/PSNR metadata. Real
+native tests are optional:
+
+```sh
+XVEON_XTRANS_ONNX=/path/xtrans.onnx \
+    ctest --test-dir build/dev -R xveon_ --output-on-failure
+```
+
+Install `requirements-onnx.txt` only for the independent Python reference.
+The prior gamma comparison format is frozen; the four-method tool is invoked
+as `python -m tools.neural_demosaic.compare_xveon_outputs`. See
+`devnotes/xtrans-xveon-experiment.md` for the exact tiling contract, measured
+quality result, and licensing boundary. Neither the upstream repository nor
+the model had an explicit license at the pinned revision, so weights remain
+external and the method remains absent from the GUI.

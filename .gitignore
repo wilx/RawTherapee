@@ -52,3 +52,4 @@ clean
 *.tar
 *.xz
 *.zip
+*.onnx

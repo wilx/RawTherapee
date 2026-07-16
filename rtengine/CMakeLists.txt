@@ -118,6 +118,7 @@ set(RTENGINESOURCEFILES
     vng4_demosaic_RT.cc
     xtrans_cfa.cc
     xtrans_demosaicnet.cc
+    xtrans_xveon.cc
     xtrans_rafinazari.cc
     xtrans_demosaic.cc
     ${PROCPARAM_SRCS}
@@ -195,6 +196,24 @@ elseif(MSVC)
     target_compile_options(rtengine-neuralmodel-inference PRIVATE /fp:strict)
 endif()
 
+if(WITH_ONNXRUNTIME)
+    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel.cc xveon_ort_bridge.c)
+    target_link_libraries(rtengine-xveon-onnx PUBLIC rtengine-neuralmodel-loader ONNXRuntime::onnxruntime)
+    target_compile_definitions(rtengine-xveon-onnx PUBLIC RT_WITH_ONNXRUNTIME)
+    if(UNIX AND NOT APPLE)
+        target_link_options(rtengine-xveon-onnx INTERFACE "-Wl,-rpath,${ONNXRUNTIME_LIBRARY_DIR}")
+    endif()
+else()
+    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel_stub.cc)
+    target_link_libraries(rtengine-xveon-onnx PUBLIC rtengine-neuralmodel-loader)
+endif()
+target_include_directories(
+    rtengine-xveon-onnx
+    PUBLIC ${PROJECT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+rt_setup_target(rtengine-xveon-onnx)
+
 add_library(rtengine STATIC "${RTENGINESOURCEFILES}")
 
 add_dependencies(rtengine UpdateInfo)
@@ -251,6 +270,7 @@ target_link_libraries(rtengine
         ${EXTRA_LIB}
     PRIVATE
         rtengine-neuralmodel-inference
+        rtengine-xveon-onnx
 )
 
 # Atomic is required in some builds: #6821

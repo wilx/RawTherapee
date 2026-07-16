@@ -303,6 +303,7 @@ protected:
     void xtransborder_interpolate (int border, array2D<float> &red, array2D<float> &green, array2D<float> &blue);
     void xtrans_interpolate (const int passes, const bool useCieLab, size_t chunkSize = 1, bool measure = false);
     bool demosaicnet_xtrans_interpolate (bool gamma22);
+    bool xveon_xtrans_interpolate ();
     bool rafinazari_xtrans_interpolate (const procparams::RAWParams::XTransSensor& params);
     void fast_xtrans_interpolate (const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue);
     void fast_xtrans_interpolate_blend (const float* const * blend, const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue);

@@ -59,6 +59,8 @@ const char *neuralModelErrorCodeName(NeuralModelErrorCode code)
             return "NONFINITE";
         case NeuralModelErrorCode::ALLOCATION:
             return "ALLOCATION";
+        case NeuralModelErrorCode::RUNTIME:
+            return "RUNTIME";
     }
 
     return "UNKNOWN";

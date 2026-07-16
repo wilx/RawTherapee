@@ -1,0 +1,178 @@
+{
+  "assets": [
+    {
+      "bytes": 6177584,
+      "filename": "DSCF0771-gharbi-linear-full-third.png",
+      "method": "demosaicnet-xtrans-linear",
+      "role": "full-frame-third",
+      "sha256": "cb05a0e26b64d213aa105bd09963b1f2c296d7574ed35bb568222240f979bad8",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 6103465,
+      "filename": "DSCF0771-gharbi-gamma22-full-third.png",
+      "method": "demosaicnet-xtrans-gamma22",
+      "role": "full-frame-third",
+      "sha256": "df1e79ccb03eebe908c42c238053cbf44c97cab0f33751a8430b87441ea91d8b",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 6376296,
+      "filename": "DSCF0771-markesteijn-full-third.png",
+      "method": "3-pass (Markesteijn)",
+      "role": "full-frame-third",
+      "sha256": "4d74f5ad747b7cd2830f55708a776d80d501c49453104fd2123389d92b77a8ec",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 6089567,
+      "filename": "DSCF0771-xveon-full-third.png",
+      "method": "xveon-xtrans-onnx",
+      "role": "full-frame-third",
+      "sha256": "351c7eb968748c6c64a326fc947df3cca28af4ee59e68e01325680ddad14ac27",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 67569,
+      "filename": "DSCF0771-gharbi-linear-earring-500.png",
+      "method": "demosaicnet-xtrans-linear",
+      "role": "earring-500-percent",
+      "sha256": "ccfcdfc8fcf071f24bd8e948a02396a29e6e3be36b70207d3415b61f1a5d53b5",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 53814,
+      "filename": "DSCF0771-gharbi-gamma22-earring-500.png",
+      "method": "demosaicnet-xtrans-gamma22",
+      "role": "earring-500-percent",
+      "sha256": "b671d565c922b97e2f68b25da6189cc75a1809696068f7e2ba86cc28084b3a5f",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 54170,
+      "filename": "DSCF0771-markesteijn-earring-500.png",
+      "method": "3-pass (Markesteijn)",
+      "role": "earring-500-percent",
+      "sha256": "90872d0aecc15f34630692072ebfffb8749971a9df925d85f9028cb36a77faf5",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 55949,
+      "filename": "DSCF0771-xveon-earring-500.png",
+      "method": "xveon-xtrans-onnx",
+      "role": "earring-500-percent",
+      "sha256": "f3c08842caab558559c24dbdd7e38bf7b97a16093fca07a3dc80e61509c00944",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    }
+  ],
+  "format": "rawtherapee-xtrans-comparison-assets-v1",
+  "generation": {
+    "earring": {
+      "filter": "nearest-neighbour",
+      "output_depth_bits": 8,
+      "output_shape": [
+        800,
+        700,
+        3
+      ],
+      "scale": 5,
+      "source_rectangle": {
+        "height": 160,
+        "width": 140,
+        "x": 3510,
+        "y": 1930
+      }
+    },
+    "full_frame": {
+      "filter": "Lanczos",
+      "output_depth_bits": 8,
+      "output_shape": [
+        1726,
+        2584,
+        3
+      ],
+      "source_shape": [
+        5178,
+        7752,
+        3
+      ]
+    },
+    "png": {
+      "compression_level": 9,
+      "lossless_at_output_depth": true
+    }
+  },
+  "icc_profile": {
+    "bytes": 748,
+    "sha256": "17aebbdf8a88c39b07eb881dcd824eb1cf9828914d5e74a7324d7a31045e8871"
+  },
+  "method_order": [
+    "demosaicnet-xtrans-linear",
+    "demosaicnet-xtrans-gamma22",
+    "xveon-xtrans-onnx",
+    "3-pass (Markesteijn)"
+  ],
+  "raw": {
+    "filename": "DSCF0771.RAF",
+    "sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0"
+  },
+  "source_tiffs": [
+    {
+      "bytes": 240862232,
+      "method": "demosaicnet-xtrans-linear",
+      "sha256": "131dcf78c40e63d5637407a562df7357648453723aba9025ade7ac536481d7cf"
+    },
+    {
+      "bytes": 240862232,
+      "method": "demosaicnet-xtrans-gamma22",
+      "sha256": "32dbb39586f0a49a402889e8600cfbad00930ea3da78b99a4037a163a30fb41e"
+    },
+    {
+      "bytes": 240862232,
+      "method": "3-pass (Markesteijn)",
+      "sha256": "8b329363690aefdaa8a7ef5a5fcf22b744fda74fed7c4c694d2279f95ce1e61c"
+    },
+    {
+      "bytes": 240862232,
+      "method": "xveon-xtrans-onnx",
+      "sha256": "8093d83b8c625bafc6424476220cea286f446bce8d89f9ea57562d226aefea0b"
+    }
+  ],
+  "xveon_model": {
+    "bytes": 15536134,
+    "sha256": "45b1fa22b0027868fd5c20ec7b59234ed5aeb35de89fbc0950a4bec67f328500",
+    "upstream_revision": "2e6b96c63559aa3909b0c7c1bc45dfd4b5dfe680"
+  }
+}

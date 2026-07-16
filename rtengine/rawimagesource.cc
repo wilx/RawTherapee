@@ -49,6 +49,7 @@
 #include "lensmetadata.h"
 #include "rtgui/options.h"
 #include "xtrans_demosaicnet.h"
+#include "xtrans_xveon.h"
 
 //#define BENCHMARK
 #include "StopWatch.h"
@@ -1864,6 +1865,51 @@ bool RawImageSource::demosaicnet_xtrans_interpolate(bool gamma22)
     return true;
 }
 
+bool RawImageSource::xveon_xtrans_interpolate()
+{
+    const char *const modelPath = std::getenv("RT_XVEON_XTRANS_MODEL");
+    const auto started = std::chrono::steady_clock::now();
+    const neural::XVeonXTransLoadResult loaded =
+        neural::loadCachedXVeonXTransRunner(modelPath ? Glib::ustring(modelPath) : Glib::ustring());
+    if (!loaded) {
+        std::fprintf(
+            stderr,
+            "X-veon X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(loaded.error.code),
+            loaded.error.message.c_str());
+        return false;
+    }
+
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const XVeonXTransRunResult run = demosaicXVeonXTrans(
+        rawData, red, green, blue, W, H, xtrans, loaded.runner);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "X-veon X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(run.error.code),
+            run.error.message.c_str());
+        return false;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    std::fprintf(
+        stderr,
+        "X-veon X-Trans completed: method=%s artifact=%s ort=%s provider=%s "
+        "tile=288x288 overlap=48 stride=240 tiles=%llu thread_policy=ort-default-intra,inter-1,sequential "
+        "working_buffer_estimate=%llu elapsed_us=%lld\n",
+        XVEON_XTRANS_ONNX_METHOD,
+        loaded.runner->artifactSha256().c_str(),
+        loaded.runner->runtimeVersion().c_str(),
+        loaded.runner->provider().c_str(),
+        static_cast<unsigned long long>(run.tileCount),
+        static_cast<unsigned long long>(run.workingBufferBytes),
+        static_cast<long long>(elapsed));
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -1923,6 +1969,10 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
                    raw.xtranssensor.method == DEMOSAICNET_XTRANS_GAMMA22_METHOD) {
             const bool gamma22 = raw.xtranssensor.method == DEMOSAICNET_XTRANS_GAMMA22_METHOD;
             if (!demosaicnet_xtrans_interpolate(gamma22)) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method == XVEON_XTRANS_ONNX_METHOD) {
+            if (!xveon_xtrans_interpolate()) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {

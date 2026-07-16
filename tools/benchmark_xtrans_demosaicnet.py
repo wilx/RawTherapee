@@ -46,6 +46,10 @@ COMPLETION_RE = re.compile(
     r"DemosaicNet X-Trans completed:.*?artifact=([0-9a-f]{64}).*?workers=(\d+).*?"
     r"workspace_per_worker=(\d+).*?workspace_total=(\d+).*?elapsed_us=(\d+)"
 )
+XVEON_COMPLETION_RE = re.compile(
+    r"X-veon X-Trans completed:.*?artifact=([0-9a-f]{64}).*?ort=(\S+).*?provider=(\S+).*?"
+    r"tiles=(\d+).*?working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
+)
 
 
 def dependencies():
@@ -177,6 +181,16 @@ def run_cli(cli: Path, profile: Path, source: Path, output: Path, environment) -
             "workspace_total_bytes": int(match.group(4)),
             "engine_elapsed_us": int(match.group(5)),
         }
+    xveon_match = XVEON_COMPLETION_RE.search(combined)
+    if xveon_match:
+        completion = {
+            "artifact_sha256": xveon_match.group(1),
+            "onnxruntime_version": xveon_match.group(2),
+            "provider": xveon_match.group(3),
+            "tiles": int(xveon_match.group(4)),
+            "working_buffer_estimate_bytes": int(xveon_match.group(5)),
+            "engine_elapsed_us": int(xveon_match.group(6)),
+        }
     rss = None
     if time_file.is_file():
         rss = int(time_file.read_text(encoding="utf-8").strip().split("=", 1)[1])
@@ -288,6 +302,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rawtherapee-cli", type=Path, default=Path("build/dev/rtgui/rawtherapee-cli"))
     parser.add_argument("--model", type=Path, required=True)
+    parser.add_argument("--xveon-model", type=Path,
+                        help="external pinned xtrans.onnx; enables the hidden X-veon method")
     parser.add_argument("--size", type=int, default=384)
     parser.add_argument("--ground-truth-dir", type=Path)
     parser.add_argument("--skip-synthetic", action="store_true")
@@ -303,8 +319,12 @@ def main() -> int:
     np, tifffile, Image, structural_similarity = dependencies()
     cli = args.rawtherapee_cli.resolve()
     model = args.model.resolve()
-    if not cli.is_file() or not model.is_file():
+    xveon_model = args.xveon_model.resolve() if args.xveon_model else None
+    if not cli.is_file() or not model.is_file() or (xveon_model and not xveon_model.is_file()):
         raise SystemExit("rawtherapee-cli or RTNN model does not exist")
+    methods = dict(METHODS)
+    if xveon_model:
+        methods["xveon"] = "xveon-xtrans-onnx"
     temporary = None
     if args.work_dir:
         work = args.work_dir.resolve()
@@ -313,11 +333,13 @@ def main() -> int:
         temporary = tempfile.TemporaryDirectory(prefix="rt-demosaicnet-xtrans-")
         work = Path(temporary.name)
     profiles = {}
-    for key, method in METHODS.items():
+    for key, method in methods.items():
         profiles[key] = work / f"{key}.pp3"
         write_profile(profiles[key], method)
     environment = os.environ.copy()
     environment["RT_DEMOSAICNET_XTRANS_MODEL"] = str(model)
+    if xveon_model:
+        environment["RT_XVEON_XTRANS_MODEL"] = str(xveon_model)
     environment["XDG_CONFIG_HOME"] = str(work / "config")
     report = {"synthetic_and_ground_truth": [], "real_raf": [], "gate": {}}
 
@@ -387,7 +409,7 @@ def main() -> int:
         crop = crops.get(raf.name) or crops.get(raf.stem)
         if crop:
             x, y, width, height = crop
-            panels = [outputs[key][y:y + height, x:x + width] for key in METHODS]
+            panels = [outputs[key][y:y + height, x:x + width] for key in methods]
             tifffile.imwrite(work / f"{raf.stem}-comparison-crop.tif", np.concatenate(panels, axis=1))
         report["real_raf"].extend(rows)
 
@@ -397,10 +419,10 @@ def main() -> int:
     for method in ("linear", "gamma22"):
         values = [row["cpsnr_db"] for row in upstream if row["method"] == method]
         report["gate"][f"{method}_upstream_mean_cpsnr_db"] = sum(values) / len(values) if values else None
-    if len(upstream) == 30:
+    if len(upstream) == 10 * len(methods):
         means = {
             method: statistics.mean(row["cpsnr_db"] for row in upstream if row["method"] == method)
-            for method in METHODS
+            for method in methods
         }
         selected = "gamma22" if means["gamma22"] >= means["linear"] - 0.1 else "linear"
         report["gate"]["selected_wrapper"] = selected
@@ -415,10 +437,16 @@ def main() -> int:
             rows[selected]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
             for rows in by_scene.values()
         )
+        if "xveon" in methods:
+            report["gate"]["xveon_upstream_mean_cpsnr_db"] = means["xveon"]
+            report["gate"]["xveon_upstream_wins"] = sum(
+                rows["xveon"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
     for filename in {row["file"] for row in report["real_raf"]}:
         rows = {row["method"]: row for row in report["real_raf"] if row["file"] == filename}
-        if set(rows) == set(METHODS):
-            for method in ("linear", "gamma22"):
+        if set(rows) == set(methods):
+            for method in tuple(name for name in methods if name != "markesteijn"):
                 rows[method]["time_ratio_to_markesteijn"] = (
                     rows[method]["seconds"] / rows["markesteijn"]["seconds"]
                 )

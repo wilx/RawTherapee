@@ -3,6 +3,7 @@ set(NEURALMODEL_TEST_SOURCES
     neuralmodel_tests.cc
     rtnn_inspection.cc
     xtrans_demosaicnet_tests.cc
+    xtrans_xveon_tests.cc
 )
 
 add_executable(rawtherapee-neuralmodel-tests ${NEURALMODEL_TEST_SOURCES})
@@ -15,6 +16,9 @@ target_compile_definitions(
         RT_NEURAL_TRACE_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/native_trace"
         RT_NEURAL_RAW_WRAPPER_DIR="${PROJECT_SOURCE_DIR}/tools/neural_demosaic/golden/demosaicnet-xtrans-raw-wrapper-v1"
 )
+if(WITH_ONNXRUNTIME)
+    target_compile_definitions(rawtherapee-neuralmodel-tests PRIVATE RT_TEST_WITH_ONNXRUNTIME)
+endif()
 rt_setup_target(rawtherapee-neuralmodel-tests)
 
 add_executable(
@@ -25,6 +29,18 @@ add_executable(
 target_link_libraries(rawtherapee-rtnn-inspect PRIVATE rtengine-neuralmodel-loader)
 target_include_directories(rawtherapee-rtnn-inspect PRIVATE ${PROJECT_SOURCE_DIR})
 rt_setup_target(rawtherapee-rtnn-inspect)
+
+if(WITH_ONNXRUNTIME)
+    add_executable(rawtherapee-xveon-tile xveon_tile.cc)
+    target_link_libraries(rawtherapee-xveon-tile PRIVATE rtengine-xveon-onnx)
+    target_include_directories(rawtherapee-xveon-tile PRIVATE ${PROJECT_SOURCE_DIR})
+    rt_setup_target(rawtherapee-xveon-tile)
+
+    add_executable(rawtherapee-xveon-wrapper xveon_wrapper.cc)
+    target_link_libraries(rawtherapee-xveon-wrapper PRIVATE rtengine)
+    target_include_directories(rawtherapee-xveon-wrapper PRIVATE ${PROJECT_SOURCE_DIR})
+    rt_setup_target(rawtherapee-xveon-wrapper)
+endif()
 
 function(add_neuralmodel_test TEST_NAME TEST_MODE)
     add_test(
@@ -52,6 +68,9 @@ add_neuralmodel_test(rtengine.neural_model.inference_golden inference-golden)
 add_neuralmodel_test(rtengine.neural_model.inference_trace inference-trace)
 add_neuralmodel_test(rtengine.neural_model.xtrans_raw_contract xtrans-raw-contract)
 add_neuralmodel_test(rtengine.neural_model.xtrans_raw_reviewed xtrans-raw-reviewed)
+add_neuralmodel_test(rtengine.neural_model.xveon_mock xveon-mock)
+add_neuralmodel_test(rtengine.neural_model.xveon_loader xveon-loader)
+add_neuralmodel_test(rtengine.neural_model.xveon_reviewed xveon-reviewed)
 
 set_tests_properties(
     rtengine.neural_model.reviewed_artifact
@@ -59,6 +78,7 @@ set_tests_properties(
     rtengine.neural_model.inference_golden
     rtengine.neural_model.inference_trace
     rtengine.neural_model.xtrans_raw_reviewed
+    rtengine.neural_model.xveon_reviewed
     PROPERTIES SKIP_RETURN_CODE 77
 )
 

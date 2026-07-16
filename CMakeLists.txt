@@ -193,6 +193,12 @@ option(WITH_BENCHMARK "Build with benchmark code" OFF)
 option(WITH_MYFILE_MMAP "Build using memory mapped file" ON)
 option(WITH_LTO "Build with link-time optimizations" OFF)
 option(WITH_SAN "Build with run-time sanitizer" OFF)
+option(WITH_ONNXRUNTIME "Build the developer-only X-veon ONNX experiment" OFF)
+set(
+    ONNXRUNTIME_ROOT ""
+    CACHE PATH
+    "Root of the ONNX Runtime 1.27.0 CPU archive (include/ and lib/)"
+)
 option(WITH_PROF "Build with profiling instrumentation" OFF)
 option(WITH_SYSTEM_KLT "Build using system KLT library." OFF)
 option(WITH_SYSTEM_LIBRAW "Build using system LibRaw library." OFF)
@@ -442,6 +448,40 @@ endif()
 
 include(cmake/Dependencies.cmake)
 rt_setup_dependencies()
+
+if(WITH_ONNXRUNTIME)
+    if(NOT ONNXRUNTIME_ROOT)
+        message(FATAL_ERROR "WITH_ONNXRUNTIME requires -DONNXRUNTIME_ROOT=/path/to/onnxruntime-linux-x64-1.27.0")
+    endif()
+    find_path(
+        ONNXRUNTIME_INCLUDE_DIR
+        NAMES onnxruntime_c_api.h
+        PATHS "${ONNXRUNTIME_ROOT}/include"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
+    find_library(
+        ONNXRUNTIME_LIBRARY
+        NAMES onnxruntime
+        PATHS "${ONNXRUNTIME_ROOT}/lib"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
+    file(STRINGS "${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime_c_api.h" ORT_API_VERSION_LINE
+        REGEX "^#define ORT_API_VERSION 27$")
+    if(NOT ORT_API_VERSION_LINE)
+        message(FATAL_ERROR "The X-veon experiment requires ONNX Runtime API version 27")
+    endif()
+    add_library(ONNXRuntime::onnxruntime SHARED IMPORTED)
+    set_target_properties(
+        ONNXRuntime::onnxruntime
+        PROPERTIES
+            IMPORTED_LOCATION "${ONNXRUNTIME_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ONNXRUNTIME_INCLUDE_DIR}"
+    )
+    get_filename_component(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_LIBRARY}" DIRECTORY)
+    message(STATUS "X-veon experiment: ONNX Runtime root ${ONNXRUNTIME_ROOT}")
+endif()
 
 if(WIN32)
     set(EXTRA_LIB "-lws2_32 -lshlwapi")

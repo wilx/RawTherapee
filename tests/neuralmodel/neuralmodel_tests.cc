@@ -1,6 +1,7 @@
 #include "rtnn_inspection.h"
 #include "demosaicnet_inference_tests.h"
 #include "xtrans_demosaicnet_tests.h"
+#include "xtrans_xveon_tests.h"
 
 #include "rtengine/demosaicnetxtransmodel.h"
 #include "rtengine/neuralmodel.h"
@@ -296,7 +297,7 @@ void expectFailure(
 
 void testErrorNames()
 {
-    const std::array<std::pair<NeuralModelErrorCode, const char *>, 18> names{{
+    const std::array<std::pair<NeuralModelErrorCode, const char *>, 19> names{{
         {NeuralModelErrorCode::NONE, "NONE"},
         {NeuralModelErrorCode::IO, "IO"},
         {NeuralModelErrorCode::SIZE, "SIZE"},
@@ -314,6 +315,7 @@ void testErrorNames()
         {NeuralModelErrorCode::DIGEST, "DIGEST"},
         {NeuralModelErrorCode::NONFINITE, "NONFINITE"},
         {NeuralModelErrorCode::ALLOCATION, "ALLOCATION"},
+        {NeuralModelErrorCode::RUNTIME, "RUNTIME"},
         {static_cast<NeuralModelErrorCode>(999), "UNKNOWN"},
     }};
     for (const auto &entry : names) {
@@ -666,6 +668,15 @@ int main(int argc, char **argv)
         }
         if (mode == "xtrans-raw-reviewed") {
             return xtrans_demosaicnet_test::reviewedRawWrapper();
+        }
+        if (mode == "xveon-mock") {
+            return xtrans_xveon_test::mockContract();
+        }
+        if (mode == "xveon-loader") {
+            return xtrans_xveon_test::loaderContract();
+        }
+        if (mode == "xveon-reviewed") {
+            return xtrans_xveon_test::reviewedModel();
         }
         if (mode == "inference-benchmark") {
             return demosaicnet_inference_test::benchmark();

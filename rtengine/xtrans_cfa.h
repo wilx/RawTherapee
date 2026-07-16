@@ -41,6 +41,11 @@ bool findCanonicalXTransTransform(
     const int actual[6][6],
     XTransCfaTransform &result);
 
+bool findCanonicalXTransTransform(
+    const int actual[6][6],
+    const int canonical[6][6],
+    XTransCfaTransform &result);
+
 class XTransCfaView final
 {
 public:
@@ -48,6 +53,12 @@ public:
         const XTransCfaTransform &transform,
         int actualWidth,
         int actualHeight);
+
+    XTransCfaView(
+        const XTransCfaTransform &transform,
+        int actualWidth,
+        int actualHeight,
+        const int canonical[6][6]);
 
     bool valid() const;
     int width() const;
@@ -70,6 +81,7 @@ private:
     int width_ = 0;
     int height_ = 0;
     bool valid_ = false;
+    int canonical_[6][6] = {};
 };
 
 } // namespace rtengine

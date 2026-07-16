@@ -37,7 +37,8 @@ enum class NeuralModelErrorCode {
     SCHEMA,
     DIGEST,
     NONFINITE,
-    ALLOCATION
+    ALLOCATION,
+    RUNTIME
 };
 
 const char *neuralModelErrorCodeName(NeuralModelErrorCode code);

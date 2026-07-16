@@ -191,3 +191,58 @@ The developer method remains hidden. Under the agreed constraints there will
 be no postprocessing, retraining, GUI exposure, model packaging, or inference
 optimization. The implementation and measurements remain as a reproducible
 research result.
+
+## Separate X-veon ONNX experiment
+
+The later X-veon experiment is independent of the closed Gharbi drop-in test.
+It uses the hidden `xveon-xtrans-onnx` identifier and the externally supplied
+model at revision `2e6b96c63559aa3909b0c7c1bc45dfd4b5dfe680`, SHA-256
+`45b1fa22b0027868fd5c20ec7b59234ed5aeb35de89fbc0950a4bec67f328500`.
+The repository and model have no explicit license, so no model, packaging, GUI
+entry, or runtime download is included.
+
+The 7752x5178 DSCF0771 export completed through ONNX Runtime CPU 1.27.0
+without fallback. TIFF SHA-256 is
+`8093d83b8c625bafc6424476220cea286f446bce8d89f9ea57562d226aefea0b`.
+Three measured wall times were 45.60, 67.24, and 39.79 seconds. The 45.60 s
+median is 11.57x the 3.94 s Markesteijn reference, narrowly failing the 10x
+runtime gate. Peak RSS was 1,991,508 KiB, only 188,048 KiB above Markesteijn,
+so the 4 GiB memory gate passes.
+
+Crop `(3450,1750,700,500)` passes the aggregate objective checks:
+
+| Channel | X-veon phase RMS | Limit | X-veon minus Markesteijn mean |
+| --- | ---: | ---: | ---: |
+| Red | 0.0007942 | 0.0015000 | +0.0006301 |
+| Green | 0.0007060 | 0.0015000 | +0.0000935 |
+| Blue | 0.0006752 | 0.0015643 | -0.0009562 |
+
+Common luminance delta is `-0.0000776` and the RGB-delta range is `0.0015863`,
+both inside the `0.005` limits. Visual review passes: X-veon renders the 500%
+metallic-earring crop more continuously and neutrally, while Markesteijn shows
+stronger magenta/cyan segmentation along the hoop's left edge. This reverses
+the earlier conservative interpretation after direct side-by-side review. The
+runtime criterion still fails, so the method stays hidden; the corrected
+external canonical comparison report has SHA-256
+`cb5ac535c27359ea59f1b7b1361f3681f402dcdaa62634eaf8299555a0a0143a`.
+
+The extended analytical benchmark was also run at 48x48 pixels. X-veon's
+CPSNR versus Markesteijn was 62.42 versus 88.34 dB for a constant, 37.77
+versus 55.50 dB for a gradient, 49.13 versus 37.94 dB for impulses, 9.53
+versus 10.41 dB for the frequency sweep, 14.91 versus 24.59 dB for saturated
+edges, 54.62 dB versus exact black, and 17.66 versus 18.07 dB for the
+asymmetric-orientation scene. The saturated-edge and nonzero-black results
+independently fail the analytical quality gate. These deliberately small
+fixtures exercise padding and overlap heavily; they are diagnostic challenges,
+not estimates of natural-image mean quality.
+
+A fourth full-resolution export produced pixel-identical 16-bit RGB values to
+the preserved X-veon TIFF. The complete TIFF hashes differ because RawTherapee
+embeds run-dependent metadata, but all 120,419,568 channel samples compare
+equal. Native and independent Python ONNX Runtime tile inference are also
+bit-identical on the deterministic 288x288 parity input.
+
+Compact baseline and X-veon full-frame/earring PNGs are tracked under
+`devnotes/images/xtrans-neural/DSCF0771/`. Their canonical manifest records
+the RAW, TIFF, ICC, model, crop, and image identities. Full TIFFs, the RAF,
+ONNX weights, logs, and generated JSON remain external.

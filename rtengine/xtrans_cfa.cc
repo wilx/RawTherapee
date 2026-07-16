@@ -11,6 +11,14 @@ bool findCanonicalXTransTransform(
     const int actual[6][6],
     XTransCfaTransform &result)
 {
+    return findCanonicalXTransTransform(actual, CANONICAL_XTRANS_CFA, result);
+}
+
+bool findCanonicalXTransTransform(
+    const int actual[6][6],
+    const int canonical[6][6],
+    XTransCfaTransform &result)
+{
     // Keep this order stable. The canonical matrix has symmetries, so more
     // than one transform may match a representation of it.
     constexpr int matrices[8][4] = {
@@ -30,7 +38,7 @@ bool findCanonicalXTransTransform(
                         const int cx = positiveModulo(matrix[0] * x + matrix[1] * y + ox, 6);
                         const int cy = positiveModulo(matrix[2] * x + matrix[3] * y + oy, 6);
 
-                        if (actual[y][x] != CANONICAL_XTRANS_CFA[cy][cx]) {
+                        if (actual[y][x] != canonical[cy][cx]) {
                             matches = false;
                             break;
                         }
@@ -52,8 +60,22 @@ XTransCfaView::XTransCfaView(
     const XTransCfaTransform &transform,
     int actualWidth,
     int actualHeight) :
+    XTransCfaView(transform, actualWidth, actualHeight, CANONICAL_XTRANS_CFA)
+{
+}
+
+XTransCfaView::XTransCfaView(
+    const XTransCfaTransform &transform,
+    int actualWidth,
+    int actualHeight,
+    const int canonical[6][6]) :
     transform_(transform)
 {
+    for (int y = 0; y < 6; ++y) {
+        for (int x = 0; x < 6; ++x) {
+            canonical_[y][x] = canonical[y][x];
+        }
+    }
     if (actualWidth <= 0 || actualHeight <= 0) {
         return;
     }
@@ -136,7 +158,7 @@ int XTransCfaView::colorAtCanonical(int u, int v) const
 {
     const int x = positiveModulo(u + minimumX_, 6);
     const int y = positiveModulo(v + minimumY_, 6);
-    return CANONICAL_XTRANS_CFA[y][x];
+    return canonical_[y][x];
 }
 
 } // namespace rtengine
