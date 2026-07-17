@@ -376,3 +376,19 @@ as `python -m tools.neural_demosaic.compare_xveon_outputs`. See
 quality result, and licensing boundary. Neither the upstream repository nor
 the model had an explicit license at the pinned revision, so weights remain
 external and the method remains absent from the GUI.
+
+For the optional RX 7800 XT MIGraphX experiment, configure the same build with
+`-DWITH_MIGRAPHX=ON -DMIGRAPHX_ROOT=/opt/rocm`, then use:
+
+```sh
+RT_XVEON_XTRANS_MODEL=/path/xtrans.onnx \
+RT_XVEON_XTRANS_BACKEND=migraphx \
+RT_XVEON_MIGRAPHX_CACHE_DIR=/path/to/private-cache \
+    build/dev/rtgui/rawtherapee-cli -p profile.pp3 -o output.tif -c input.RAF
+```
+
+`compare_xveon_backends` reports deterministic float-tile error statistics;
+`compare_xveon_migraphx` validates full-resolution TIFF parity, timings,
+repeated pixel determinism, phase texture, and the Phase 11 gates. Real GPU
+CTest coverage is `rtengine.neural_model.xveon_migraphx` and skips without the
+external model or accessible `/dev/kfd`.

@@ -246,3 +246,38 @@ Compact baseline and X-veon full-frame/earring PNGs are tracked under
 `devnotes/images/xtrans-neural/DSCF0771/`. Their canonical manifest records
 the RAW, TIFF, ICC, model, crop, and image identities. Full TIFFs, the RAF,
 ONNX weights, logs, and generated JSON remain external.
+
+## Phase 11: X-veon MIGraphX acceleration
+
+The optional direct MIGraphX 2.15.0 backend passes its separate acceleration
+and CPU-parity gate on the reviewed RX 7800 XT. It uses the identical hidden
+method, raw wrapper, tiling, and authenticated ONNX bytes; only network
+execution changes.
+
+Deterministic tile error versus ONNX Runtime CPU is maximum `0.000988603`, RMS
+`0.000119834`, and p99 `0.000316441`. Fresh and compiled-cache MIGraphX outputs
+are bit-identical. Cold compilation took 45.0 seconds, cache loading about 0.35
+seconds, and 100 warmed tiles averaged 2.214 ms. Fast math was only 1.7 percent
+faster and was rejected under the planned 10 percent threshold.
+
+Three cached DSCF0771 exports took 6.97, 6.92, and 7.09 seconds, median 6.97
+seconds. That is a 6.54x speedup over CPU X-veon and 1.77x the Markesteijn
+reference. Peak host RSS was 2,373,852 KiB; sampled added VRAM was 399,572,992
+bytes.
+
+The rendered CPU/GPU result is 68.30 dB CPSNR with SSIM `0.99987655`.
+Full-frame channel-mean deltas are
+`(+0.00008483, -0.00003786, +0.00003280)`. Crop phase RMS changes are all
+negative: `(-0.00005526, -0.00001660, -0.00000013)`. Repeated GPU pixel values
+are identical, and side-by-side review found no visible full-frame or metallic-
+earring regression. The seven analytical cases keep the earlier conclusions;
+the largest backend CPSNR shift is -0.18 dB on black.
+
+The canonical external Phase 11 comparison JSON has SHA-256
+`418d73c0b11461607acaec60f0409c822ab6ec2f82e16bec12b41707a3ba64cf`.
+As with the full TIFFs, model, timing logs, and generated GPU crops, it remains
+untracked.
+
+Phase 11 therefore passes, but this does not reopen GUI or packaging work. The
+model remains unlicensed, and the earlier analytical saturated-edge and
+nonzero-black quality failures remain documented.

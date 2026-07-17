@@ -47,7 +47,7 @@ COMPLETION_RE = re.compile(
     r"workspace_per_worker=(\d+).*?workspace_total=(\d+).*?elapsed_us=(\d+)"
 )
 XVEON_COMPLETION_RE = re.compile(
-    r"X-veon X-Trans completed:.*?artifact=([0-9a-f]{64}).*?ort=(\S+).*?provider=(\S+).*?"
+    r"X-veon X-Trans completed:.*?artifact=([0-9a-f]{64}).*?(?:ort|runtime)=(\S+).*?provider=(\S+).*?"
     r"tiles=(\d+).*?working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
 )
 

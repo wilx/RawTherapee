@@ -37,7 +37,7 @@ MODEL_SHA256 = "45b1fa22b0027868fd5c20ec7b59234ed5aeb35de89fbc0950a4bec67f328500
 FALLBACK_MARKER = "falling back to 3-pass (Markesteijn)"
 COMPLETION_RE = re.compile(
     r"X-veon X-Trans completed:.*?method=(\S+).*?artifact=([0-9a-f]{64}).*?"
-    r"ort=(\S+).*?provider=(\S+).*?tile=(\S+).*?overlap=(\d+).*?stride=(\d+).*?"
+    r"(?:ort|runtime)=(\S+).*?provider=(\S+).*?tile=(\S+).*?overlap=(\d+).*?stride=(\d+).*?"
     r"tiles=(\d+).*?thread_policy=(\S+).*?working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
 )
 

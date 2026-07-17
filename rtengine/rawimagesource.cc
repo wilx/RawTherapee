@@ -1897,13 +1897,17 @@ bool RawImageSource::xveon_xtrans_interpolate()
         std::chrono::steady_clock::now() - started).count();
     std::fprintf(
         stderr,
-        "X-veon X-Trans completed: method=%s artifact=%s ort=%s provider=%s "
-        "tile=288x288 overlap=48 stride=240 tiles=%llu thread_policy=ort-default-intra,inter-1,sequential "
+        "X-veon X-Trans completed: method=%s artifact=%s runtime=%s provider=%s "
+        "compile_source=%s compile_us=%llu last_inference_us=%llu "
+        "tile=288x288 overlap=48 stride=240 tiles=%llu thread_policy=backend-managed,sequential "
         "working_buffer_estimate=%llu elapsed_us=%lld\n",
         XVEON_XTRANS_ONNX_METHOD,
         loaded.runner->artifactSha256().c_str(),
         loaded.runner->runtimeVersion().c_str(),
         loaded.runner->provider().c_str(),
+        loaded.runner->compileSource().c_str(),
+        static_cast<unsigned long long>(loaded.runner->compilationMicroseconds()),
+        static_cast<unsigned long long>(loaded.runner->lastInferenceMicroseconds()),
         static_cast<unsigned long long>(run.tileCount),
         static_cast<unsigned long long>(run.workingBufferBytes),
         static_cast<long long>(elapsed));

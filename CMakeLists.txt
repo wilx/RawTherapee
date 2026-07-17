@@ -199,6 +199,12 @@ set(
     CACHE PATH
     "Root of the ONNX Runtime 1.27.0 CPU archive (include/ and lib/)"
 )
+option(WITH_MIGRAPHX "Build the developer-only X-veon MIGraphX experiment" OFF)
+set(
+    MIGRAPHX_ROOT "/opt/rocm"
+    CACHE PATH
+    "Root of the reviewed ROCm/MIGraphX 2.15.0 installation"
+)
 option(WITH_PROF "Build with profiling instrumentation" OFF)
 option(WITH_SYSTEM_KLT "Build using system KLT library." OFF)
 option(WITH_SYSTEM_LIBRAW "Build using system LibRaw library." OFF)
@@ -481,6 +487,42 @@ if(WITH_ONNXRUNTIME)
     )
     get_filename_component(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_LIBRARY}" DIRECTORY)
     message(STATUS "X-veon experiment: ONNX Runtime root ${ONNXRUNTIME_ROOT}")
+endif()
+
+if(WITH_MIGRAPHX)
+    find_path(
+        MIGRAPHX_INCLUDE_DIR
+        NAMES migraphx/migraphx.h migraphx/version.h
+        PATHS "${MIGRAPHX_ROOT}/include"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
+    find_library(
+        MIGRAPHX_C_LIBRARY
+        NAMES migraphx_c
+        PATHS "${MIGRAPHX_ROOT}/lib"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
+    file(STRINGS "${MIGRAPHX_INCLUDE_DIR}/migraphx/version.h" MIGRAPHX_MAJOR_LINE
+        REGEX "^#define MIGRAPHX_VERSION_MAJOR 2$")
+    file(STRINGS "${MIGRAPHX_INCLUDE_DIR}/migraphx/version.h" MIGRAPHX_MINOR_LINE
+        REGEX "^#define MIGRAPHX_VERSION_MINOR 15$")
+    file(STRINGS "${MIGRAPHX_INCLUDE_DIR}/migraphx/version.h" MIGRAPHX_PATCH_LINE
+        REGEX "^#define MIGRAPHX_VERSION_PATCH 0$")
+    if(NOT MIGRAPHX_MAJOR_LINE OR NOT MIGRAPHX_MINOR_LINE OR NOT MIGRAPHX_PATCH_LINE)
+        message(FATAL_ERROR "The X-veon experiment requires MIGraphX 2.15.0")
+    endif()
+    add_library(MIGraphX::c SHARED IMPORTED)
+    set_target_properties(
+        MIGraphX::c
+        PROPERTIES
+            IMPORTED_LOCATION "${MIGRAPHX_C_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${MIGRAPHX_INCLUDE_DIR}"
+    )
+    get_filename_component(MIGRAPHX_LIBRARY_DIR "${MIGRAPHX_C_LIBRARY}" DIRECTORY)
+    set(MIGRAPHX_TRANSITIVE_LIBRARY_DIR "${MIGRAPHX_ROOT}/lib/migraphx/lib")
+    message(STATUS "X-veon experiment: MIGraphX root ${MIGRAPHX_ROOT}")
 endif()
 
 if(WIN32)

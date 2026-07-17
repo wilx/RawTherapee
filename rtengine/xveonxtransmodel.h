@@ -40,6 +40,9 @@ public:
     virtual const std::string &artifactSha256() const = 0;
     virtual const std::string &runtimeVersion() const = 0;
     virtual const std::string &provider() const = 0;
+    virtual const std::string &compileSource() const = 0;
+    virtual std::uint64_t compilationMicroseconds() const = 0;
+    virtual std::uint64_t lastInferenceMicroseconds() const = 0;
     virtual std::uint64_t workingBufferBytes() const = 0;
 };
 

@@ -678,6 +678,9 @@ int main(int argc, char **argv)
         if (mode == "xveon-reviewed") {
             return xtrans_xveon_test::reviewedModel();
         }
+        if (mode == "xveon-migraphx") {
+            return xtrans_xveon_test::migraphxParity();
+        }
         if (mode == "inference-benchmark") {
             return demosaicnet_inference_test::benchmark();
         }

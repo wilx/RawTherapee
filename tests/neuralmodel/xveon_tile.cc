@@ -1,6 +1,7 @@
 #include "rtengine/xtrans_xveon.h"
 
 #include <cmath>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -12,8 +13,13 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 3) {
-        std::cerr << "usage: rawtherapee-xveon-tile MODEL.onnx OUTPUT.f32le\n";
+    if (argc != 3 && argc != 4) {
+        std::cerr << "usage: rawtherapee-xveon-tile MODEL.onnx OUTPUT.f32le [ITERATIONS]\n";
+        return 2;
+    }
+    const int iterations = argc == 4 ? std::atoi(argv[3]) : 1;
+    if (iterations < 1 || iterations > 1000) {
+        std::cerr << "iterations must be in 1..1000\n";
         return 2;
     }
     const auto loaded = rtengine::neural::loadCachedXVeonXTransRunner(argv[1]);
@@ -33,12 +39,25 @@ int main(int argc, char **argv)
             input[(static_cast<std::size_t>(channel) + 1) * pixels + pixel] = 1.f;
         }
     }
-    const auto error = loaded.runner->run(input.data(), input.size(), output.data(), output.size());
-    if (error) {
-        std::cerr << "error [" << rtengine::neural::neuralModelErrorCodeName(error.code)
-                  << "]: " << error.message << '\n';
-        return 2;
+    std::uint64_t inferenceTotal = 0;
+    for (int iteration = 0; iteration < iterations; ++iteration) {
+        const auto started = std::chrono::steady_clock::now();
+        const auto error = loaded.runner->run(input.data(), input.size(), output.data(), output.size());
+        inferenceTotal += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - started).count());
+        if (error) {
+            std::cerr << "error [" << rtengine::neural::neuralModelErrorCodeName(error.code)
+                      << "]: " << error.message << '\n';
+            return 2;
+        }
     }
+    std::cerr << "backend=" << loaded.runner->provider()
+              << " runtime=" << loaded.runner->runtimeVersion()
+              << " compile_source=" << loaded.runner->compileSource()
+              << " compile_us=" << loaded.runner->compilationMicroseconds()
+              << " inference_us=" << loaded.runner->lastInferenceMicroseconds()
+              << " iterations=" << iterations
+              << " inference_average_us=" << inferenceTotal / static_cast<std::uint64_t>(iterations) << '\n';
     std::unique_ptr<std::FILE, int (*)(std::FILE *)> file(g_fopen(argv[2], "wb"), std::fclose);
     if (!file) {
         std::cerr << "cannot open output\n";

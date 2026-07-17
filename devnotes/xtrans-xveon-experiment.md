@@ -45,6 +45,44 @@ back the cached session. Only the CPU provider, sequential graph execution,
 full graph optimization, default intra-op threading, and one inter-op thread
 are used. Telemetry is disabled.
 
+### Optional MIGraphX backend
+
+Phase 11 adds a second default-off build switch for the reviewed ROCm 7.2.1 /
+MIGraphX 2.15.0 development stack:
+
+```sh
+/usr/bin/cmake --preset dev \
+    -DWITH_ONNXRUNTIME=ON \
+    -DONNXRUNTIME_ROOT=/path/onnxruntime-linux-x64-1.27.0 \
+    -DWITH_MIGRAPHX=ON \
+    -DMIGRAPHX_ROOT=/opt/rocm
+cmake --build build/dev --target rawtherapee-cli rawtherapee-neuralmodel-tests
+```
+
+The direct MIGraphX C API preserves RawTherapee's C++11 baseline. Select a
+backend explicitly with `RT_XVEON_XTRANS_BACKEND=onnxruntime-cpu` or
+`RT_XVEON_XTRANS_BACKEND=migraphx`. ONNX Runtime remains the default when both
+are compiled. An unavailable explicitly selected backend is a loud failure;
+it never silently executes the other neural backend.
+
+MIGraphX parses only the already authenticated in-memory ONNX bytes, compiles
+for `gpu` with offload copies, exhaustive tuning disabled, and strict math,
+and validates the fixed input and output contracts before execution. Set
+`RT_XVEON_MIGRAPHX_CACHE_DIR` to a user-owned mode-0700 directory to enable the
+developer compiled-program cache. Cache files are bound to the model digest,
+complete MIGraphX version, reviewed `gfx1101` ISA, compile settings, payload
+size, and payload SHA-256. Symlinks, foreign ownership, and group/world-writable
+directories or files are rejected. The compiled program is published last as
+the atomic completion marker and receives a finite first-run check when loaded.
+`RT_XVEON_MIGRAPHX_FAST_MATH=1` selects a separate evaluation-only cache key;
+it is not recommended because the measured speedup was below the Phase 11
+retention threshold.
+
+ROCm GPU access requires the process to inherit the `render` group. A shell
+started before group membership changed can use `sg render -c '...'`, or be
+restarted. The compiled cache contains model values and remains ignored and
+external for the same licensing reason as the ONNX model.
+
 ## Raw-domain and tiling contract
 
 The network receives NCHW float32 `[1,4,288,288]`: the scaled scalar mosaic
@@ -117,3 +155,51 @@ metadata changes the whole-file digest.
 The tracked compact comparison assets and their canonical identity manifest
 are under `devnotes/images/xtrans-neural/DSCF0771/`; the RAF, full TIFFs, model,
 timing logs, and canonical comparison JSON remain external.
+
+## Phase 11 MIGraphX result
+
+The deterministic 288x288 tile comparison covers all 248,832 output floats.
+Against ONNX Runtime CPU it measured maximum absolute error `0.000988603`, RMS
+`0.000119834`, p99 `0.000316441`, and mean `0.000090861`; all reviewed aggregate
+GPU bounds pass. The pre-existing tighter per-value diagnostic remains
+unchanged and 17,974 values satisfy it. Fresh and cache-loaded MIGraphX output
+is bit-identical.
+
+Fresh compilation took 45.0 seconds. The authenticated 15,926,288-byte compiled
+program has SHA-256
+`2152adb0e16898cef340be7d961b099b1b86089176f746990eb66c82bebe8b04`;
+cache loading took approximately 0.35 seconds. One hundred warmed strict tiles
+averaged 2.214 ms in the RawTherapee driver. Fast math was output-identical but
+averaged 2.176 ms, only 1.7 percent faster, so it fails the required 10 percent
+benefit and strict math remains selected.
+
+Three cached 7752x5178 exports took `6.97`, `6.92`, and `7.09` seconds, median
+`6.97` seconds. This is 6.54 times faster than the 45.60-second CPU median and
+1.77 times the 3.94-second Markesteijn reference. Peak host RSS was 2,373,852
+KiB. Sampled VRAM rose by 399,572,992 bytes above an already occupied
+10,697,834,496-byte baseline.
+
+Full-frame CPU-versus-GPU comparison measured 68.30 dB CPSNR, SSIM
+`0.99987655`, RMS `0.00038474`, p99 `0.00148013`, and maximum `0.00737011`.
+Absolute channel-mean deltas were all below `0.000085`. On the agreed crop,
+MIGraphX phase RMS was `(0.0007389, 0.0006894, 0.0006750)`, slightly lower in
+all channels than the CPU result. Repeated GPU exports are pixel-identical;
+whole TIFF hashes differ only because of run-dependent metadata. Visual review
+of the full-third and 500-percent earring comparisons found no colour, texture,
+seam, clipping, sharpness, or earring regression.
+
+All seven analytical scenes retain the earlier qualitative findings. The
+largest CPSNR change is -0.18 dB on the diagnostic black case; the saturated
+edge and nonzero-black failures therefore remain model-quality findings rather
+than backend changes. The Phase 11 acceleration/parity gate passes. The method
+still stays hidden because the upstream model has no explicit license and the
+earlier analytical quality gate remains unresolved.
+
+The combined backend build and CTests pass in normal and debug configurations,
+and the default-off CLI has no ONNX Runtime, ROCm, or MIGraphX dependency.
+Clang 18 ASan/UBSan passes the complete self-contained neural suite and the
+reviewed CPU/GPU parity tests. The Phase 11 C and C++ sources also compile with
+the GCC strict-warning flags. The full GCC 13 strict build remains blocked by
+the pre-existing `dcraw.cc` fortified-memmove warning, and GCC 13 additionally
+ICEs in that file when compiling the whole target with ASan/UBSan; neither
+failure involves a Phase 11 source.

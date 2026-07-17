@@ -12,7 +12,7 @@ XVeonXTransLoadResult loadCachedXVeonXTransRunner(const Glib::ustring &)
         nullptr,
         NeuralModelError(
             NeuralModelErrorCode::RUNTIME,
-            "RawTherapee was built without WITH_ONNXRUNTIME")
+            "RawTherapee was built without an X-veon neural backend")
     };
 }
 

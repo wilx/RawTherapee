@@ -38,7 +38,9 @@ implement the convolution engine.
 ## Non-goals for version 1
 
 * Do not load .pth or any pickle format from RawTherapee.
-* Do not embed Python, libtorch, ONNX Runtime, or another inference framework.
+* Do not embed Python, libtorch, ONNX Runtime, or another inference framework
+  in the RTNN/Gharbi runtime. The later X-veon experiment is a separate,
+  optional development target and leaves ordinary builds dependency-free.
 * Do not convert arbitrary PyTorch models.
 * Do not quantize weights to float16 or integers.
 * Do not fuse, prune, retrain, fine-tune, or otherwise change model values.
@@ -505,6 +507,226 @@ the demosaic GUI. Complete translations, history, profile editing, partial
 paste, preview/export behavior, and missing-model handling in this phase. If
 the quality gate fails, do not expose the method in the GUI.
 
+## Phase 11: developer-only X-veon MIGraphX acceleration and CPU parity gate
+
+Status: implemented and measured on the reviewed RX 7800 XT stack. The direct
+backend, authenticated compiled cache, native parity coverage, full-resolution
+comparison, and timing gate pass. Strict math is retained because fast math
+improves warmed tile time by only 1.7 percent. See
+`devnotes/xtrans-neural-phase9-report.md` for the recorded results.
+
+Phase 11 is a separate continuation of the later X-veon experiment. It does
+not reopen the failed Gharbi Phase 10 gate and does not authorize GUI exposure
+or model distribution. Its purpose is to replace the current CPU-only X-veon
+execution bottleneck with a directly linked MIGraphX GPU backend while keeping
+the existing ONNX Runtime 1.27.0 CPU backend as the reviewed reference and
+portable fallback build option.
+
+The verified development stack for the first implementation is:
+
+| Component | Reviewed value |
+| --- | --- |
+| GPU | AMD Radeon RX 7800 XT, `gfx1101`, 60 compute units, 16 GiB |
+| ROCm | 7.2.1 |
+| MIGraphX | 2.15.0, tweak `20250912-17-200-gde19b73ad` |
+| X-veon model file | Repository `naorunaoru/x-veon`, revision `2e6b96c63559aa3909b0c7c1bc45dfd4b5dfe680`, regular file `web/public/xtrans.onnx` |
+| X-veon ONNX | 15,536,134 bytes, SHA-256 `45b1fa22b0027868fd5c20ec7b59234ed5aeb35de89fbc0950a4bec67f328500` |
+| CPU reference | ONNX Runtime 1.27.0 `CPUExecutionProvider` |
+
+The required model is the actual `web/public/xtrans.onnx` file from that
+revision, not a GitHub HTML page, Git LFS pointer, symlink, or MIGraphX compiled
+cache file. After obtaining it, verify the size and SHA-256 above before setting
+`RT_XVEON_XTRANS_MODEL` to its local path.
+
+Initial feasibility checks are not parity acceptance results, but they prove
+that the installed stack can execute this exact graph. ROCm enumerates the GPU
+as `amdgcn-amd-amdhsa--gfx1101`; MIGraphX compiled and ran its native GPU GEMM
+test; and MIGraphX parsed, compiled, and executed the complete X-veon
+`1x4x288x288` to `1x3x288x288` FP16 U-Net. A fresh process spent approximately
+46 seconds compiling the graph, while the driver's warmed 50-iteration timing
+reported approximately 1.282 ms per tile. Phase 11 must measure end-to-end
+RawTherapee behavior rather than treating that kernel-only number as an export
+prediction.
+
+### Build and backend selection
+
+Add `WITH_MIGRAPHX`, default `OFF`, and a `MIGRAPHX_ROOT` cache path defaulting
+to `/opt/rocm`. Discover the C header, version header, `libmigraphx_c.so`, and
+the libraries required by its exported target explicitly. Require MIGraphX
+2.15.0 for the first reviewed build and give development binaries a build
+RPATH to the selected ROCm and MIGraphX library directories. Do not install or
+bundle ROCm, MIGraphX, or their transitive libraries. `WITH_MIGRAPHX=OFF` must
+leave the existing build graph and binaries unchanged.
+
+Both `WITH_ONNXRUNTIME` and `WITH_MIGRAPHX` must be usable in one build so a
+single native test process can compare both backends. Refactor model reading,
+the 15,536,134-byte limit, SHA-256 authentication, immutable model bytes,
+fixed tensor constants, and cache ownership out of the ONNX Runtime-specific
+source. Keep `XVeonXTransRunner` as the demosaic wrapper's backend-neutral
+interface.
+
+Select the implementation with a development-only environment value:
+
+```text
+RT_XVEON_XTRANS_BACKEND=onnxruntime-cpu
+RT_XVEON_XTRANS_BACKEND=migraphx
+```
+
+The default remains `onnxruntime-cpu` when it is compiled, preserving the
+existing experiment. An explicitly selected unavailable or failed backend is
+an error and triggers the existing loud Markesteijn overwrite; it must not
+silently run the other neural backend and invalidate timing or parity results.
+Cache successful runners by canonical model path plus backend and compile
+options. Do not cache failures.
+
+### Direct MIGraphX runner
+
+Use MIGraphX's C API from C++11 RAII holders; do not introduce its C++ wrapper,
+Python binding, or an ONNX Runtime MIGraphX build into RawTherapee. The runner
+must:
+
+1. retain and authenticate the same complete ONNX byte buffer used by the CPU
+   path;
+2. call `migraphx_parse_onnx_buffer` only after authentication;
+3. require exactly one float32 parameter named `input` with shape
+   `1x4x288x288` and one float32 result with shape `1x3x288x288`;
+4. create the `gpu` target, enable host/device offload copies, disable
+   exhaustive tuning, and initially disable fast math for the parity baseline;
+5. wrap reusable host input storage in a MIGraphX argument, run sequentially
+   under the runner's existing mutex, synchronize before reading output, and
+   copy results to the caller only after successful finite-value validation;
+6. preserve signed output and the existing tiling, CFA, blending, and fallback
+   contracts unchanged; and
+7. report backend, MIGraphX version, target/agent identity when available,
+   compile source, compile time, and inference time separately in the
+   developer diagnostic.
+
+The exact authenticated model digest already binds the reviewed custom ONNX
+metadata (`epoch=399`, `base_width=32`, and `best_val_psnr=45.78`). MIGraphX
+still has to validate the executable parameter and output shapes after parsing;
+it must not accept an arbitrary same-shaped model or weaken the existing file
+identity gate. Map every C API operation to the existing structured
+`NeuralModelErrorCode`; the MIGraphX C API's coarse status values must be
+augmented with the failed operation name rather than exposed as an unexplained
+generic error.
+
+### Compiled-program cache
+
+Process caching removes repeated compilation within one RawTherapee process,
+but CLI exports start new processes. Add a developer-only compiled-program
+cache only after fresh-compilation parity passes.
+
+The cache identity must include the ONNX SHA-256, MIGraphX complete version,
+GPU ISA, offload-copy/fast-math/exhaustive-tune settings, and a cache-format
+revision. Write the compiled MIGraphX program and canonical identity manifest
+through temporary files and atomic renames. Record the compiled payload's size
+and SHA-256. Accept cache files only from a user-owned directory that is not
+group- or world-writable, reject symlinks and ownership/mode violations, and
+fall back to recompilation on any identity, digest, load, or first-run failure.
+Never fall back to unauthenticated ONNX weights. Generated compiled programs
+remain external and ignored because they contain the unlicensed model values
+and are GPU/runtime specific.
+
+Require a program loaded from cache to reproduce freshly compiled MIGraphX
+output exactly on the deterministic tile. Measure and report cold parse,
+compile, serialization, cache-load, first-run, and warmed-run times separately.
+The cold compilation cost is not folded into steady-state export timing, but a
+working cache is required before this backend can be considered usable outside
+a single long-lived editor process.
+
+### CPU-versus-GPU numerical comparison
+
+The ONNX Runtime CPU runner remains the reference implementation. Generate the
+same deterministic canonical X-veon tile already used by
+`rawtherapee-xveon-tile`, run it repeatedly through both backends in the same
+build, and compare all 248,832 output floats. Record exact matches, maximum,
+mean, RMS, p90 and p99 absolute error, relative error away from zero, and the
+number satisfying the existing `5e-6 + 1e-5 * abs(cpu)` diagnostic tolerance.
+Do not require bit identity across CPU and GPU FP16 implementations and do not
+silently widen that existing diagnostic tolerance.
+
+The backend acceptance bounds are all values finite, maximum absolute error at
+most `0.005`, RMS at most `0.0005`, and p99 absolute error at most `0.001` in
+normalized network output. These aggregate bounds are additional, explicitly
+reviewed GPU criteria; they do not change the tighter CPU/native parity tests.
+Repeat the comparison with fast math enabled. Retain fast math only if it
+passes the same numerical and image gates and improves warmed inference by at
+least 10 percent; otherwise production experiment settings remain strict.
+
+Run the existing 173x31 rotated/translated full-wrapper case through both
+backends and add horizontal and vertical multi-tile cases. These compare CFA
+canonicalization, leading reflection, right/bottom zero extension, overlap
+ramps, accumulation, and coordinate restoration in addition to network
+inference. Require deterministic repeated GPU output and no non-finite values,
+seams, channel swaps, or fallback.
+
+### Existing images and full-RAF comparison
+
+Reuse the current CPU-only X-veon comparison assets under
+`devnotes/images/xtrans-neural/DSCF0771/` as the visual baseline. Their
+canonical manifest binds the source RAW, CPU X-veon TIFF, ICC profile,
+full-third PNG, and 500-percent earring PNG. Do not regenerate or overwrite
+those baseline files merely because a new backend is being tested.
+
+For numerical comparison, reuse the external 16-bit CPU X-veon TIFF only when
+its size, dimensions, ICC digest, and SHA-256
+`8093d83b8c625bafc6424476220cea286f446bce8d89f9ea57562d226aefea0b`
+match the tracked manifest; otherwise regenerate it with the pinned CPU
+backend. Produce a fresh GPU TIFF with identical PP3 and unrelated processing
+disabled. Compare every RGB sample and report CPU-versus-GPU CPSNR/PSNR, SSIM,
+maximum/mean/RMS/p99 difference, channel means, observed-sample disagreement,
+and 3x3 CFA-phase bias/RMS on crop `(3450,1750,700,500)`.
+
+Require CPU-versus-GPU rendered CPSNR of at least 60 dB, SSIM of at least
+0.999, absolute per-channel full-frame mean delta at most `0.0005`, and no
+backend-induced crop phase-RMS increase greater than `0.00025`. Generate
+untracked GPU full-third and nearest-neighbour 500-percent earring PNGs in the
+same geometry as the tracked CPU files and inspect them side by side at 100
+and 500 percent. There must be no visible colour, texture, seam, clipping,
+sharpness, or earring regression. Commit separate GPU images only if they are
+needed to document a reviewed difference; the existing CPU images remain the
+stable baseline.
+
+Also rerun the seven analytical TIFF cases through MIGraphX and compare both
+against their CPU X-veon results and the existing Markesteijn references. GPU
+acceleration must not change the already documented X-veon quality findings;
+it cannot turn a numerical backend difference into a claimed demosaicing
+improvement.
+
+### Native tests, benchmark, and decision gate
+
+Extend CTest with:
+
+* dependency-free backend-selection, unavailable-backend, cache-key, and loud
+  fallback tests;
+* MIGraphX build/version and model-contract failures that do not require a
+  GPU where possible;
+* optional real-GPU deterministic tile, CPU parity, compiled-cache reload,
+  full-wrapper, and injected-failure cases; and
+* exact checks that a partial GPU result is discarded before Markesteijn
+  overwrites all output planes.
+
+Real-model/GPU cases require `XVEON_XTRANS_ONNX` and a usable `/dev/kfd`; they
+return skip code 77 otherwise. Mandatory CI must not download the model or
+require ROCm. Run normal, debug, strict-source, ASan/UBSan, and
+`WITH_MIGRAPHX=OFF` builds; CTest with CPU only, MIGraphX built without a
+model, and both backends with the reviewed model; repeated output determinism;
+`ldd`; and `git diff --check`.
+
+For `DSCF0771.RAF`, run one warm-up and three measured exports for the cached
+GPU backend on the same host. Report cold compilation separately, then compare
+the median cached total with the existing CPU X-veon median of 45.60 seconds
+and Markesteijn's 3.94 seconds. Passing requires at least a 2x speedup over the
+CPU X-veon median, no more than 10x Markesteijn, no more than 4 GiB additional
+peak host RSS, bounded/reported VRAM use, and all numerical and visual parity
+criteria above.
+
+A Phase 11 pass retains MIGraphX as an optional hidden backend for the X-veon
+experiment. It still does not permit model packaging or GUI exposure while
+the upstream model lacks an explicit compatible license. A parity, stability,
+cache, or quality failure leaves the existing CPU experiment unchanged and
+the MIGraphX path disabled.
+
 ## Updating or upgrading the upstream checkpoint
 
 Never edit a .pth file in place and never treat an upstream filename replacement
@@ -583,6 +805,9 @@ Keep reviewable changes separated:
    the real-image quality gate without GUI exposure.
 7. **Packaging and GUI:** only after the developer method passes the quality
    gate.
+8. **Separate X-veon acceleration:** retain the reviewed CPU backend, add the
+   optional direct MIGraphX runner, prove CPU/GPU parity, and repeat the hidden
+   method's quality and runtime gates before considering any wider exposure.
 
 ## Acceptance criteria
 
@@ -600,7 +825,9 @@ The conversion stage is complete when:
   ctest --test-dir build/dev --output-on-failure passes;
 * CMake with BUILD_TESTING disabled builds RawTherapee without test targets;
 * loader code is clean under normal, ASan, and UBSan builds;
-* no Python or neural runtime dependency is added to RawTherapee;
+* no Python or neural runtime dependency is added to ordinary RawTherapee
+  builds; optional X-veon development backends remain default-off and
+  independently gated;
 * licensing determines whether the artifact is bundled or externally supplied;
   and
 * the immutable C++ model object is ready for the tiled convolution engine.

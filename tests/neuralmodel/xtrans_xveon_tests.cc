@@ -20,6 +20,8 @@
 #include <thread>
 #include <vector>
 
+#include <unistd.h>
+
 #include <glib/gstdio.h>
 
 namespace
@@ -85,6 +87,9 @@ public:
     const std::string &artifactSha256() const override { return artifact; }
     const std::string &runtimeVersion() const override { return runtime; }
     const std::string &provider() const override { return providerName; }
+    const std::string &compileSource() const override { return source; }
+    std::uint64_t compilationMicroseconds() const override { return 0; }
+    std::uint64_t lastInferenceMicroseconds() const override { return 0; }
     std::uint64_t workingBufferBytes() const override { return 1234; }
 
     Mode mode_;
@@ -94,6 +99,7 @@ public:
     std::string artifact = std::string(64, 'a');
     std::string runtime = "mock";
     std::string providerName = "mock";
+    std::string source = "mock";
 };
 
 rtengine::XVeonXTransRunResult runCase(
@@ -231,7 +237,13 @@ int mockContract()
 
 int loaderContract()
 {
-#ifdef RT_TEST_WITH_ONNXRUNTIME
+#if defined(RT_TEST_WITH_ONNXRUNTIME) || defined(RT_TEST_WITH_MIGRAPHX)
+    setenv("RT_XVEON_XTRANS_BACKEND", "not-a-backend", 1);
+    auto invalidBackend = rtengine::neural::loadCachedXVeonXTransRunner("anything.onnx");
+    unsetenv("RT_XVEON_XTRANS_BACKEND");
+    require(!invalidBackend && invalidBackend.error.code == rtengine::neural::NeuralModelErrorCode::ENUM,
+        "unknown X-veon backend did not return ENUM");
+
     auto missing = rtengine::neural::loadCachedXVeonXTransRunner("/definitely/missing/xtrans.onnx");
     require(!missing && missing.error.code == rtengine::neural::NeuralModelErrorCode::IO,
         "missing X-veon model did not return IO");
@@ -284,6 +296,7 @@ int loaderContract()
     require(!excessive && excessive.error.code == rtengine::neural::NeuralModelErrorCode::LIMIT,
         "64 MiB-plus-one X-veon model did not return LIMIT");
 
+#ifdef RT_TEST_WITH_ONNXRUNTIME
     RtXveonOrtSession *malformedSession = nullptr;
     char malformedMessage[1024] = {};
     const unsigned char malformedModel = 0;
@@ -292,6 +305,7 @@ int loaderContract()
     rt_xveon_ort_release(malformedSession);
     require(malformed == RT_XVEON_ORT_RUNTIME && malformedMessage[0],
         "malformed ONNX did not produce a bounded runtime error");
+#endif
 #else
     auto disabled = rtengine::neural::loadCachedXVeonXTransRunner("anything.onnx");
     require(!disabled && disabled.error.code == rtengine::neural::NeuralModelErrorCode::RUNTIME,
@@ -364,6 +378,94 @@ int reviewedModel()
     require(!first.runner->run(input.data(), input.size(), right.data(), right.size()), "repeated X-veon inference failed");
     require(left == right, "repeated X-veon output differs");
     for (float value : left) require(std::isfinite(value), "reviewed X-veon output is non-finite");
+    return 0;
+#endif
+}
+
+int migraphxParity()
+{
+#if !defined(RT_TEST_WITH_ONNXRUNTIME) || !defined(RT_TEST_WITH_MIGRAPHX)
+    std::printf("SKIP: both ONNX Runtime and MIGraphX are required\n");
+    return 77;
+#else
+    const char *path = std::getenv("XVEON_XTRANS_ONNX");
+    if (!path || !*path) {
+        std::printf("SKIP: XVEON_XTRANS_ONNX is not set\n");
+        return 77;
+    }
+    if (access("/dev/kfd", R_OK | W_OK) != 0) {
+        std::printf("SKIP: /dev/kfd is unavailable to this process\n");
+        return 77;
+    }
+
+    setenv("RT_XVEON_XTRANS_BACKEND", "onnxruntime-cpu", 1);
+    const auto cpu = rtengine::neural::loadCachedXVeonXTransRunner(path);
+    require(static_cast<bool>(cpu), "cannot load CPU X-veon reference: " + cpu.error.message);
+    setenv("RT_XVEON_XTRANS_BACKEND", "migraphx", 1);
+    const auto gpu = rtengine::neural::loadCachedXVeonXTransRunner(path);
+    require(static_cast<bool>(gpu), "cannot load MIGraphX X-veon runner: " + gpu.error.message);
+    require(gpu.runner->provider().find("MIGraphX-gpu") == 0 &&
+            gpu.runner->runtimeVersion() == "2.15.0-20250912-17-200-gde19b73ad",
+        "MIGraphX runner identity differs");
+
+    std::vector<float> input(rtengine::neural::XVEON_INPUT_FLOATS, 0.f);
+    std::vector<float> reference(rtengine::neural::XVEON_OUTPUT_FLOATS);
+    std::vector<float> candidate(reference.size()), repeated(reference.size());
+    const std::size_t pixels = 288u * 288u;
+    for (int y = 0; y < 288; ++y) for (int x = 0; x < 288; ++x) {
+        const std::size_t p = static_cast<std::size_t>(y) * 288 + x;
+        const int channel = rtengine::XVEON_XTRANS_CFA[y % 6][x % 6];
+        input[p] = static_cast<float>((y * 31 + x * 17) % 1024) / 1023.f;
+        input[(static_cast<std::size_t>(channel) + 1) * pixels + p] = 1.f;
+    }
+    require(!cpu.runner->run(input.data(), input.size(), reference.data(), reference.size()),
+        "CPU X-veon reference inference failed");
+    require(!gpu.runner->run(input.data(), input.size(), candidate.data(), candidate.size()),
+        "MIGraphX X-veon inference failed");
+    require(!gpu.runner->run(input.data(), input.size(), repeated.data(), repeated.size()),
+        "repeated MIGraphX X-veon inference failed");
+    require(candidate == repeated, "repeated MIGraphX tile output differs");
+
+    std::vector<double> absolute;
+    absolute.reserve(reference.size());
+    double squared = 0.0;
+    for (std::size_t i = 0; i < reference.size(); ++i) {
+        require(std::isfinite(reference[i]) && std::isfinite(candidate[i]),
+            "CPU or MIGraphX tile output is non-finite");
+        const double difference = std::abs(static_cast<double>(reference[i]) - candidate[i]);
+        absolute.push_back(difference);
+        squared += difference * difference;
+    }
+    std::sort(absolute.begin(), absolute.end());
+    const double rms = std::sqrt(squared / absolute.size());
+    const double p99 = absolute[static_cast<std::size_t>(std::ceil(0.99 * absolute.size())) - 1];
+    require(absolute.back() <= 0.005 && rms <= 0.0005 && p99 <= 0.001,
+        "MIGraphX deterministic tile exceeds the reviewed aggregate tolerance");
+
+    int cfa[6][6];
+    cfaFor(0, -1, 1, 0, 2, 3, cfa);
+    const int dimensions[3][2] = {{173, 31}, {400, 31}, {31, 400}};
+    for (const auto &dimension : dimensions) {
+        const int width = dimension[0];
+        const int height = dimension[1];
+        array2D<float> raw(width, height), cpuR(width, height), cpuG(width, height), cpuB(width, height);
+        array2D<float> gpuR(width, height), gpuG(width, height), gpuB(width, height);
+        for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+            raw[y][x] = static_cast<float>((y * 197 + x * 113) % 65536);
+        }
+        const auto cpuResult = rtengine::demosaicXVeonXTrans(
+            raw, cpuR, cpuG, cpuB, width, height, cfa, cpu.runner);
+        const auto gpuResult = rtengine::demosaicXVeonXTrans(
+            raw, gpuR, gpuG, gpuB, width, height, cfa, gpu.runner);
+        require(cpuResult && gpuResult, "CPU/GPU X-veon wrapper comparison failed");
+        for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+            require(std::abs(cpuR[y][x] - gpuR[y][x]) / 65535.f <= 0.005f &&
+                    std::abs(cpuG[y][x] - gpuG[y][x]) / 65535.f <= 0.005f &&
+                    std::abs(cpuB[y][x] - gpuB[y][x]) / 65535.f <= 0.005f,
+                "MIGraphX wrapper exceeds the reviewed per-sample bound");
+        }
+    }
+    unsetenv("RT_XVEON_XTRANS_BACKEND");
     return 0;
 #endif
 }

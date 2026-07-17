@@ -53,3 +53,4 @@ clean
 *.xz
 *.zip
 *.onnx
+.xveon-cache/
