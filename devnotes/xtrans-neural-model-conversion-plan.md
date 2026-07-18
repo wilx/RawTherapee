@@ -1031,6 +1031,30 @@ gate, and a device-tuned artifact cannot change that Phase 13 decision.  A
 future tuning run must keep the fixed seed, 64 trials per iteration, record its
 database and module identities, and use a separate unreviewed runner binding.
 
+### Vulkan 1.2 / SPIR-V 1.5 follow-up
+
+The completed follow-up adds an explicit `--target-profile` converter option.
+`portable-vulkan11` remains the default and reproduces the reviewed artifacts
+above byte for byte.  `diagnostic-vulkan12` changes only the Vulkan API target
+to 1.2 and SPIR-V target to 1.5; all precision, scheduling, fusion, workgroup,
+descriptor, and optional-feature constraints remain fixed.
+
+TVM 0.25.0 required the authenticated conformance patch
+`tools/neural_demosaic/patches/apache-tvm-0.25.0-vulkan12-spirv15.patch`
+(`6148e1cd97347d19dc566f46d631186f7e20f2fa2e31bc8504de6a44e6c5568d`)
+to emit the requested SPIR-V header and the SPIR-V 1.4-or-later entry-point
+interface.  The diagnostic build must carry a matching marker; neither patch
+nor marker affects the default profile.
+
+Both diagnostic modules were deterministic, validated for Vulkan 1.2, passed
+RADV and Lavapipe parity, and produced exactly the same 16-bit RGB pixels as
+Vulkan 1.1 on `DSCF0771.RAF`.  They were slower: X-veon full-export median
+increased from 21.40 to 21.66 seconds and PackedXTransNet from 8.89 to 9.11
+seconds.  Neither meets the required 5% improvement, so the Vulkan 1.2
+artifacts are rejected and the runtime remains bound exclusively to Vulkan
+1.1.  The exact artifact, shader, numerical, timing, and memory results are in
+`xtrans-neural-phase13-report.md`.
+
 ## Updating or upgrading the upstream checkpoint
 
 Never edit a .pth file in place and never treat an upstream filename replacement

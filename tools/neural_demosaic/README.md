@@ -99,6 +99,40 @@ and
 The converter checks the complete ONNX identity, graph contract, portable
 target, every SPIR-V capability, and deterministic companion manifest.
 
+The converter also contains the rejected Vulkan 1.2/SPIR-V 1.5 diagnostic
+profile.  It is never selected by default and does not change the reviewed
+Vulkan 1.1 artifacts.  TVM 0.25.0 needs a small conformance correction before
+it can emit SPIR-V 1.5: it otherwise writes a SPIR-V 1.0 header and omits used
+storage variables from the SPIR-V 1.4-or-later `OpEntryPoint` interface.
+Prepare a separate external source and build tree as follows:
+
+```sh
+patch -d /tmp/apache-tvm-src-v0.25.0-vulkan12 -p1 \
+    -i tools/neural_demosaic/patches/apache-tvm-0.25.0-vulkan12-spirv15.patch
+
+# Configure with the same options shown above, including INDEX_DEFAULT_I64=OFF.
+cmake --build /tmp/tvm-phase13-vulkan12-build --parallel
+printf '%s\n' \
+    6148e1cd97347d19dc566f46d631186f7e20f2fa2e31bc8504de6a44e6c5568d \
+    > /tmp/tvm-phase13-vulkan12-build/rawtherapee-vulkan12-interface-patch.sha256
+
+/tmp/tvm-phase13-venv/bin/python \
+    tools/neural_demosaic/convert_tvm_vulkan.py /path/xtrans.onnx \
+    --model xveon \
+    --tvm-source /tmp/apache-tvm-src-v0.25.0-vulkan12 \
+    --tvm-build /tmp/tvm-phase13-vulkan12-build \
+    --target-profile diagnostic-vulkan12 \
+    --output /tmp/xveon-tvm-vulkan12-linux-x86_64.so
+```
+
+The patch must have SHA-256
+`6148e1cd97347d19dc566f46d631186f7e20f2fa2e31bc8504de6a44e6c5568d`;
+the converter authenticates it and the build marker.  The diagnostic artifacts
+were deterministic and pixel-identical to Vulkan 1.1, but slightly slower for
+both models.  They are therefore not accepted by the runtime.  See the Vulkan
+1.2 diagnostic section of `devnotes/xtrans-neural-phase13-report.md` for the
+artifact identities and measurements.
+
 Build and select the hidden runtime backend with:
 
 ```sh

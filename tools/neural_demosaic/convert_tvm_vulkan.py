@@ -30,7 +30,12 @@ TVM_ARCHIVE = {
 TVM_FFI_COMMIT = "59da4c0b82af0d499dae34bd89ef010f64d3ff45"
 
 VULKAN_1_1 = (1 << 22) | (1 << 12)
+VULKAN_1_2 = (1 << 22) | (2 << 12)
 SPIRV_1_3 = 0x00010300
+SPIRV_1_5 = 0x00010500
+DEFAULT_TARGET_PROFILE = "portable-vulkan11"
+VULKAN12_TVM_PATCH_SHA256 = "6148e1cd97347d19dc566f46d631186f7e20f2fa2e31bc8504de6a44e6c5568d"
+VULKAN12_TVM_PATCH_MARKER = "rawtherapee-vulkan12-interface-patch.sha256"
 PORTABLE_TARGET: dict[str, int | str] = {
     "kind": "vulkan",
     "max_block_size_x": 128,
@@ -62,6 +67,11 @@ PORTABLE_TARGET: dict[str, int | str] = {
     "thread_warp_size": 1,
     "vulkan_api_version": VULKAN_1_1,
 }
+DIAGNOSTIC_VULKAN12_TARGET: dict[str, int | str] = {
+    **PORTABLE_TARGET,
+    "max_spirv_version": SPIRV_1_5,
+    "vulkan_api_version": VULKAN_1_2,
+}
 PORTABLE_HOST: dict[str, str] = {
     "kind": "llvm",
     "mcpu": "x86-64",
@@ -71,6 +81,35 @@ PORTABLE_HOST: dict[str, str] = {
 
 class TVMConversionError(RuntimeError):
     """A stable, user-facing conversion failure."""
+
+
+@dataclass(frozen=True)
+class TargetProfile:
+    key: str
+    manifest_name: str
+    target: dict[str, int | str]
+    spirv_assembler_environment: str
+    spirv_validator_environment: str
+    compiler_patch_sha256: str | None = None
+
+
+TARGET_PROFILES = {
+    DEFAULT_TARGET_PROFILE: TargetProfile(
+        key=DEFAULT_TARGET_PROFILE,
+        manifest_name="linux-x86_64-vulkan-1.1-fp32-portable-v1",
+        target=PORTABLE_TARGET,
+        spirv_assembler_environment="spv1.3",
+        spirv_validator_environment="vulkan1.1",
+    ),
+    "diagnostic-vulkan12": TargetProfile(
+        key="diagnostic-vulkan12",
+        manifest_name="linux-x86_64-vulkan-1.2-spirv-1.5-fp32-diagnostic-v1",
+        target=DIAGNOSTIC_VULKAN12_TARGET,
+        spirv_assembler_environment="spv1.5",
+        spirv_validator_environment="vulkan1.2",
+        compiler_patch_sha256=VULKAN12_TVM_PATCH_SHA256,
+    ),
+}
 
 
 def canonical_manifest_bytes(value: dict[str, Any]) -> bytes:
@@ -217,12 +256,52 @@ def promote_float16_graph_to_float32(model: onnx.ModelProto) -> int:
     return promoted
 
 
-def portable_target_manifest() -> dict[str, Any]:
-    return {
+def selected_target_profile(name: str) -> TargetProfile:
+    try:
+        return TARGET_PROFILES[name]
+    except KeyError as error:
+        raise TVMConversionError(f"unknown target profile: {name}") from error
+
+
+def portable_target_manifest(
+    target_profile: str = DEFAULT_TARGET_PROFILE,
+) -> dict[str, Any]:
+    profile = selected_target_profile(target_profile)
+    manifest = {
         "host": dict(PORTABLE_HOST),
-        "profile": "linux-x86_64-vulkan-1.1-fp32-portable-v1",
-        "target": dict(PORTABLE_TARGET),
+        "profile": profile.manifest_name,
+        "target": dict(profile.target),
     }
+    if profile.compiler_patch_sha256 is not None:
+        manifest["compiler_patch"] = {
+            "file": "apache-tvm-0.25.0-vulkan12-spirv15.patch",
+            "sha256": profile.compiler_patch_sha256,
+        }
+    return manifest
+
+
+def verify_compiler_profile(tvm_build: Path, profile: TargetProfile) -> None:
+    """Require an explicit marker for the patched diagnostic compiler.
+
+    TVM 0.25.0 emits a SPIR-V 1.0 header and omits non-Input/Output globals
+    from OpEntryPoint.  That is valid for the portable 1.1 baseline but cannot
+    represent a conforming SPIR-V 1.5 module.  The diagnostic compiler uses the
+    tracked minimal patch and records its digest beside the build.
+    """
+    if profile.compiler_patch_sha256 is None:
+        return
+    patch = Path(__file__).with_name("patches") / "apache-tvm-0.25.0-vulkan12-spirv15.patch"
+    if not patch.is_file() or file_sha256(patch) != profile.compiler_patch_sha256:
+        raise TVMConversionError("tracked Vulkan 1.2 TVM patch identity mismatch")
+    marker = tvm_build / VULKAN12_TVM_PATCH_MARKER
+    try:
+        marker_value = marker.read_text(encoding="ascii").strip()
+    except OSError as error:
+        raise TVMConversionError(
+            f"diagnostic Vulkan 1.2 compiler lacks {VULKAN12_TVM_PATCH_MARKER}"
+        ) from error
+    if marker_value != profile.compiler_patch_sha256:
+        raise TVMConversionError("diagnostic Vulkan 1.2 compiler patch marker mismatch")
 
 
 def _walk_modules(module: Any) -> list[Any]:
@@ -232,7 +311,11 @@ def _walk_modules(module: Any) -> list[Any]:
     return result
 
 
-def _spirv_records(executable: Any, workspace: Path) -> list[dict[str, Any]]:
+def _spirv_records(
+    executable: Any,
+    workspace: Path,
+    target_profile: TargetProfile,
+) -> list[dict[str, Any]]:
     """Validate and identify each SPIR-V kernel independently of the module."""
     spirv_as = shutil.which("spirv-as")
     spirv_val = shutil.which("spirv-val")
@@ -266,11 +349,11 @@ def _spirv_records(executable: Any, workspace: Path) -> list[dict[str, Any]]:
                 raise TVMConversionError("each SPIR-V module must contain one compute entry point")
             workgroup = tuple(int(value) for value in local_sizes[0])
             if (
-                workgroup[0] > int(PORTABLE_TARGET["max_block_size_x"])
-                or workgroup[1] > int(PORTABLE_TARGET["max_block_size_y"])
-                or workgroup[2] > int(PORTABLE_TARGET["max_block_size_z"])
+                workgroup[0] > int(target_profile.target["max_block_size_x"])
+                or workgroup[1] > int(target_profile.target["max_block_size_y"])
+                or workgroup[2] > int(target_profile.target["max_block_size_z"])
                 or workgroup[0] * workgroup[1] * workgroup[2]
-                > int(PORTABLE_TARGET["max_num_threads"])
+                > int(target_profile.target["max_num_threads"])
             ):
                 raise TVMConversionError(f"SPIR-V workgroup exceeds portable limits: {workgroup}")
             forbidden_types = re.findall(r"OpType(?:Int\s+(?:8|16|64)|Float\s+(?:16|64))\b", kernel)
@@ -283,7 +366,9 @@ def _spirv_records(executable: Any, workspace: Path) -> list[dict[str, Any]]:
                 int(value)
                 for value in re.findall(r"OpDecorate\s+%\S+\s+Binding\s+(\d+)", kernel)
             }
-            if len(bindings) > int(PORTABLE_TARGET["max_per_stage_descriptor_storage_buffer"]):
+            if len(bindings) > int(
+                target_profile.target["max_per_stage_descriptor_storage_buffer"]
+            ):
                 raise TVMConversionError(
                     f"SPIR-V kernel {entry_points[0]} uses {len(bindings)} storage bindings, "
                     "portable limit is 4"
@@ -292,7 +377,14 @@ def _spirv_records(executable: Any, workspace: Path) -> list[dict[str, Any]]:
             binary = workspace / f"kernel-{len(records):04d}.spv"
             assembly.write_text(kernel, encoding="utf-8")
             assembled = subprocess.run(
-                [spirv_as, "--target-env", "spv1.3", str(assembly), "-o", str(binary)],
+                [
+                    spirv_as,
+                    "--target-env",
+                    target_profile.spirv_assembler_environment,
+                    str(assembly),
+                    "-o",
+                    str(binary),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -300,7 +392,12 @@ def _spirv_records(executable: Any, workspace: Path) -> list[dict[str, Any]]:
             if assembled.returncode:
                 raise TVMConversionError(f"spirv-as rejected {entry_points[0]}: {assembled.stderr.strip()}")
             validated = subprocess.run(
-                [spirv_val, "--target-env", "vulkan1.1", str(binary)],
+                [
+                    spirv_val,
+                    "--target-env",
+                    target_profile.spirv_validator_environment,
+                    str(binary),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -379,6 +476,8 @@ def build_module(
     tvm_build: Path,
     output: Path,
     workspace: Path,
+    *,
+    target_profile: str = DEFAULT_TARGET_PROFILE,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     model = authenticate_onnx(source, spec)
     promoted_float16_items = promote_float16_graph_to_float32(model)
@@ -386,7 +485,9 @@ def build_module(
     tvm = _load_tvm(tvm_source, tvm_build)
     from tvm.relax.frontend.onnx import from_onnx  # pylint: disable=import-outside-toplevel
 
-    target = tvm.target.Target(PORTABLE_TARGET, host=tvm.target.Target(PORTABLE_HOST))
+    profile = selected_target_profile(target_profile)
+    verify_compiler_profile(tvm_build, profile)
+    target = tvm.target.Target(profile.target, host=tvm.target.Target(PORTABLE_HOST))
     module = from_onnx(
         model,
         shape_dict={"input": list(spec.input_shape)},
@@ -394,11 +495,11 @@ def build_module(
         keep_params_in_input=False,
     )
     tir_pipeline = _register_portable_tir_pipeline(tvm)
-    # Limit Relax fusion depth so generated kernels stay within Vulkan 1.1's
-    # portable minimum of four storage-buffer descriptors per shader stage.
+    # Keep both profiles at the Vulkan 1.1 portable minimum of four storage
+    # buffers so the diagnostic changes only the API/SPIR-V environment.
     with tvm.transform.PassContext(opt_level=3, config={"relax.FuseOps.max_depth": 1}):
         executable = tvm.compile(module, target=target, tir_pipeline=tir_pipeline)
-    spirv = _spirv_records(executable, workspace)
+    spirv = _spirv_records(executable, workspace, profile)
     library_dir = tvm_build / "lib" if (tvm_build / "lib").is_dir() else tvm_build
     executable.export_library(
         str(output),
@@ -416,7 +517,7 @@ def build_module(
     )
     if not output.is_file():
         raise TVMConversionError("TVM did not emit the requested module")
-    target_manifest = portable_target_manifest()
+    target_manifest = portable_target_manifest(target_profile)
     target_manifest["source_graph_float16_items_promoted"] = promoted_float16_items
     return target_manifest, spirv
 
@@ -456,7 +557,9 @@ def convert(
     tvm_build: str | Path,
     *,
     force: bool = False,
+    target_profile: str = DEFAULT_TARGET_PROFILE,
 ) -> dict[str, Any]:
+    selected_target_profile(target_profile)
     spec = MODEL_SPECS[model]
     destination = Path(output)
     manifest_path = Path(str(destination) + ".json")
@@ -474,6 +577,7 @@ def convert(
             Path(tvm_build),
             temporary_module,
             work / "export",
+            target_profile=target_profile,
         )
         manifest = _manifest(spec, temporary_module, target, spirv)
         temporary_manifest.write_bytes(canonical_manifest_bytes(manifest))
@@ -493,6 +597,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--tvm-source", type=Path, required=True)
     parser.add_argument("--tvm-build", type=Path, required=True)
+    parser.add_argument(
+        "--target-profile",
+        choices=sorted(TARGET_PROFILES),
+        default=DEFAULT_TARGET_PROFILE,
+    )
     parser.add_argument("--force", action="store_true")
     return parser.parse_args(argv)
 
@@ -507,6 +616,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.tvm_source,
             args.tvm_build,
             force=args.force,
+            target_profile=args.target_profile,
         )
     except (TVMConversionError, OSError, KeyError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

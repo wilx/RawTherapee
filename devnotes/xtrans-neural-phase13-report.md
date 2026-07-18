@@ -182,3 +182,114 @@ separately and its module must remain untracked.
 
 No checkpoint, ONNX file, TVM module, conversion manifest, RAF, TIFF, or tuning
 database is tracked by this phase.
+
+## Vulkan 1.2 / SPIR-V 1.5 diagnostic
+
+The follow-up diagnostic changed only the Vulkan API and SPIR-V target
+versions.  Float32/int32 precision, fusion depth one, four storage-buffer
+descriptors, 128-thread limits, disabled subgroup/FP16/vendor features, model
+graphs, host target, TVM release, and runtime remained unchanged.  The default
+converter still emits the byte-identical reviewed Vulkan 1.1 modules and
+manifests listed above.
+
+### TVM 0.25.0 conformance correction
+
+Unmodified TVM 0.25.0 could not emit a conforming SPIR-V 1.5 diagnostic.  Its
+SPIR-V builder always wrote a 1.0 header and listed only built-in variables in
+`OpEntryPoint`.  Reassembling the first shader as SPIR-V 1.5 and validating it
+for Vulkan 1.2 correctly failed because used storage buffers were absent from
+the entry-point interface.
+
+The diagnostic compiler therefore applies the tracked Apache-2.0 patch
+`tools/neural_demosaic/patches/apache-tvm-0.25.0-vulkan12-spirv15.patch`,
+SHA-256
+`6148e1cd97347d19dc566f46d631186f7e20f2fa2e31bc8504de6a44e6c5568d`.
+It propagates the requested SPIR-V version into the binary header and includes
+used module-scope variables in the SPIR-V 1.4-or-later entry-point interface.
+The converter authenticates both the tracked patch and an explicit build
+marker before accepting a diagnostic compiler.  Targets below SPIR-V 1.4 keep
+TVM's historical emission unchanged, which was confirmed by regenerating both
+Vulkan 1.1 artifacts byte for byte.
+
+### Diagnostic artifacts and shaders
+
+Two independently patched and configured clean compiler builds produced
+byte-identical modules and manifests:
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| X-veon Vulkan 1.2 module | 32,594,896 | `43a1af9a0171844befe6e6d7714049abeb80cb6c3820e3503ef0186408a033d9` |
+| X-veon Vulkan 1.2 manifest | 19,457 | `c27bff81782e09736e96353a0c7176e88501237ce6bb45c743a62d0a1b1eb1b7` |
+| PackedXTransNet Vulkan 1.2 module | 3,097,488 | `aa618b4d2b0cdcd4f7d054e0d6d778e5afa1cfda0fa5ee9786fe8c5e1d79bbd1` |
+| PackedXTransNet Vulkan 1.2 manifest | 11,211 | `f87bffed467da589e7155198ba10d408ceaa144039ef5382d25142da0bb51e71` |
+
+X-veon still has 43 kernels and PackedXTransNet 22.  Workgroups remain
+`128×1×1` or `8×8×1`; the only capability remains `Shader`; descriptor and
+scalar-type limits are unchanged.  The externally assembled shader payload
+totals rose from 1,177,460 to 1,178,076 bytes for X-veon and from 221,436 to
+221,700 bytes for PackedXTransNet because the entry-point interface operands
+are now explicit.  After normalizing the SPIR-V version line and those required
+interface operands, all 65 Vulkan 1.1/1.2 shader disassemblies are byte
+identical.  Every diagnostic shader validates with `spirv-val --target-env
+vulkan1.2`.
+
+### Numerical and full-image comparison
+
+Native repeated-inference tests passed on both RADV and Lavapipe.  Against ONNX
+Runtime FP32, Vulkan 1.2 reproduced the Vulkan 1.1 diagnostic statistics:
+
+| Model / driver | Maximum | RMS | p99 | Tight failures |
+| --- | ---: | ---: | ---: | ---: |
+| X-veon / RADV | 0.000243962 | 0.000106623 | 0.000239134 | 222,119 |
+| X-veon / Lavapipe | 0.000243962 | 0.000106623 | 0.000239134 | 222,115 |
+| PackedXTransNet / RADV | 0.000000715 | 0.000000120 | 0.000000358 | 0 |
+| PackedXTransNet / Lavapipe | 0.000000715 | 0.000000129 | 0.000000358 | 0 |
+
+The `DSCF0771.RAF` comparison used one warm-up per version followed by three
+alternating measured exports.  All successful logs contained the authenticated
+completion diagnostic and no fallback marker.  Raw TIFF file hashes vary with
+export metadata, so the stable output identity is the SHA-256 of contiguous
+16-bit RGB pixels:
+
+| Model | Vulkan 1.1 and 1.2 pixel SHA-256 |
+| --- | --- |
+| X-veon | `c49834e0e324b7ba85d90be3fa79d22c03074a8dd2d3eecf8d38c0d6e9cff8b0` |
+| PackedXTransNet | `64ebc970620b14661ca99a54861d2f09b508c696c43a3eac9048a89d7a75bf19` |
+
+ImageMagick reported zero differing pixels between repeated exports and between
+Vulkan 1.1 and 1.2 for both models.  The complete images, seams, CFA phases,
+and established full-frame and earring regions are therefore exactly
+unchanged; no new comparison image is warranted.
+
+### Timing, memory, and decision
+
+Timings are medians of three alternating measurements; MAD is the median
+absolute deviation.  Wrapper time comes from RawTherapee's completion
+diagnostic and full time from `/usr/bin/time -v`.
+
+| Model / target | Wrapper median ± MAD | Full median ± MAD | Peak RSS range |
+| --- | ---: | ---: | ---: |
+| X-veon Vulkan 1.1 | 18.341750 ± 0.052770 s | 21.40 ± 0.19 s | 2,158,824–2,159,616 KiB |
+| X-veon Vulkan 1.2 | 18.639822 ± 0.008700 s | 21.66 ± 0.02 s | 2,145,724–2,160,324 KiB |
+| Packed Vulkan 1.1 | 5.956678 ± 0.012410 s | 8.89 ± 0.05 s | 2,047,728–2,048,128 KiB |
+| Packed Vulkan 1.2 | 6.082817 ± 0.004469 s | 9.11 ± 0.02 s | 2,049,028–2,049,204 KiB |
+
+Vulkan 1.2 was 1.21% slower end to end for X-veon and 2.47% slower for
+PackedXTransNet.  It does not satisfy the required 5% improvement, and X-veon
+also remains above its 20.91-second gate.  RSS and shader allocation geometry
+did not materially change, so an additional VRAM sampling run was unnecessary.
+
+**Decision: reject the Vulkan 1.2 artifacts and retain Vulkan 1.1 exclusively.**
+There is no basis for a dual-artifact runtime selector.  The diagnostic modules,
+manifests, TIFFs, timings, disassemblies, and temporary runtime build remain
+external and untracked; the production runtime continues accepting only the
+reviewed Vulkan 1.1 sizes and hashes.
+
+Final verification comprised 211 passing Python tests with two expected skips;
+the complete production native suite with reviewed artifacts passed 21 tests
+with only the two disabled MIGraphX cases skipped; and the diagnostic RADV and
+Lavapipe parity cases both passed for both models.  The default-off CLI build
+contains neither a TVM target nor a TVM library dependency.  The strict GCC 13
+source build again stops only at the pre-existing `dcraw.cc`
+`-Werror=stringop-overflow` diagnostic recorded as outside Phase 6 and Phase 13.
+`git diff --check` is clean.

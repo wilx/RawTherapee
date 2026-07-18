@@ -1,0 +1,47 @@
+--- a/src/backend/vulkan/codegen/spirv_support.h
++++ b/src/backend/vulkan/codegen/spirv_support.h
+@@ -53,0 +54,6 @@
++  /*! \brief The maximum SPIR-V version requested by the target.
++   *
++   * Encoded using the SPIR-V header version word (for example, 0x00010500).
++   */
++  uint32_t max_spirv_version{0x00010000};
++
+--- a/src/backend/vulkan/codegen/spirv_support.cc
++++ b/src/backend/vulkan/codegen/spirv_support.cc
+@@ -39,0 +40,2 @@
++  max_spirv_version =
++      target->GetAttr<int64_t>("max_spirv_version").value_or(max_spirv_version);
+--- a/src/backend/vulkan/codegen/ir_builder.h
++++ b/src/backend/vulkan/codegen/ir_builder.h
+@@ -697,0 +698,6 @@
++  /*! \brief Module-scope variables used by the entry point.
++   *
++   * SPIR-V 1.4 and later require all used global variables in OpEntryPoint.
++   */
++  std::vector<Value> entry_point_interface_;
++
+--- a/src/backend/vulkan/codegen/ir_builder.cc
++++ b/src/backend/vulkan/codegen/ir_builder.cc
+@@ -40,3 +40,6 @@
+-  // Target SPIR-V version 1.0.  Additional functionality will be
+-  // enabled through extensions.
+-  header_.push_back(0x10000);
++  // Preserve TVM's historical SPIR-V 1.0 output for targets below 1.4.
++  // SPIR-V 1.4 changed the OpEntryPoint interface contract, so newer
++  // explicitly requested targets must carry their actual version.
++  header_.push_back(spirv_support_.max_spirv_version >= 0x00010400
++                        ? spirv_support_.max_spirv_version
++                        : 0x00010000);
+@@ -263,0 +267 @@
++  entry_point_interface_.push_back(val);
+@@ -301,0 +306 @@
++  entry_point_interface_.push_back(val);
+@@ -343,0 +349,5 @@
++  if (spirv_support_.max_spirv_version >= 0x00010400) {
++    for (const auto& variable : entry_point_interface_) {
++      ib_.Add(variable);
++    }
++  }
+@@ -373,0 +384 @@
++    entry_point_interface_.push_back(val);
