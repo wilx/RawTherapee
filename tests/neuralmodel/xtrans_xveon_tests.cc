@@ -117,12 +117,26 @@ rtengine::XVeonXTransRunResult runCase(
     return result;
 }
 
-#ifdef RT_TEST_WITH_ONNXRUNTIME
 std::string temporaryPath(const char *suffix)
 {
     return std::string(g_get_tmp_dir()) + "/rt-xveon-test-" + std::to_string(g_random_int()) + suffix;
 }
-#endif
+
+struct EnvironmentGuard final {
+    explicit EnvironmentGuard(const char *name) : name(name)
+    {
+        const char *current = std::getenv(name);
+        if (current) { hadValue = true; value = current; }
+    }
+    ~EnvironmentGuard()
+    {
+        if (hadValue) setenv(name.c_str(), value.c_str(), 1);
+        else unsetenv(name.c_str());
+    }
+    std::string name;
+    std::string value;
+    bool hadValue = false;
+};
 
 } // namespace
 
@@ -237,12 +251,24 @@ int mockContract()
 
 int loaderContract()
 {
-#if defined(RT_TEST_WITH_ONNXRUNTIME) || defined(RT_TEST_WITH_MIGRAPHX)
+#if defined(RT_TEST_WITH_ONNXRUNTIME) || defined(RT_TEST_WITH_MIGRAPHX) || defined(RT_TEST_WITH_TVM_VULKAN)
+    EnvironmentGuard backendGuard("RT_XVEON_XTRANS_BACKEND");
     setenv("RT_XVEON_XTRANS_BACKEND", "not-a-backend", 1);
     auto invalidBackend = rtengine::neural::loadCachedXVeonXTransRunner("anything.onnx");
-    unsetenv("RT_XVEON_XTRANS_BACKEND");
     require(!invalidBackend && invalidBackend.error.code == rtengine::neural::NeuralModelErrorCode::ENUM,
         "unknown X-veon backend did not return ENUM");
+
+#ifdef RT_TEST_WITH_ONNXRUNTIME
+    const char *availableBackend = "onnxruntime-cpu";
+    const long reviewedBytes = 15536134L;
+#elif defined(RT_TEST_WITH_MIGRAPHX)
+    const char *availableBackend = "migraphx";
+    const long reviewedBytes = 15536134L;
+#else
+    const char *availableBackend = "tvm-vulkan";
+    const long reviewedBytes = 32594896L;
+#endif
+    setenv("RT_XVEON_XTRANS_BACKEND", availableBackend, 1);
 
     auto missing = rtengine::neural::loadCachedXVeonXTransRunner("/definitely/missing/xtrans.onnx");
     require(!missing && missing.error.code == rtengine::neural::NeuralModelErrorCode::IO,
@@ -276,7 +302,7 @@ int loaderContract()
     {
         std::unique_ptr<std::FILE, int (*)(std::FILE *)> file(g_fopen(wrongDigestPath.c_str(), "wb"), std::fclose);
         require(static_cast<bool>(file), "cannot create wrong-digest ONNX fixture");
-        require(std::fseek(file.get(), 15536134L - 1, SEEK_SET) == 0 && std::fputc(0, file.get()) == 0,
+        require(std::fseek(file.get(), reviewedBytes - 1, SEEK_SET) == 0 && std::fputc(0, file.get()) == 0,
             "cannot size wrong-digest ONNX fixture");
     }
     auto wrongDigest = rtengine::neural::loadCachedXVeonXTransRunner(wrongDigestPath);
@@ -284,6 +310,7 @@ int loaderContract()
     require(!wrongDigest && wrongDigest.error.code == rtengine::neural::NeuralModelErrorCode::DIGEST,
         "same-size wrong-digest X-veon model did not return DIGEST");
 
+#ifndef RT_TEST_WITH_TVM_VULKAN
     const std::string excessivePath = temporaryPath("-excessive.onnx");
     {
         std::unique_ptr<std::FILE, int (*)(std::FILE *)> file(g_fopen(excessivePath.c_str(), "wb"), std::fclose);
@@ -295,6 +322,7 @@ int loaderContract()
     g_remove(excessivePath.c_str());
     require(!excessive && excessive.error.code == rtengine::neural::NeuralModelErrorCode::LIMIT,
         "64 MiB-plus-one X-veon model did not return LIMIT");
+#endif
 
 #ifdef RT_TEST_WITH_ONNXRUNTIME
     RtXveonOrtSession *malformedSession = nullptr;
@@ -466,6 +494,78 @@ int migraphxParity()
         }
     }
     unsetenv("RT_XVEON_XTRANS_BACKEND");
+    return 0;
+#endif
+}
+
+int tvmVulkanParity()
+{
+#ifndef RT_TEST_WITH_TVM_VULKAN
+    std::printf("SKIP: RawTherapee was built without TVM Vulkan\n");
+    return 77;
+#else
+    const char *modulePath = std::getenv("XVEON_XTRANS_TVM_MODULE");
+    if (!modulePath || !*modulePath) {
+        std::printf("SKIP: XVEON_XTRANS_TVM_MODULE is not set\n");
+        return 77;
+    }
+    EnvironmentGuard backend("RT_XVEON_XTRANS_BACKEND");
+    setenv("RT_XVEON_XTRANS_BACKEND", "tvm-vulkan", 1);
+    const auto tvm = rtengine::neural::loadCachedXVeonXTransRunner(modulePath);
+    require(static_cast<bool>(tvm), "cannot load X-veon TVM module: " + tvm.error.message);
+    require(
+        tvm.runner->artifactSha256() ==
+            "8648e3741a98345c8bc76b9e1c853a3b4ef58155b65ed726f9c2fda0226c206d" &&
+            tvm.runner->provider().find("TVM-Vulkan/") == 0 &&
+            tvm.runner->compileSource() == "ahead-of-time",
+        "X-veon TVM runner identity differs");
+
+    std::vector<float> input(rtengine::neural::XVEON_INPUT_FLOATS, 0.f);
+    constexpr std::size_t pixels = 288u * 288u;
+    for (int y = 0; y < 288; ++y) for (int x = 0; x < 288; ++x) {
+        const std::size_t p = static_cast<std::size_t>(y) * 288 + x;
+        const int channel = rtengine::XVEON_XTRANS_CFA[y % 6][x % 6];
+        input[p] = static_cast<float>((y * 31 + x * 17) % 1024) / 1023.f;
+        input[(static_cast<std::size_t>(channel) + 1) * pixels + p] = 1.f;
+    }
+    std::vector<float> candidate(rtengine::neural::XVEON_OUTPUT_FLOATS);
+    std::vector<float> repeated(candidate.size());
+    require(!tvm.runner->run(input.data(), input.size(), candidate.data(), candidate.size()) &&
+            !tvm.runner->run(input.data(), input.size(), repeated.data(), repeated.size()),
+        "X-veon TVM Vulkan inference failed");
+    require(candidate == repeated, "repeated X-veon TVM output differs");
+    for (float value : candidate) require(std::isfinite(value), "X-veon TVM output is non-finite");
+
+#ifdef RT_TEST_WITH_ONNXRUNTIME
+    const char *onnxPath = std::getenv("XVEON_XTRANS_ONNX");
+    if (onnxPath && *onnxPath) {
+        setenv("RT_XVEON_XTRANS_BACKEND", "onnxruntime-cpu", 1);
+        const auto cpu = rtengine::neural::loadCachedXVeonXTransRunner(onnxPath);
+        require(static_cast<bool>(cpu), "cannot load X-veon ONNX reference: " + cpu.error.message);
+        std::vector<float> reference(candidate.size());
+        require(!cpu.runner->run(input.data(), input.size(), reference.data(), reference.size()),
+            "X-veon ONNX reference inference failed");
+        std::vector<double> absolute;
+        absolute.reserve(reference.size());
+        double squared = 0.0;
+        std::size_t tightFailures = 0;
+        for (std::size_t i = 0; i < reference.size(); ++i) {
+            const double difference = std::abs(static_cast<double>(reference[i]) - candidate[i]);
+            absolute.push_back(difference);
+            squared += difference * difference;
+            if (difference > 5e-6 + 1e-5 * std::abs(static_cast<double>(reference[i]))) {
+                ++tightFailures;
+            }
+        }
+        std::sort(absolute.begin(), absolute.end());
+        const double rms = std::sqrt(squared / absolute.size());
+        const double p99 = absolute[static_cast<std::size_t>(std::ceil(0.99 * absolute.size())) - 1];
+        std::printf("X-veon TVM parity: max=%.9g rms=%.9g p99=%.9g tight_failures=%zu\n",
+            absolute.back(), rms, p99, tightFailures);
+        require(absolute.back() <= 0.005 && rms <= 0.0005 && p99 <= 0.001,
+            "X-veon TVM Vulkan output exceeds the reviewed aggregate tolerance");
+    }
+#endif
     return 0;
 #endif
 }

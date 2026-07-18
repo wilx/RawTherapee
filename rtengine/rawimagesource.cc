@@ -1868,7 +1868,10 @@ bool RawImageSource::demosaicnet_xtrans_interpolate(bool gamma22)
 
 bool RawImageSource::xveon_xtrans_interpolate()
 {
-    const char *const modelPath = std::getenv("RT_XVEON_XTRANS_MODEL");
+    const char *const backend = std::getenv("RT_XVEON_XTRANS_BACKEND");
+    const bool tvmVulkan = backend && std::string(backend) == "tvm-vulkan";
+    const char *const modelPath = std::getenv(
+        tvmVulkan ? "RT_XVEON_XTRANS_TVM_MODULE" : "RT_XVEON_XTRANS_MODEL");
     const auto started = std::chrono::steady_clock::now();
     const neural::XVeonXTransLoadResult loaded =
         neural::loadCachedXVeonXTransRunner(modelPath ? Glib::ustring(modelPath) : Glib::ustring());
@@ -1917,7 +1920,10 @@ bool RawImageSource::xveon_xtrans_interpolate()
 
 bool RawImageSource::packed_xtrans_interpolate()
 {
-    const char *const modelPath = std::getenv("RT_PACKED_XTRANS_MODEL");
+    const char *const backend = std::getenv("RT_PACKED_XTRANS_BACKEND");
+    const bool tvmVulkan = backend && std::string(backend) == "tvm-vulkan";
+    const char *const modelPath = std::getenv(
+        tvmVulkan ? "RT_PACKED_XTRANS_TVM_MODULE" : "RT_PACKED_XTRANS_MODEL");
     const auto started = std::chrono::steady_clock::now();
     const neural::PackedXTransLoadResult loaded =
         neural::loadCachedPackedXTransRunner(modelPath ? Glib::ustring(modelPath) : Glib::ustring());

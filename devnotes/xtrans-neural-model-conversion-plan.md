@@ -848,6 +848,189 @@ deterministic conversion, ONNX/PyTorch parity, and comparison metrics. The
 comparison assets and detailed measurements are recorded in
 `xtrans-neural-phase12-report.md`.
 
+## Phase 13: portable Apache TVM Vulkan experiment
+
+Phase 13 ahead-of-time compiles the two reviewed ONNX graphs to Linux x86-64
+shared modules containing their weights, host VM code, and Vulkan SPIR-V.  The
+same module bytes run through AMD RADV and Mesa Lavapipe.  RawTherapee loads
+only the TVM runtime libraries; Python and the TVM compiler are never part of
+the application process.
+
+### Pinned compiler input
+
+The reproducible source input is the official TVM 0.25.0 archive, not a GitHub
+checkout selected by the ambiguous `v0.25.0` name:
+
+| Item | Reviewed identity |
+| --- | --- |
+| Release | Apache TVM 0.25.0 |
+| Commit | `c7ba0735a4f346c67b761e1fde38a68a60be8adb` |
+| Archive | `apache-tvm-src-v0.25.0.tar.gz` |
+| Archive URL | `https://github.com/apache/tvm/releases/download/v0.25.0/apache-tvm-src-v0.25.0.tar.gz` |
+| Size | 80,764,445 bytes |
+| SHA-256 | `ea7c3248e2a8ca91969fa487247ed94db22f1dbfadf7b9408fede76c8f16e56d` |
+| TVM-FFI source | `59da4c0b82af0d499dae34bd89ef010f64d3ff45` |
+
+GitHub also exposes a moving maintenance branch named `v0.25.0`.  A command
+such as `git clone --branch v0.25.0` can therefore select the branch rather than
+the immutable release commit.  Always authenticate the archive above, or
+explicitly verify the complete checkout commit and FFI submodule revision.
+
+The external Python 3.12 compiler environment is frozen in
+`tools/neural_demosaic/requirements-tvm-phase13.lock`.  `apache-tvm-ffi` is
+built from the authenticated archive's `3rdparty/tvm-ffi` directory; it is not
+downloaded independently from PyPI.  Compiler-only dependencies include ONNX,
+NumPy, XGBoost, cloudpickle, and psutil.  None is a RawTherapee dependency.
+
+The reviewed local Release build uses CMake 3.28, Ninja 1.11, LLVM 18.1.3,
+Vulkan development headers, SPIR-V Tools, and these material options:
+
+```text
+TVM_VERSION=0.25.0
+CMAKE_BUILD_RPATH_USE_ORIGIN=ON
+USE_LLVM=/usr/bin/llvm-config-18
+USE_VULKAN=ON
+USE_RPC=OFF
+USE_CPP_RPC=OFF
+USE_OPENCL=OFF
+USE_ROCM=OFF
+USE_CUDA=OFF
+USE_RANDOM=OFF
+USE_SORT=OFF
+USE_GTEST=OFF
+BUILD_STATIC_RUNTIME=OFF
+TVM_FFI_USE_LIBBACKTRACE=OFF
+TVM_FFI_BACKTRACE_ON_SEGFAULT=OFF
+INDEX_DEFAULT_I64=OFF
+```
+
+The runtime staging root contains `include/`, exactly
+`libtvm_ffi.so`, `libtvm_runtime.so`, and `libtvm_runtime_vulkan.so`, plus
+Apache `LICENSE`, `NOTICE`, and `rawtherapee-runtime.txt`.  The identity file is:
+
+```text
+TVM_VERSION=0.25.0
+TVM_FFI_VERSION=0.1.12
+SOURCE_ARCHIVE_SHA256=ea7c3248e2a8ca91969fa487247ed94db22f1dbfadf7b9408fede76c8f16e56d
+```
+
+### Portable conversion contract
+
+Run the development converter only after authenticating the existing ONNX
+artifacts:
+
+```sh
+/tmp/tvm-phase13-venv/bin/python \
+    tools/neural_demosaic/convert_tvm_vulkan.py /tmp/xtrans.onnx \
+    --model xveon \
+    --tvm-source /tmp/apache-tvm-src-v0.25.0 \
+    --tvm-build /tmp/tvm-phase13-official-build-a \
+    --output /tmp/xveon-tvm-vulkan-linux-x86_64.so
+
+/tmp/tvm-phase13-venv/bin/python \
+    tools/neural_demosaic/convert_tvm_vulkan.py /tmp/packedxtransnet.onnx \
+    --model packedxtransnet \
+    --tvm-source /tmp/apache-tvm-src-v0.25.0 \
+    --tvm-build /tmp/tvm-phase13-official-build-a \
+    --output /tmp/packedxtransnet-tvm-vulkan-linux-x86_64.so
+```
+
+The converter authenticates the complete ONNX file before deserialization,
+checks its exact graph contract and operator inventory, embeds all weights,
+and refuses existing outputs unless `--force` is explicit.  Publication is
+atomic and the canonical manifest contains no path, timestamp, or host data.
+
+The target is baseline Linux x86-64 plus Vulkan 1.1/SPIR-V 1.3.  It limits
+workgroups to 128 invocations, storage bindings to four, shared memory to
+16 KiB, push constants to 128 bytes, and storage buffers to 128 MiB.  Optional
+integer widths, FP16/FP64, subgroups, cooperative matrices, and vendor
+extensions are disabled.  Relax fusion depth is restricted to one so no
+shader exceeds the four-storage-buffer portable minimum.  A final checked TIR
+pass narrows index expressions to int32; `INDEX_DEFAULT_I64=OFF` alone did not
+remove all imported int64 indices.
+
+X-veon's authenticated ONNX stores 46 hidden tensors in FP16 and contains two
+FP16 cast targets.  The portable profile deliberately promotes those 48 items
+to FP32 after authentication and records the transformation.  PackedXTransNet
+needs no promotion.  Every emitted SPIR-V unit is assembled for SPIR-V 1.3,
+validated for Vulkan 1.1, and audited for capabilities, scalar types, descriptor
+count, and workgroup size before publication.
+
+Two clean compiler builds and conversions produced byte-identical modules and
+manifests:
+
+| Model | Module bytes | Module SHA-256 | Manifest SHA-256 | Kernels |
+| --- | ---: | --- | --- | ---: |
+| X-veon | 32,594,896 | `8648e3741a98345c8bc76b9e1c853a3b4ef58155b65ed726f9c2fda0226c206d` | `ddd39d1c3e68fe01f24ead4955ee61f2aedbb9350b82ce2c4bdc75ec5f556baf` | 43 |
+| PackedXTransNet | 3,097,488 | `2975665b5f36ffb29e9b0c9dec62f69ffc916605189f41ae11484e19d18cfc6e` | `b84eece056d97ef0218bf0dcf705027709f4564f01db7d9a3fcbcb78a9d7842f` | 22 |
+
+### Hidden runtime integration
+
+`WITH_TVM_VULKAN=OFF` remains the default.  Enabling it requires the reviewed
+runtime staging root:
+
+```sh
+cmake -S . -B build/tvm-vulkan \
+    -DWITH_TVM_VULKAN=ON \
+    -DTVM_RUNTIME_ROOT=/path/to/tvm-runtime-root
+```
+
+The optional bridge alone uses C++17 and exports a C ABI to the C++11 engine.
+It accepts authenticated module bytes, copies them into a sealed Linux memfd,
+and loads `/proc/self/fd/N`; it never executes the user-supplied path.  It
+validates the VM entry point, tensor shapes, float32 type, Vulkan device, and
+finite input/output.  Input and output tensors are reused and execution is
+explicitly synchronized.  Successful sessions are cached by reviewed module
+identity, backend, canonical path, runtime identity, and the bridge's fixed
+Vulkan device 0; the diagnostic records that device's name and driver version.
+Failures are not cached.  TVM 0.25.0 does not expose a Vulkan device UUID
+through its runtime device-attribute API, so this implementation does not claim
+one.
+
+The hidden PP3 method names remain unchanged.  Select this backend with:
+
+```text
+RT_XVEON_XTRANS_BACKEND=tvm-vulkan
+RT_XVEON_XTRANS_TVM_MODULE=/path/xveon-tvm-vulkan-linux-x86_64.so
+
+RT_PACKED_XTRANS_BACKEND=tvm-vulkan
+RT_PACKED_XTRANS_TVM_MODULE=/path/packedxtransnet-tvm-vulkan-linux-x86_64.so
+```
+
+The ONNX path variables are intentionally not reused.  Any path, identity,
+device, allocation, execution, shape, or non-finite failure discards partial
+RGB and loudly runs Markesteijn three-pass.  Existing CFA mapping, tiling,
+margins, signed outputs, and fallback behaviour are shared with the reviewed
+ONNX/MIGraphX implementations.
+
+An enabled install places the three TVM runtime libraries beside the
+RawTherapee executables and uses only `$ORIGIN` RUNPATH.  It also installs
+Apache LICENSE/NOTICE and the runtime identity.  The staged executable has no
+dependency on Python, LLVM, `libtvm_compiler`, ONNX Runtime, ROCm, or MIGraphX.
+The weight-bearing model modules remain external.
+
+### Phase 13 result and boundary
+
+The identical portable modules pass native tile and wrapper tests with both
+AMD RADV on the RX 7800 XT and Mesa Lavapipe.  PackedXTransNet is effectively
+float32-identical to ONNX Runtime.  X-veon passes the broader GPU tolerance but
+not the tighter diagnostic because its original FP16 hidden graph was promoted
+to FP32.  Full numerical, timing, RSS/VRAM, image-comparison, dependency, and
+test results are in `xtrans-neural-phase13-report.md`.
+
+PackedXTransNet passes the local portability and performance gates, but its CC
+BY-NC 4.0 model still cannot be distributed by RawTherapee.  X-veon misses the
+strict portable full-export timing threshold even though its network-only time
+passes; its absent license remains an independent blocker.  Neither backend is
+eligible for GUI exposure or packaging.
+
+The planned 20,000-trial AMD MetaSchedule modules are diagnostic only and are
+not part of the portable ABI or accepted runtime binding.  They remain open:
+the portable X-veon artifact already fails its non-rescuable end-to-end timing
+gate, and a device-tuned artifact cannot change that Phase 13 decision.  A
+future tuning run must keep the fixed seed, 64 trials per iteration, record its
+database and module identities, and use a separate unreviewed runner binding.
+
 ## Updating or upgrading the upstream checkpoint
 
 Never edit a .pth file in place and never treat an upstream filename replacement

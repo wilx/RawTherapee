@@ -283,6 +283,16 @@ endif()
 set_target_properties(rth PROPERTIES OUTPUT_NAME rawtherapee)
 set_target_properties(rth-cli PROPERTIES OUTPUT_NAME rawtherapee-cli)
 
+if(WITH_TVM_VULKAN AND UNIX AND NOT APPLE)
+    # Development builds can execute against the selected staging root.  The
+    # installed experiment is self-contained: the executable and all three TVM
+    # runtime libraries live together and are found only through $ORIGIN.
+    set_target_properties(rth rth-cli PROPERTIES
+        BUILD_RPATH "\$ORIGIN;${TVM_RUNTIME_LIBRARY_DIR}"
+        INSTALL_RPATH "\$ORIGIN"
+        INSTALL_RPATH_USE_LINK_PATH FALSE)
+endif()
+
 target_include_directories(rth PRIVATE ${EXTRA_INCDIR})
 target_include_directories(rth-cli PRIVATE ${EXTRA_INCDIR})
 
@@ -312,3 +322,15 @@ endif()
 # Install executables
 install(TARGETS rth DESTINATION "${BINDIR}")
 install(TARGETS rth-cli DESTINATION "${BINDIR}")
+if(WITH_TVM_VULKAN)
+    install(FILES
+        "${TVM_FFI_LIBRARY}"
+        "${TVM_RUNTIME_LIBRARY}"
+        "${TVM_RUNTIME_VULKAN_LIBRARY}"
+        DESTINATION "${BINDIR}")
+    install(FILES
+        "${TVM_RUNTIME_ROOT}/share/apache-tvm/LICENSE"
+        "${TVM_RUNTIME_ROOT}/share/apache-tvm/NOTICE"
+        "${TVM_RUNTIME_ROOT}/share/apache-tvm/rawtherapee-runtime.txt"
+        DESTINATION "${DOCDIR}/apache-tvm")
+endif()

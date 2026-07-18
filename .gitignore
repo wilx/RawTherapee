@@ -54,6 +54,8 @@ clean
 *.zip
 *.onnx
 *.onnx.json
+*-tvm-vulkan-*.so
+*-tvm-vulkan-*.so.json
 *.pt
 .xveon-cache/
 .packedxtrans-cache/

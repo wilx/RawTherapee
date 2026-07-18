@@ -205,6 +205,12 @@ set(
     CACHE PATH
     "Root of the reviewed ROCm/MIGraphX 2.15.0 installation"
 )
+option(WITH_TVM_VULKAN "Build the developer-only Apache TVM Vulkan experiment" OFF)
+set(
+    TVM_RUNTIME_ROOT ""
+    CACHE PATH
+    "Root of the reviewed Apache TVM 0.25.0 runtime bundle (include/ and lib/)"
+)
 option(WITH_PROF "Build with profiling instrumentation" OFF)
 option(WITH_SYSTEM_KLT "Build using system KLT library." OFF)
 option(WITH_SYSTEM_LIBRAW "Build using system LibRaw library." OFF)
@@ -523,6 +529,85 @@ if(WITH_MIGRAPHX)
     get_filename_component(MIGRAPHX_LIBRARY_DIR "${MIGRAPHX_C_LIBRARY}" DIRECTORY)
     set(MIGRAPHX_TRANSITIVE_LIBRARY_DIR "${MIGRAPHX_ROOT}/lib/migraphx/lib")
     message(STATUS "X-veon experiment: MIGraphX root ${MIGRAPHX_ROOT}")
+endif()
+
+if(WITH_TVM_VULKAN)
+    if(NOT TVM_RUNTIME_ROOT)
+        message(FATAL_ERROR "WITH_TVM_VULKAN requires -DTVM_RUNTIME_ROOT=/path/to/tvm-runtime")
+    endif()
+    # These values used to be cached by find_path/find_library.  Clear stale
+    # entries so changing TVM_RUNTIME_ROOT cannot silently keep linking an
+    # earlier experimental runtime.
+    foreach(TVM_CACHED_VALUE
+            TVM_RUNTIME_INCLUDE_DIR
+            TVM_FFI_LIBRARY
+            TVM_RUNTIME_LIBRARY
+            TVM_RUNTIME_VULKAN_LIBRARY)
+        unset(${TVM_CACHED_VALUE})
+        unset(${TVM_CACHED_VALUE} CACHE)
+    endforeach()
+    find_path(
+        TVM_RUNTIME_INCLUDE_DIR
+        NAMES tvm/runtime/base.h
+        PATHS "${TVM_RUNTIME_ROOT}/include"
+        NO_DEFAULT_PATH
+        NO_CACHE
+        REQUIRED
+    )
+    if(NOT EXISTS "${TVM_RUNTIME_INCLUDE_DIR}/tvm/ffi/c_api.h")
+        message(FATAL_ERROR "TVM_RUNTIME_ROOT lacks the TVM-FFI C API headers")
+    endif()
+    foreach(TVM_LIBRARY_NAME tvm_ffi tvm_runtime tvm_runtime_vulkan)
+        string(TOUPPER "${TVM_LIBRARY_NAME}" TVM_LIBRARY_VARIABLE)
+        find_library(
+            ${TVM_LIBRARY_VARIABLE}_LIBRARY
+            NAMES ${TVM_LIBRARY_NAME}
+            PATHS "${TVM_RUNTIME_ROOT}/lib"
+            NO_DEFAULT_PATH
+            NO_CACHE
+            REQUIRED
+        )
+    endforeach()
+    file(STRINGS "${TVM_RUNTIME_INCLUDE_DIR}/tvm/ffi/c_api.h" TVM_FFI_MAJOR_LINE
+        REGEX "^#define TVM_FFI_VERSION_MAJOR 0$")
+    file(STRINGS "${TVM_RUNTIME_INCLUDE_DIR}/tvm/ffi/c_api.h" TVM_FFI_MINOR_LINE
+        REGEX "^#define TVM_FFI_VERSION_MINOR 1$")
+    file(STRINGS "${TVM_RUNTIME_INCLUDE_DIR}/tvm/ffi/c_api.h" TVM_FFI_PATCH_LINE
+        REGEX "^#define TVM_FFI_VERSION_PATCH 12$")
+    if(NOT TVM_FFI_MAJOR_LINE OR NOT TVM_FFI_MINOR_LINE OR NOT TVM_FFI_PATCH_LINE)
+        message(FATAL_ERROR "The TVM Vulkan experiment requires TVM-FFI 0.1.12")
+    endif()
+    if(NOT EXISTS "${TVM_RUNTIME_ROOT}/share/apache-tvm/LICENSE" OR
+       NOT EXISTS "${TVM_RUNTIME_ROOT}/share/apache-tvm/NOTICE")
+        message(FATAL_ERROR
+            "TVM_RUNTIME_ROOT must contain share/apache-tvm/LICENSE and NOTICE for bundling")
+    endif()
+    set(TVM_RUNTIME_IDENTITY_FILE
+        "${TVM_RUNTIME_ROOT}/share/apache-tvm/rawtherapee-runtime.txt")
+    if(NOT EXISTS "${TVM_RUNTIME_IDENTITY_FILE}")
+        message(FATAL_ERROR "TVM_RUNTIME_ROOT lacks rawtherapee-runtime.txt")
+    endif()
+    file(READ "${TVM_RUNTIME_IDENTITY_FILE}" TVM_RUNTIME_IDENTITY)
+    string(STRIP "${TVM_RUNTIME_IDENTITY}" TVM_RUNTIME_IDENTITY)
+    set(TVM_EXPECTED_RUNTIME_IDENTITY
+        "TVM_VERSION=0.25.0\nTVM_FFI_VERSION=0.1.12\nSOURCE_ARCHIVE_SHA256=ea7c3248e2a8ca91969fa487247ed94db22f1dbfadf7b9408fede76c8f16e56d")
+    if(NOT TVM_RUNTIME_IDENTITY STREQUAL TVM_EXPECTED_RUNTIME_IDENTITY)
+        message(FATAL_ERROR "TVM_RUNTIME_ROOT identity differs from the reviewed Phase 13 runtime")
+    endif()
+    add_library(TVM::ffi SHARED IMPORTED)
+    set_target_properties(TVM::ffi PROPERTIES
+        IMPORTED_LOCATION "${TVM_FFI_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TVM_RUNTIME_INCLUDE_DIR}")
+    add_library(TVM::runtime SHARED IMPORTED)
+    set_target_properties(TVM::runtime PROPERTIES
+        IMPORTED_LOCATION "${TVM_RUNTIME_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TVM_RUNTIME_INCLUDE_DIR}")
+    add_library(TVM::runtime_vulkan SHARED IMPORTED)
+    set_target_properties(TVM::runtime_vulkan PROPERTIES
+        IMPORTED_LOCATION "${TVM_RUNTIME_VULKAN_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TVM_RUNTIME_INCLUDE_DIR}")
+    get_filename_component(TVM_RUNTIME_LIBRARY_DIR "${TVM_RUNTIME_LIBRARY}" DIRECTORY)
+    message(STATUS "Neural demosaic experiment: Apache TVM Vulkan runtime ${TVM_RUNTIME_ROOT}")
 endif()
 
 if(WIN32)

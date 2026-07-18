@@ -4,6 +4,119 @@ This directory contains development-only tooling for authenticating and
 converting published neural demosaicing checkpoints. It is not part of the
 RawTherapee runtime.
 
+## Apache TVM Vulkan Phase 13
+
+Phase 13 converts the reviewed X-veon and PackedXTransNet ONNX files into
+ahead-of-time Linux x86-64 Vulkan modules.  The compiler is Python-first, but
+the deployed RawTherapee path is not: it loads only TVM's C++ runtime, FFI, and
+Vulkan sidecar libraries through a small C++17/C bridge.
+
+Ubuntu 24.04 build dependencies used by the reviewed build are:
+
+```sh
+sudo apt install \
+    build-essential cmake ninja-build git python3.12-venv \
+    llvm-18-dev clang-18 libvulkan-dev vulkan-tools mesa-vulkan-drivers \
+    spirv-tools spirv-headers
+```
+
+Download the official TVM 0.25.0 source archive.  Do not use the moving
+`v0.25.0` maintenance branch as though it were the release tag.  Require:
+
+```text
+apache-tvm-src-v0.25.0.tar.gz
+size     80,764,445 bytes
+SHA-256 ea7c3248e2a8ca91969fa487247ed94db22f1dbfadf7b9408fede76c8f16e56d
+commit   c7ba0735a4f346c67b761e1fde38a68a60be8adb
+FFI      59da4c0b82af0d499dae34bd89ef010f64d3ff45
+```
+
+Create the external compiler environment from the authenticated source tree:
+
+```sh
+python3.12 -m venv /tmp/tvm-phase13-venv
+/tmp/tvm-phase13-venv/bin/python -m pip install --upgrade pip
+/tmp/tvm-phase13-venv/bin/python -m pip install \
+    /tmp/apache-tvm-src-v0.25.0/3rdparty/tvm-ffi
+/tmp/tvm-phase13-venv/bin/python -m pip install \
+    -r tools/neural_demosaic/requirements-tvm-phase13.lock
+```
+
+Configure and build TVM outside this repository.  `CMAKE_BUILD_RPATH_USE_ORIGIN`
+is required for the portable runtime staging bundle:
+
+```sh
+cmake -S /tmp/apache-tvm-src-v0.25.0 \
+    -B /tmp/tvm-phase13-build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON \
+    -DTVM_VERSION=0.25.0 \
+    -DUSE_LLVM=/usr/bin/llvm-config-18 \
+    -DUSE_VULKAN=ON \
+    -DUSE_RPC=OFF -DUSE_CPP_RPC=OFF \
+    -DUSE_OPENCL=OFF -DUSE_ROCM=OFF -DUSE_CUDA=OFF \
+    -DUSE_RANDOM=OFF -DUSE_SORT=OFF -DUSE_GTEST=OFF \
+    -DBUILD_STATIC_RUNTIME=OFF \
+    -DTVM_FFI_USE_LIBBACKTRACE=OFF \
+    -DTVM_FFI_BACKTRACE_ON_SEGFAULT=OFF \
+    -DINDEX_DEFAULT_I64=OFF
+cmake --build /tmp/tvm-phase13-build --parallel
+```
+
+Construct `TVM_RUNTIME_ROOT` with the source `include/tvm`, TVM-FFI
+`include/tvm/ffi`, DLPack `include/dlpack`, the three built runtime libraries,
+and `LICENSE`/`NOTICE`.  Add
+`share/apache-tvm/rawtherapee-runtime.txt` with exactly:
+
+```text
+TVM_VERSION=0.25.0
+TVM_FFI_VERSION=0.1.12
+SOURCE_ARCHIVE_SHA256=ea7c3248e2a8ca91969fa487247ed94db22f1dbfadf7b9408fede76c8f16e56d
+```
+
+Compile the two authenticated ONNX inputs:
+
+```sh
+/tmp/tvm-phase13-venv/bin/python \
+    tools/neural_demosaic/convert_tvm_vulkan.py /path/xtrans.onnx \
+    --model xveon \
+    --tvm-source /tmp/apache-tvm-src-v0.25.0 \
+    --tvm-build /tmp/tvm-phase13-build \
+    --output /tmp/xveon-tvm-vulkan-linux-x86_64.so
+
+/tmp/tvm-phase13-venv/bin/python \
+    tools/neural_demosaic/convert_tvm_vulkan.py /path/packedxtransnet.onnx \
+    --model packedxtransnet \
+    --tvm-source /tmp/apache-tvm-src-v0.25.0 \
+    --tvm-build /tmp/tvm-phase13-build \
+    --output /tmp/packedxtransnet-tvm-vulkan-linux-x86_64.so
+```
+
+The reviewed module SHA-256 values are respectively
+`8648e3741a98345c8bc76b9e1c853a3b4ef58155b65ed726f9c2fda0226c206d`
+and
+`2975665b5f36ffb29e9b0c9dec62f69ffc916605189f41ae11484e19d18cfc6e`.
+The converter checks the complete ONNX identity, graph contract, portable
+target, every SPIR-V capability, and deterministic companion manifest.
+
+Build and select the hidden runtime backend with:
+
+```sh
+cmake -S . -B build/tvm-vulkan \
+    -DWITH_TVM_VULKAN=ON -DTVM_RUNTIME_ROOT=/path/to/tvm-runtime-root
+
+RT_XVEON_XTRANS_BACKEND=tvm-vulkan
+RT_XVEON_XTRANS_TVM_MODULE=/path/xveon-tvm-vulkan-linux-x86_64.so
+
+RT_PACKED_XTRANS_BACKEND=tvm-vulkan
+RT_PACKED_XTRANS_TVM_MODULE=/path/packedxtransnet-tvm-vulkan-linux-x86_64.so
+```
+
+These modules contain pretrained weights and remain ignored and external.
+X-veon has no explicit license at the pinned revision; PackedXTransNet is CC
+BY-NC 4.0.  See `devnotes/xtrans-neural-phase13-report.md` for the numerical,
+RADV/Lavapipe, dependency, full-image, timing, and memory results.
+
 ## PackedXTransNet Phase 12
 
 The PackedXTransNet path accepts only upstream revision

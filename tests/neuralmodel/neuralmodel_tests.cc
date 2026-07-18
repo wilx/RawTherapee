@@ -682,6 +682,9 @@ int main(int argc, char **argv)
         if (mode == "xveon-migraphx") {
             return xtrans_xveon_test::migraphxParity();
         }
+        if (mode == "xveon-tvm-vulkan") {
+            return xtrans_xveon_test::tvmVulkanParity();
+        }
         if (mode == "packed-mock") {
             return xtrans_packed_test::mockContract();
         }
@@ -693,6 +696,9 @@ int main(int argc, char **argv)
         }
         if (mode == "packed-migraphx") {
             return xtrans_packed_test::migraphxParity();
+        }
+        if (mode == "packed-tvm-vulkan") {
+            return xtrans_packed_test::tvmVulkanParity();
         }
         if (mode == "inference-benchmark") {
             return demosaicnet_inference_test::benchmark();

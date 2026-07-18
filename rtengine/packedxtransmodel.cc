@@ -6,9 +6,13 @@
 #ifdef RT_WITH_MIGRAPHX
 #include "xveon_migraphx_bridge.h"
 #endif
+#ifdef RT_WITH_TVM_VULKAN
+#include "tvm_vulkan_bridge.h"
+#endif
 
 #include <algorithm>
 #include <chrono>
+#include <cerrno>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -34,13 +38,22 @@ namespace neural
 {
 namespace
 {
+#ifdef RT_WITH_TVM_VULKAN
+constexpr std::size_t TVM_MODULE_BYTES = 3097488;
+constexpr const char *TVM_MODULE_SHA256 = "2975665b5f36ffb29e9b0c9dec62f69ffc916605189f41ae11484e19d18cfc6e";
+#endif
+#if defined(RT_WITH_ONNXRUNTIME) || defined(RT_WITH_MIGRAPHX)
 constexpr std::size_t MODEL_BYTES = 1673648;
 constexpr std::uint64_t MAX_MODEL_BYTES = 64u * 1024u * 1024u;
+#endif
+#if defined(RT_WITH_ONNXRUNTIME) || defined(RT_WITH_MIGRAPHX)
 const RtFixedOnnxContract CONTRACT = {
     "PackedXTransNet", "input", "output", {1, 1, 288, 288}, {1, 3, 288, 288},
     PACKED_XTRANS_INPUT_FLOATS, PACKED_XTRANS_OUTPUT_FLOATS, 0
 };
+#endif
 
+#if defined(RT_WITH_ONNXRUNTIME) || defined(RT_WITH_MIGRAPHX) || defined(RT_WITH_TVM_VULKAN)
 std::string sha256(const std::vector<unsigned char> &bytes)
 {
     Glib::Checksum checksum(Glib::Checksum::CHECKSUM_SHA256);
@@ -48,7 +61,9 @@ std::string sha256(const std::vector<unsigned char> &bytes)
     checksum.update(bytes.data(), bytes.size());
     return checksum.get_string();
 }
+#endif
 
+#if defined(RT_WITH_ONNXRUNTIME) || defined(RT_WITH_MIGRAPHX)
 std::vector<unsigned char> readModel(const std::string &path)
 {
     std::unique_ptr<std::FILE, int (*)(std::FILE *)> file(g_fopen(path.c_str(), "rb"), std::fclose);
@@ -67,6 +82,65 @@ std::vector<unsigned char> readModel(const std::string &path)
     if (sha256(bytes) != PACKED_XTRANS_ONNX_SHA256) throw NeuralModelError(NeuralModelErrorCode::DIGEST, "PackedXTransNet ONNX model SHA-256 differs");
     return bytes;
 }
+#endif
+
+#ifdef RT_WITH_TVM_VULKAN
+std::vector<unsigned char> readTvmModule(const std::string &path)
+{
+    struct stat pathStatus = {};
+    if (lstat(path.c_str(), &pathStatus) != 0) {
+        throw NeuralModelError(NeuralModelErrorCode::IO, "cannot stat PackedXTransNet TVM module");
+    }
+    if (!S_ISREG(pathStatus.st_mode) || S_ISLNK(pathStatus.st_mode)) {
+        throw NeuralModelError(
+            NeuralModelErrorCode::IO, "PackedXTransNet TVM module must be a regular non-symlink file");
+    }
+    const int descriptor = open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (descriptor < 0) {
+        throw NeuralModelError(NeuralModelErrorCode::IO, "cannot open PackedXTransNet TVM module");
+    }
+    std::unique_ptr<int, void (*)(int *)> owner(new int(descriptor), [](int *value) {
+        close(*value);
+        delete value;
+    });
+    struct stat status = {};
+    if (fstat(descriptor, &status) != 0 || !S_ISREG(status.st_mode)) {
+        throw NeuralModelError(NeuralModelErrorCode::IO, "cannot validate PackedXTransNet TVM module");
+    }
+    if (status.st_dev != pathStatus.st_dev || status.st_ino != pathStatus.st_ino) {
+        throw NeuralModelError(NeuralModelErrorCode::IO, "PackedXTransNet TVM module changed before opening");
+    }
+    if (status.st_size < 0 || static_cast<std::size_t>(status.st_size) != TVM_MODULE_BYTES) {
+        throw NeuralModelError(NeuralModelErrorCode::SIZE, "PackedXTransNet TVM module size differs");
+    }
+    std::vector<unsigned char> bytes(TVM_MODULE_BYTES);
+    std::size_t offset = 0;
+    while (offset < bytes.size()) {
+        const ssize_t count = read(descriptor, bytes.data() + offset, bytes.size() - offset);
+        if (count < 0 && errno == EINTR) continue;
+        if (count <= 0) {
+            throw NeuralModelError(
+                NeuralModelErrorCode::SIZE, "PackedXTransNet TVM module was truncated while reading");
+        }
+        offset += static_cast<std::size_t>(count);
+    }
+    unsigned char extra = 0;
+    ssize_t extraCount = 0;
+    do {
+        extraCount = read(descriptor, &extra, 1);
+    } while (extraCount < 0 && errno == EINTR);
+    if (extraCount < 0) {
+        throw NeuralModelError(NeuralModelErrorCode::IO, "cannot finish reading PackedXTransNet TVM module");
+    }
+    if (extraCount != 0) {
+        throw NeuralModelError(NeuralModelErrorCode::SIZE, "PackedXTransNet TVM module changed while reading");
+    }
+    if (sha256(bytes) != TVM_MODULE_SHA256) {
+        throw NeuralModelError(NeuralModelErrorCode::DIGEST, "PackedXTransNet TVM module SHA-256 differs");
+    }
+    return bytes;
+}
+#endif
 
 #ifdef RT_WITH_ONNXRUNTIME
 NeuralModelError ortError(int code, const char *message)
@@ -76,6 +150,19 @@ NeuralModelError ortError(int code, const char *message)
     else if (code == RT_XVEON_ORT_SCHEMA) mapped = NeuralModelErrorCode::SCHEMA;
     else if (code == RT_XVEON_ORT_ALLOCATION) mapped = NeuralModelErrorCode::ALLOCATION;
     return NeuralModelError(mapped, message ? message : "unknown neural runtime error");
+}
+#endif
+
+#ifdef RT_WITH_TVM_VULKAN
+NeuralModelError tvmError(int code, const char *message)
+{
+    NeuralModelErrorCode mapped = NeuralModelErrorCode::RUNTIME;
+    if (code == RT_TVM_VULKAN_SCHEMA) mapped = NeuralModelErrorCode::SCHEMA;
+    else if (code == RT_TVM_VULKAN_ALLOCATION) mapped = NeuralModelErrorCode::ALLOCATION;
+    else if (code == RT_TVM_VULKAN_IO) mapped = NeuralModelErrorCode::IO;
+    else if (code == RT_TVM_VULKAN_NONFINITE) mapped = NeuralModelErrorCode::NONFINITE;
+    else if (code == RT_TVM_VULKAN_VERSION) mapped = NeuralModelErrorCode::VERSION;
+    return NeuralModelError(mapped, message ? message : "unknown TVM Vulkan error");
 }
 #endif
 
@@ -117,6 +204,53 @@ protected:
     std::uint64_t inferenceUs_ = 0;
     std::mutex mutex_;
 };
+
+#ifdef RT_WITH_TVM_VULKAN
+class TvmRunner final : public TimedRunner
+{
+public:
+    explicit TvmRunner(std::vector<unsigned char> bytes) : bytes_(std::move(bytes))
+    {
+        artifact_ = TVM_MODULE_SHA256;
+        runtime_ = rt_tvm_vulkan_version();
+        provider_ = "TVM-Vulkan";
+        precision_ = "fp32";
+        compileSource_ = "ahead-of-time";
+        static const int64_t inputShape[] = {1, 1, 288, 288};
+        static const int64_t outputShape[] = {1, 3, 288, 288};
+        const RtTvmVulkanContract contract = {
+            inputShape, 4, outputShape, 4, PACKED_XTRANS_INPUT_FLOATS, PACKED_XTRANS_OUTPUT_FLOATS
+        };
+        char message[1024] = {};
+        const auto start = std::chrono::steady_clock::now();
+        const int status = rt_tvm_vulkan_create(
+            bytes_.data(), bytes_.size(), &contract, &session_, message, sizeof(message));
+        compilationUs_ = elapsed(start);
+        if (status != RT_TVM_VULKAN_OK) throw tvmError(status, message);
+        provider_ = rt_tvm_vulkan_device(session_);
+    }
+
+    ~TvmRunner() override { rt_tvm_vulkan_release(session_); }
+
+    NeuralModelError run(
+        const float *input, std::size_t inputs, float *output, std::size_t outputs) override
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        char message[1024] = {};
+        const auto start = std::chrono::steady_clock::now();
+        const int status = rt_tvm_vulkan_run(
+            session_, input, inputs, output, outputs, message, sizeof(message));
+        inferenceUs_ = elapsed(start);
+        return status == RT_TVM_VULKAN_OK ? NeuralModelError() : tvmError(status, message);
+    }
+
+    std::uint64_t workingBufferBytes() const override { return rt_tvm_vulkan_working_bytes(session_); }
+
+private:
+    std::vector<unsigned char> bytes_;
+    RtTvmVulkanSession *session_ = nullptr;
+};
+#endif
 
 #ifdef RT_WITH_ONNXRUNTIME
 class OrtRunner final : public TimedRunner
@@ -349,6 +483,8 @@ std::string selectedBackend()
     return "onnxruntime-cpu";
 #elif defined(RT_WITH_MIGRAPHX)
     return "migraphx";
+#elif defined(RT_WITH_TVM_VULKAN)
+    return "tvm-vulkan";
 #else
     return {};
 #endif
@@ -364,16 +500,19 @@ bool selectedFp16()
 
 PackedXTransLoadResult loadCachedPackedXTransRunner(const Glib::ustring &path)
 {
-    if (path.empty()) return {nullptr, NeuralModelError(NeuralModelErrorCode::IO, "RT_PACKED_XTRANS_MODEL is unset or empty")};
+    if (path.empty()) return {nullptr, NeuralModelError(NeuralModelErrorCode::IO, "PackedXTransNet model or TVM module path is unset or empty")};
     try {
         const std::string backend = selectedBackend();
-        if (backend != "onnxruntime-cpu" && backend != "migraphx") {
-            return {nullptr, NeuralModelError(NeuralModelErrorCode::ENUM, "RT_PACKED_XTRANS_BACKEND must be onnxruntime-cpu or migraphx")};
+        if (backend != "onnxruntime-cpu" && backend != "migraphx" && backend != "tvm-vulkan") {
+            return {nullptr, NeuralModelError(NeuralModelErrorCode::ENUM, "RT_PACKED_XTRANS_BACKEND must be onnxruntime-cpu, migraphx, or tvm-vulkan")};
         }
         const bool fp16 = selectedFp16();
         if (backend != "migraphx" && fp16) return {nullptr, NeuralModelError(NeuralModelErrorCode::ENUM, "FP16 is available only with MIGraphX")};
 #ifndef RT_WITH_ONNXRUNTIME
         if (backend == "onnxruntime-cpu") return {nullptr, NeuralModelError(NeuralModelErrorCode::RUNTIME, "RawTherapee was built without WITH_ONNXRUNTIME")};
+#endif
+#ifndef RT_WITH_TVM_VULKAN
+        if (backend == "tvm-vulkan") return {nullptr, NeuralModelError(NeuralModelErrorCode::RUNTIME, "RawTherapee was built without WITH_TVM_VULKAN")};
 #endif
 #ifndef RT_WITH_MIGRAPHX
         if (backend == "migraphx") return {nullptr, NeuralModelError(NeuralModelErrorCode::RUNTIME, "RawTherapee was built without WITH_MIGRAPHX")};
@@ -381,13 +520,20 @@ PackedXTransLoadResult loadCachedPackedXTransRunner(const Glib::ustring &path)
         std::unique_ptr<char, decltype(&g_free)> canonical(g_canonicalize_filename(path.c_str(), nullptr), g_free);
         const std::string modelPath = canonical ? canonical.get() : path.raw();
         std::string runtimeIdentity;
+        std::string artifactIdentity = PACKED_XTRANS_ONNX_SHA256;
 #ifdef RT_WITH_ONNXRUNTIME
         if (backend == "onnxruntime-cpu") runtimeIdentity = rt_xveon_ort_version();
 #endif
 #ifdef RT_WITH_MIGRAPHX
         if (backend == "migraphx") runtimeIdentity = rt_xveon_migraphx_version() + std::string("\ngfx1101");
 #endif
-        const std::string key = modelPath + "\n" + PACKED_XTRANS_ONNX_SHA256 + "\n" + backend + "\n" +
+#ifdef RT_WITH_TVM_VULKAN
+        if (backend == "tvm-vulkan") {
+            runtimeIdentity = rt_tvm_vulkan_version();
+            artifactIdentity = TVM_MODULE_SHA256;
+        }
+#endif
+        const std::string key = modelPath + "\n" + artifactIdentity + "\n" + backend + "\n" +
             runtimeIdentity + (fp16 ? "\nfp16" : "\nfp32");
         std::lock_guard<std::mutex> lock(cacheMutex());
         auto found = cache().find(key);
@@ -398,6 +544,9 @@ PackedXTransLoadResult loadCachedPackedXTransRunner(const Glib::ustring &path)
 #endif
 #ifdef RT_WITH_MIGRAPHX
         if (backend == "migraphx") runner.reset(new MigraphxRunner(readModel(modelPath), fp16));
+#endif
+#ifdef RT_WITH_TVM_VULKAN
+        if (backend == "tvm-vulkan") runner.reset(new TvmRunner(readTvmModule(modelPath)));
 #endif
         if (!runner) return {nullptr, NeuralModelError(NeuralModelErrorCode::RUNTIME, "selected PackedXTransNet backend is unavailable")};
         cache().emplace(key, runner);

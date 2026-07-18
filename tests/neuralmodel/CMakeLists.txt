@@ -23,6 +23,9 @@ endif()
 if(WITH_MIGRAPHX)
     target_compile_definitions(rawtherapee-neuralmodel-tests PRIVATE RT_TEST_WITH_MIGRAPHX)
 endif()
+if(WITH_TVM_VULKAN)
+    target_compile_definitions(rawtherapee-neuralmodel-tests PRIVATE RT_TEST_WITH_TVM_VULKAN)
+endif()
 rt_setup_target(rawtherapee-neuralmodel-tests)
 
 add_executable(
@@ -34,7 +37,7 @@ target_link_libraries(rawtherapee-rtnn-inspect PRIVATE rtengine-neuralmodel-load
 target_include_directories(rawtherapee-rtnn-inspect PRIVATE ${PROJECT_SOURCE_DIR})
 rt_setup_target(rawtherapee-rtnn-inspect)
 
-if(WITH_ONNXRUNTIME OR WITH_MIGRAPHX)
+if(WITH_ONNXRUNTIME OR WITH_MIGRAPHX OR WITH_TVM_VULKAN)
     add_executable(rawtherapee-xveon-tile xveon_tile.cc)
     target_link_libraries(rawtherapee-xveon-tile PRIVATE rtengine-xveon-onnx)
     target_include_directories(rawtherapee-xveon-tile PRIVATE ${PROJECT_SOURCE_DIR})
@@ -44,6 +47,14 @@ if(WITH_ONNXRUNTIME OR WITH_MIGRAPHX)
     target_link_libraries(rawtherapee-xveon-wrapper PRIVATE rtengine)
     target_include_directories(rawtherapee-xveon-wrapper PRIVATE ${PROJECT_SOURCE_DIR})
     rt_setup_target(rawtherapee-xveon-wrapper)
+
+    if(WITH_TVM_VULKAN AND UNIX AND NOT APPLE)
+        set_target_properties(
+            rawtherapee-neuralmodel-tests
+            rawtherapee-xveon-tile
+            rawtherapee-xveon-wrapper
+            PROPERTIES BUILD_RPATH "\$ORIGIN;${TVM_RUNTIME_LIBRARY_DIR}")
+    endif()
 endif()
 
 function(add_neuralmodel_test TEST_NAME TEST_MODE)
@@ -76,10 +87,12 @@ add_neuralmodel_test(rtengine.neural_model.xveon_mock xveon-mock)
 add_neuralmodel_test(rtengine.neural_model.xveon_loader xveon-loader)
 add_neuralmodel_test(rtengine.neural_model.xveon_reviewed xveon-reviewed)
 add_neuralmodel_test(rtengine.neural_model.xveon_migraphx xveon-migraphx)
+add_neuralmodel_test(rtengine.neural_model.xveon_tvm_vulkan xveon-tvm-vulkan)
 add_neuralmodel_test(rtengine.neural_model.packed_mock packed-mock)
 add_neuralmodel_test(rtengine.neural_model.packed_loader packed-loader)
 add_neuralmodel_test(rtengine.neural_model.packed_reviewed packed-reviewed)
 add_neuralmodel_test(rtengine.neural_model.packed_migraphx packed-migraphx)
+add_neuralmodel_test(rtengine.neural_model.packed_tvm_vulkan packed-tvm-vulkan)
 
 set_tests_properties(
     rtengine.neural_model.reviewed_artifact
@@ -89,17 +102,25 @@ set_tests_properties(
     rtengine.neural_model.xtrans_raw_reviewed
     rtengine.neural_model.xveon_reviewed
     rtengine.neural_model.xveon_migraphx
+    rtengine.neural_model.xveon_tvm_vulkan
     rtengine.neural_model.packed_reviewed
     rtengine.neural_model.packed_migraphx
+    rtengine.neural_model.packed_tvm_vulkan
     PROPERTIES SKIP_RETURN_CODE 77
 )
 
-set_tests_properties(rtengine.neural_model.xveon_migraphx rtengine.neural_model.packed_migraphx PROPERTIES TIMEOUT 180)
+set_tests_properties(
+    rtengine.neural_model.xveon_migraphx
+    rtengine.neural_model.packed_migraphx
+    rtengine.neural_model.xveon_tvm_vulkan
+    rtengine.neural_model.packed_tvm_vulkan
+    PROPERTIES TIMEOUT 180)
 
 # The portable direct convolution is intentionally unoptimized in Debug. The
 # seven reviewed raw-wrapper cases still run there, but need a wider timeout
 # than the ordinary loader and optimized-inference cases.
 set_tests_properties(
+    rtengine.neural_model.xtrans_raw_contract
     rtengine.neural_model.xtrans_raw_reviewed
     PROPERTIES TIMEOUT 300
 )
