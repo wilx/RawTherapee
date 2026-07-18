@@ -49,6 +49,7 @@
 #include "lensmetadata.h"
 #include "rtgui/options.h"
 #include "xtrans_demosaicnet.h"
+#include "xtrans_packed.h"
 #include "xtrans_xveon.h"
 
 //#define BENCHMARK
@@ -1914,6 +1915,50 @@ bool RawImageSource::xveon_xtrans_interpolate()
     return true;
 }
 
+bool RawImageSource::packed_xtrans_interpolate()
+{
+    const char *const modelPath = std::getenv("RT_PACKED_XTRANS_MODEL");
+    const auto started = std::chrono::steady_clock::now();
+    const neural::PackedXTransLoadResult loaded =
+        neural::loadCachedPackedXTransRunner(modelPath ? Glib::ustring(modelPath) : Glib::ustring());
+    if (!loaded) {
+        std::fprintf(stderr, "PackedXTransNet X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(loaded.error.code), loaded.error.message.c_str());
+        return false;
+    }
+    int margin = 60;
+    if (const char *value = std::getenv("RT_PACKED_XTRANS_MARGIN")) {
+        if (std::string(value) == "12") margin = 12;
+        else if (std::string(value) != "60") {
+            std::fprintf(stderr, "PackedXTransNet X-Trans error [ENUM]: RT_PACKED_XTRANS_MARGIN must be 12 or 60; falling back to 3-pass (Markesteijn)\n");
+            return false;
+        }
+    }
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const PackedXTransRunResult run = demosaicPackedXTrans(
+        rawData, red, green, blue, W, H, xtrans, loaded.runner, margin);
+    if (!run) {
+        std::fprintf(stderr, "PackedXTransNet X-Trans error [%s]: %s; falling back to 3-pass (Markesteijn)\n",
+            neural::neuralModelErrorCodeName(run.error.code), run.error.message.c_str());
+        return false;
+    }
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    std::fprintf(stderr,
+        "PackedXTransNet X-Trans completed: method=%s artifact=%s runtime=%s provider=%s precision=%s "
+        "compile_source=%s tile=288x288 margin=%d stride=%d tiles=%llu compile_us=%llu last_inference_us=%llu "
+        "working_buffer_estimate=%llu elapsed_us=%lld\n",
+        PACKED_XTRANS_ONNX_METHOD, loaded.runner->artifactSha256().c_str(),
+        loaded.runner->runtimeVersion().c_str(), loaded.runner->provider().c_str(),
+        loaded.runner->precision().c_str(), loaded.runner->compileSource().c_str(), run.margin, run.stride,
+        static_cast<unsigned long long>(run.tileCount),
+        static_cast<unsigned long long>(loaded.runner->compilationMicroseconds()),
+        static_cast<unsigned long long>(loaded.runner->lastInferenceMicroseconds()),
+        static_cast<unsigned long long>(run.workingBufferBytes), static_cast<long long>(elapsed));
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -1977,6 +2022,10 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             }
         } else if (raw.xtranssensor.method == XVEON_XTRANS_ONNX_METHOD) {
             if (!xveon_xtrans_interpolate()) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method == PACKED_XTRANS_ONNX_METHOD) {
+            if (!packed_xtrans_interpolate()) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stddef.h>
+#include "xveon_ort_bridge.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +24,17 @@ int rt_xveon_migraphx_create(
     const void *model,
     size_t model_size,
     int fast_math,
+    const char *load_program,
+    RtXveonMigraphxSession **out,
+    char *message,
+    size_t message_size);
+
+int rt_xveon_migraphx_create_contract(
+    const void *model,
+    size_t model_size,
+    const RtFixedOnnxContract *contract,
+    int fast_math,
+    int fp16,
     const char *load_program,
     RtXveonMigraphxSession **out,
     char *message,

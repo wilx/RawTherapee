@@ -118,6 +118,7 @@ set(RTENGINESOURCEFILES
     vng4_demosaic_RT.cc
     xtrans_cfa.cc
     xtrans_demosaicnet.cc
+    xtrans_packed.cc
     xtrans_xveon.cc
     xtrans_rafinazari.cc
     xtrans_demosaic.cc
@@ -197,7 +198,7 @@ elseif(MSVC)
 endif()
 
 if(WITH_ONNXRUNTIME OR WITH_MIGRAPHX)
-    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel.cc)
+    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel.cc packedxtransmodel.cc)
     target_link_libraries(rtengine-xveon-onnx PUBLIC rtengine-neuralmodel-loader)
     if(WITH_ONNXRUNTIME)
         target_sources(rtengine-xveon-onnx PRIVATE xveon_ort_bridge.c)
@@ -219,7 +220,7 @@ if(WITH_ONNXRUNTIME)
         target_link_options(rtengine-xveon-onnx INTERFACE "-Wl,-rpath,${ONNXRUNTIME_LIBRARY_DIR}")
     endif()
 elseif(NOT WITH_MIGRAPHX)
-    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel_stub.cc)
+    add_library(rtengine-xveon-onnx STATIC xveonxtransmodel_stub.cc packedxtransmodel_stub.cc)
     target_link_libraries(rtengine-xveon-onnx PUBLIC rtengine-neuralmodel-loader)
 endif()
 target_include_directories(

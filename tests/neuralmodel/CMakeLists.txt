@@ -3,6 +3,7 @@ set(NEURALMODEL_TEST_SOURCES
     neuralmodel_tests.cc
     rtnn_inspection.cc
     xtrans_demosaicnet_tests.cc
+    xtrans_packed_tests.cc
     xtrans_xveon_tests.cc
 )
 
@@ -75,6 +76,10 @@ add_neuralmodel_test(rtengine.neural_model.xveon_mock xveon-mock)
 add_neuralmodel_test(rtengine.neural_model.xveon_loader xveon-loader)
 add_neuralmodel_test(rtengine.neural_model.xveon_reviewed xveon-reviewed)
 add_neuralmodel_test(rtengine.neural_model.xveon_migraphx xveon-migraphx)
+add_neuralmodel_test(rtengine.neural_model.packed_mock packed-mock)
+add_neuralmodel_test(rtengine.neural_model.packed_loader packed-loader)
+add_neuralmodel_test(rtengine.neural_model.packed_reviewed packed-reviewed)
+add_neuralmodel_test(rtengine.neural_model.packed_migraphx packed-migraphx)
 
 set_tests_properties(
     rtengine.neural_model.reviewed_artifact
@@ -84,10 +89,12 @@ set_tests_properties(
     rtengine.neural_model.xtrans_raw_reviewed
     rtengine.neural_model.xveon_reviewed
     rtengine.neural_model.xveon_migraphx
+    rtengine.neural_model.packed_reviewed
+    rtengine.neural_model.packed_migraphx
     PROPERTIES SKIP_RETURN_CODE 77
 )
 
-set_tests_properties(rtengine.neural_model.xveon_migraphx PROPERTIES TIMEOUT 180)
+set_tests_properties(rtengine.neural_model.xveon_migraphx rtengine.neural_model.packed_migraphx PROPERTIES TIMEOUT 180)
 
 # The portable direct convolution is intentionally unoptimized in Debug. The
 # seven reviewed raw-wrapper cases still run there, but need a wider timeout

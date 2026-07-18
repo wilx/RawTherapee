@@ -2,6 +2,7 @@
 #include "demosaicnet_inference_tests.h"
 #include "xtrans_demosaicnet_tests.h"
 #include "xtrans_xveon_tests.h"
+#include "xtrans_packed_tests.h"
 
 #include "rtengine/demosaicnetxtransmodel.h"
 #include "rtengine/neuralmodel.h"
@@ -680,6 +681,18 @@ int main(int argc, char **argv)
         }
         if (mode == "xveon-migraphx") {
             return xtrans_xveon_test::migraphxParity();
+        }
+        if (mode == "packed-mock") {
+            return xtrans_packed_test::mockContract();
+        }
+        if (mode == "packed-loader") {
+            return xtrans_packed_test::loaderContract();
+        }
+        if (mode == "packed-reviewed") {
+            return xtrans_packed_test::reviewedModel();
+        }
+        if (mode == "packed-migraphx") {
+            return xtrans_packed_test::migraphxParity();
         }
         if (mode == "inference-benchmark") {
             return demosaicnet_inference_test::benchmark();

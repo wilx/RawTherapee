@@ -4,6 +4,36 @@ This directory contains development-only tooling for authenticating and
 converting published neural demosaicing checkpoints. It is not part of the
 RawTherapee runtime.
 
+## PackedXTransNet Phase 12
+
+The PackedXTransNet path accepts only upstream revision
+`9c3cc5ab841c9afd2ed0bb702468950481043d06` and
+`weights/packed_5183_3208.pt` (646,145 bytes, SHA-256
+`1c78b888e3f885252f84c1b12f75dd0af179a62b48499c5808eeb773d1bfc161`).
+The checkpoint is CC BY-NC 4.0 and must remain external.
+
+Install the additional deterministic ONNX tooling, then convert:
+
+```sh
+.venv/bin/python -m pip install -r tools/neural_demosaic/requirements-onnx.txt
+.venv/bin/python -m tools.neural_demosaic.inspect_packedxtrans_checkpoint \
+    /path/packed_5183_3208.pt --output /tmp/packedxtrans-checkpoint.json
+PACKED_XTRANS_CHECKPOINT=/path/packed_5183_3208.pt \
+    .venv/bin/python -m pytest tools/neural_demosaic/tests/test_packedxtrans.py
+.venv/bin/python -m tools.neural_demosaic.convert_packedxtrans \
+    /path/packed_5183_3208.pt --output /tmp/packedxtransnet.onnx
+```
+
+The reviewed output is 1,673,648 bytes with SHA-256
+`ad000f496fe9b4a8493bc891dedc3a1e379aec86c93b2fb53f8b8a66a2888e3c`;
+its canonical companion manifest has SHA-256
+`ebd978aef293d1cf35a5d15234ef185d0785ac222c9c10f6477903e74d4c338d`.
+Use it only through the hidden `packedxtransnet-onnx` PP3 method and explicit
+`RT_PACKED_XTRANS_MODEL`, `RT_PACKED_XTRANS_BACKEND`, and
+`RT_PACKED_XTRANS_PRECISION` environment variables. A private
+`RT_PACKED_XTRANS_MIGRAPHX_CACHE_DIR` enables authenticated compiled-program
+caching. No checkpoint, ONNX, cache, or full comparison TIFF is tracked.
+
 Phase 1 supports only the Gharbi DemosaicNet X-Trans checkpoint from upstream
 revision `959e9d1630976b421d5af5e35b2e2a01f5630e5c`. The tool reads the complete
 checkpoint, verifies its pinned size and SHA-256 before deserialization, loads

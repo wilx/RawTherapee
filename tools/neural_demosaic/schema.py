@@ -85,6 +85,51 @@ GHARBI_XTRANS_V1 = CheckpointSchema(
 )
 
 
+def _packed_xtrans_specs() -> tuple[TensorSpec, ...]:
+    result = [
+        TensorSpec("baseline.masks", (3, 6, 6), "CHW"),
+        TensorSpec("baseline.kern_g", (1, 1, 5, 5), "OIHW"),
+        TensorSpec("baseline.kern_rb", (1, 1, 7, 7), "OIHW"),
+        TensorSpec("stem.weight", (32, 10, 3, 3), "OIHW"),
+        TensorSpec("stem.bias", (32,), "vector"),
+    ]
+    for index in range(8):
+        for convolution in (1, 2):
+            prefix = f"body.{index}.conv{convolution}"
+            result.extend(
+                (
+                    TensorSpec(f"{prefix}.weight", (32, 32, 3, 3), "OIHW"),
+                    TensorSpec(f"{prefix}.bias", (32,), "vector"),
+                )
+            )
+    result.extend(
+        (
+            TensorSpec("head.weight", (27, 32, 3, 3), "OIHW"),
+            TensorSpec("head.bias", (27,), "vector"),
+        )
+    )
+    return tuple(result)
+
+
+PACKED_XTRANS_V1 = CheckpointSchema(
+    model_id="packedxtransnet-xtrans-v1",
+    architecture_name="PackedXTransNet",
+    architecture_depth=8,
+    architecture_width=32,
+    convolution_padding=1,
+    upstream_repository="https://github.com/danylo-kelvich/neural-demosaic",
+    upstream_revision="9c3cc5ab841c9afd2ed0bb702468950481043d06",
+    upstream_checkpoint_path="weights/packed_5183_3208.pt",
+    upstream_license="CC-BY-NC-4.0",
+    expected_file_size=646_145,
+    expected_sha256="1c78b888e3f885252f84c1b12f75dd0af179a62b48499c5808eeb773d1bfc161",
+    tensors=_packed_xtrans_specs(),
+)
+
+
 assert len(GHARBI_XTRANS_V1.tensors) == 26
 assert GHARBI_XTRANS_V1.parameter_count == 409_923
 assert GHARBI_XTRANS_V1.payload_bytes == 1_639_692
+assert len(PACKED_XTRANS_V1.tensors) == 39
+assert PACKED_XTRANS_V1.parameter_count == 158_865
+assert PACKED_XTRANS_V1.payload_bytes == 635_460

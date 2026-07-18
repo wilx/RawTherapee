@@ -24,6 +24,7 @@ struct RtXveonMigraphxSession {
     migraphx_program_parameters_t parameters;
     migraphx_argument_t input_argument;
     float *input;
+    RtFixedOnnxContract contract;
 };
 
 static void set_message(char *message, size_t size, const char *operation, migraphx_status status)
@@ -45,7 +46,8 @@ static int check_status(
 
 static int validate_shape(
     const_migraphx_shape_t shape,
-    size_t channels,
+    const int64_t expected[4],
+    size_t expected_elements,
     char *message,
     size_t message_size)
 {
@@ -61,15 +63,16 @@ static int validate_shape(
         return RT_XVEON_MIGRAPHX_RUNTIME;
     }
     if (type != migraphx_shape_float_type || rank != 4 || lengths_size != 4 ||
-        lengths[0] != 1 || lengths[1] != channels || lengths[2] != 288 || lengths[3] != 288 ||
-        elements != channels * 288 * 288) {
-        snprintf(message, message_size, "X-veon MIGraphX tensor contract differs");
+        lengths[0] != (size_t)expected[0] || lengths[1] != (size_t)expected[1] ||
+        lengths[2] != (size_t)expected[2] || lengths[3] != (size_t)expected[3] ||
+        elements != expected_elements) {
+        snprintf(message, message_size, "MIGraphX tensor contract differs");
         return RT_XVEON_MIGRAPHX_SCHEMA;
     }
     return RT_XVEON_MIGRAPHX_OK;
 }
 
-static int validate_program(migraphx_program_t program, char *message, size_t message_size)
+static int validate_program(migraphx_program_t program, const RtFixedOnnxContract *contract, char *message, size_t message_size)
 {
     migraphx_program_parameter_shapes_t parameters = NULL;
     migraphx_shapes_t outputs = NULL;
@@ -87,20 +90,20 @@ static int validate_program(migraphx_program_t program, char *message, size_t me
     if (count != 1 ||
         !check_status(migraphx_program_parameter_shapes_names(names, parameters),
                       "query parameter names", message, message_size)) {
-        snprintf(message, message_size, "X-veon MIGraphX model must have one input");
+        snprintf(message, message_size, "MIGraphX model must have one input");
         result = RT_XVEON_MIGRAPHX_SCHEMA;
         goto done;
     }
-    if (!names[0] || strcmp(names[0], "input") != 0) {
-        snprintf(message, message_size, "X-veon MIGraphX input name differs");
+    if (!names[0] || strcmp(names[0], contract->input_name) != 0) {
+        snprintf(message, message_size, "MIGraphX input name differs");
         result = RT_XVEON_MIGRAPHX_SCHEMA;
         goto done;
     }
-    if (!check_status(migraphx_program_parameter_shapes_get(&input_shape, parameters, "input"),
+    if (!check_status(migraphx_program_parameter_shapes_get(&input_shape, parameters, contract->input_name),
                       "query input shape", message, message_size)) {
         goto done;
     }
-    result = validate_shape(input_shape, 4, message, message_size);
+    result = validate_shape(input_shape, contract->input_shape, contract->input_count, message, message_size);
     if (result != RT_XVEON_MIGRAPHX_OK) goto done;
     if (!check_status(migraphx_program_get_output_shapes(&outputs, program),
                       "query output shapes", message, message_size) ||
@@ -112,11 +115,11 @@ static int validate_program(migraphx_program_t program, char *message, size_t me
     if (count != 1 ||
         !check_status(migraphx_shapes_get(&output_shape, outputs, 0),
                       "query output shape", message, message_size)) {
-        snprintf(message, message_size, "X-veon MIGraphX model must have one output");
+        snprintf(message, message_size, "MIGraphX model must have one output");
         result = RT_XVEON_MIGRAPHX_SCHEMA;
         goto done;
     }
-    result = validate_shape(output_shape, 3, message, message_size);
+    result = validate_shape(output_shape, contract->output_shape, contract->output_count, message, message_size);
 done:
     if (outputs) migraphx_shapes_destroy(outputs);
     if (parameters) migraphx_program_parameter_shapes_destroy(parameters);
@@ -142,6 +145,25 @@ int rt_xveon_migraphx_create(
     char *message,
     size_t message_size)
 {
+    static const RtFixedOnnxContract contract = {
+        "X-veon", "input", "output", {1, 4, 288, 288}, {1, 3, 288, 288},
+        INPUT_COUNT, OUTPUT_COUNT, 1
+    };
+    return rt_xveon_migraphx_create_contract(model, model_size, &contract, fast_math, 0,
+                                             load_program, out, message, message_size);
+}
+
+int rt_xveon_migraphx_create_contract(
+    const void *model,
+    size_t model_size,
+    const RtFixedOnnxContract *requested_contract,
+    int fast_math,
+    int fp16,
+    const char *load_program,
+    RtXveonMigraphxSession **out,
+    char *message,
+    size_t message_size)
+{
     RtXveonMigraphxSession *state = NULL;
     migraphx_onnx_options_t onnx = NULL;
     migraphx_compile_options_t compile = NULL;
@@ -150,11 +172,15 @@ int rt_xveon_migraphx_create(
     migraphx_program_parameter_shapes_t shapes = NULL;
     const_migraphx_shape_t input_shape = NULL;
     int result = RT_XVEON_MIGRAPHX_RUNTIME;
-    if (!out || (!model && !load_program)) return RT_XVEON_MIGRAPHX_RUNTIME;
+    if (!out || (!model && !load_program) || !requested_contract || !requested_contract->input_name ||
+        !requested_contract->output_name || !requested_contract->input_count || !requested_contract->output_count) {
+        return RT_XVEON_MIGRAPHX_RUNTIME;
+    }
     *out = NULL;
     state = (RtXveonMigraphxSession *)calloc(1, sizeof(*state));
     if (!state) return RT_XVEON_MIGRAPHX_ALLOCATION;
-    state->input = (float *)malloc(INPUT_COUNT * sizeof(float));
+    state->contract = *requested_contract;
+    state->input = (float *)malloc(state->contract.input_count * sizeof(float));
     if (!state->input) {
         result = RT_XVEON_MIGRAPHX_ALLOCATION;
         goto fail;
@@ -170,9 +196,11 @@ int rt_xveon_migraphx_create(
         if (!check_status(migraphx_onnx_options_create(&onnx), "create ONNX options", message, message_size) ||
             !check_status(migraphx_parse_onnx_buffer(&state->program, model, model_size, onnx),
                           "parse authenticated ONNX buffer", message, message_size)) goto fail;
-        result = validate_program(state->program, message, message_size);
+        result = validate_program(state->program, &state->contract, message, message_size);
         if (result != RT_XVEON_MIGRAPHX_OK) goto fail;
         result = RT_XVEON_MIGRAPHX_RUNTIME;
+        if (fp16 && !check_status(migraphx_quantize_fp16(state->program),
+                                  "quantize program to FP16", message, message_size)) goto fail;
         if (!check_status(migraphx_target_create(&target, "gpu"), "create GPU target", message, message_size) ||
             !check_status(migraphx_compile_options_create(&compile), "create compile options", message, message_size) ||
             !check_status(migraphx_compile_options_set_offload_copy(compile, true), "enable offload copies", message, message_size) ||
@@ -180,18 +208,18 @@ int rt_xveon_migraphx_create(
             !check_status(migraphx_compile_options_set_exhaustive_tune_flag(compile, false), "disable exhaustive tuning", message, message_size) ||
             !check_status(migraphx_program_compile(state->program, target, compile), "compile GPU program", message, message_size)) goto fail;
     }
-    result = validate_program(state->program, message, message_size);
+    result = validate_program(state->program, &state->contract, message, message_size);
     if (result != RT_XVEON_MIGRAPHX_OK) goto fail;
     result = RT_XVEON_MIGRAPHX_RUNTIME;
     if (!check_status(migraphx_program_get_parameter_shapes(&shapes, state->program),
                       "query compiled input shape", message, message_size) ||
-        !check_status(migraphx_program_parameter_shapes_get(&input_shape, shapes, "input"),
+        !check_status(migraphx_program_parameter_shapes_get(&input_shape, shapes, state->contract.input_name),
                       "get compiled input shape", message, message_size) ||
         !check_status(migraphx_argument_create(&state->input_argument, input_shape, (char *)state->input),
                       "create input argument", message, message_size) ||
         !check_status(migraphx_program_parameters_create(&state->parameters),
                       "create program parameters", message, message_size) ||
-        !check_status(migraphx_program_parameters_add(state->parameters, "input", state->input_argument),
+        !check_status(migraphx_program_parameters_add(state->parameters, state->contract.input_name, state->input_argument),
                       "bind input argument", message, message_size)) goto fail;
     if (shapes) migraphx_program_parameter_shapes_destroy(shapes);
     if (file) migraphx_file_options_destroy(file);
@@ -224,11 +252,11 @@ int rt_xveon_migraphx_run(
     const_migraphx_shape_t shape = NULL;
     char *buffer = NULL;
     int status = RT_XVEON_MIGRAPHX_RUNTIME;
-    if (!state || !input || !output || input_count != INPUT_COUNT || output_count != OUTPUT_COUNT) {
-        snprintf(message, message_size, "X-veon MIGraphX inference tensor size differs");
+    if (!state || !input || !output || input_count != state->contract.input_count || output_count != state->contract.output_count) {
+        snprintf(message, message_size, "MIGraphX inference tensor size differs");
         return RT_XVEON_MIGRAPHX_SCHEMA;
     }
-    memcpy(state->input, input, INPUT_COUNT * sizeof(float));
+    memcpy(state->input, input, state->contract.input_count * sizeof(float));
     if (!check_status(migraphx_program_run(&outputs, state->program, state->parameters),
                       "run GPU program", message, message_size) ||
         !check_status(migraphx_arguments_size(&input_count, outputs),
@@ -237,7 +265,7 @@ int rt_xveon_migraphx_run(
                       "get inference output", message, message_size) ||
         !check_status(migraphx_argument_shape(&shape, result),
                       "get inference output shape", message, message_size)) goto done;
-    status = validate_shape(shape, 3, message, message_size);
+    status = validate_shape(shape, state->contract.output_shape, state->contract.output_count, message, message_size);
     /* offload_copy appends copy_from_gpu and sync_stream to the returned
      * graph.  Calling context_finish again is both redundant and triggers a
      * ROCm 7.2 device-id assertion for this compiled program. */
@@ -246,14 +274,14 @@ int rt_xveon_migraphx_run(
         status = RT_XVEON_MIGRAPHX_RUNTIME;
         goto done;
     }
-    for (size_t i = 0; i < OUTPUT_COUNT; ++i) {
+    for (size_t i = 0; i < state->contract.output_count; ++i) {
         if (!isfinite(((const float *)buffer)[i])) {
             snprintf(message, message_size, "X-veon MIGraphX output contains NaN or infinity");
             status = RT_XVEON_MIGRAPHX_NONFINITE;
             goto done;
         }
     }
-    memcpy(output, buffer, OUTPUT_COUNT * sizeof(float));
+    memcpy(output, buffer, state->contract.output_count * sizeof(float));
     status = RT_XVEON_MIGRAPHX_OK;
 done:
     if (outputs) migraphx_arguments_destroy(outputs);

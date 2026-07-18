@@ -727,6 +727,127 @@ the upstream model lacks an explicit compatible license. A parity, stability,
 cache, or quality failure leaves the existing CPU experiment unchanged and
 the MIGraphX path disabled.
 
+## Phase 12: developer-only PackedXTransNet experiment
+
+Phase 12 evaluates Danylo Kelvich's compact PackedXTransNet through the same
+hidden ONNX Runtime and direct MIGraphX infrastructure. It is technically
+usable, but the checkpoint is explicitly licensed CC BY-NC 4.0. RawTherapee
+must therefore neither package the weights nor expose this as a normal GUI
+method. The checkpoint, converted ONNX, compiled GPU programs, full TIFFs, and
+source RAWs remain external.
+
+### Reviewed source and deterministic conversion
+
+The only accepted source is revision
+`9c3cc5ab841c9afd2ed0bb702468950481043d06` and the actual repository file
+`weights/packed_5183_3208.pt` (not a mutable release link):
+
+```text
+https://github.com/danylo-kelvich/neural-demosaic/blob/9c3cc5ab841c9afd2ed0bb702468950481043d06/weights/packed_5183_3208.pt
+```
+
+Its size is 646,145 bytes and its SHA-256 is
+`1c78b888e3f885252f84c1b12f75dd0af179a62b48499c5808eeb773d1bfc161`.
+The safe inspector accepts exactly 39 dense finite CPU float32 tensors,
+158,865 stored values and 635,460 payload bytes. Of these, 158,683 are learned
+parameters and 182 are analytically checked CFA masks and tent kernels.
+
+The independent converter does not import upstream executable code. Python
+3.12, CPU `torch==2.12.1`, `onnx==1.22.0`, and opset 18 produce a fixed
+`1x1x288x288` input / `1x3x288x288` output graph. It reproduces the full-size
+chroma-difference baseline, 3x packing, nine mosaic plus one phase channel,
+width-32 stem, eight residual blocks, 27-channel head, 3x unpacking, and
+baseline addition. The reviewed deterministic artifacts are:
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| ONNX | 1,673,648 | `ad000f496fe9b4a8493bc891dedc3a1e379aec86c93b2fb53f8b8a66a2888e3c` |
+| Canonical conversion manifest | generated locally | `ebd978aef293d1cf35a5d15234ef185d0785ac222c9c10f6477903e74d4c338d` |
+
+ONNX Runtime output on the seeded reference tile differs from the independent
+PyTorch graph by maximum `8.94e-7`, RMS `1.46e-7`, and p99 `3.87e-7`.
+
+### Hidden runtime contract
+
+The engine recognizes only the literal PP3 method `packedxtransnet-onnx` and
+does not add it to method enums, GUI lists, defaults, translations, history,
+or fast-export controls. Runtime selection is explicit:
+
+```sh
+RT_PACKED_XTRANS_MODEL=/path/packedxtransnet.onnx
+RT_PACKED_XTRANS_BACKEND=onnxruntime-cpu|migraphx
+RT_PACKED_XTRANS_PRECISION=fp32|fp16
+RT_PACKED_XTRANS_MIGRAPHX_CACHE_DIR=/private/cache/directory
+```
+
+The generic fixed-tile bridges validate the model-specific input/output names,
+shapes, types and counts while preserving the existing X-veon behavior. Both
+backends authenticate the entire ONNX before session creation. A process cache
+is keyed by canonical path, fixed digest, backend and precision. The optional
+MIGraphX disk cache additionally binds the model digest, complete runtime
+version, `gfx1101`, FP32/FP16 selection, compile settings, compiled-payload
+size and payload SHA-256; it enforces private ownership/modes and rejects
+symlinks or stale manifests.
+
+The raw wrapper maps all 18 X-Trans phase/orientation matrices to the
+architecture's canonical CFA, sends `rawData/65535` as a single linear scalar
+mosaic, preserves signed finite output, and applies no gamma, clipping,
+reinjection, second white balance, false-colour suppression, or other
+postprocessing. It uses 288-pixel tiles and edge repetition. Any input, CFA,
+model, runtime, allocation, or non-finite failure discards partial output and
+loudly reruns Markesteijn three-pass.
+
+The derived receptive radius is 56 pixels. A 12-pixel margin was compared with
+the nearest CFA-aligned safe margin of 60 on the complete `DSCF0771.RAF`
+export. Margin 12 had normalized maximum error `0.005005`, RMS `3.12e-5`, and
+p99 `1.37e-4` against margin 60. It fails the agreed maximum `5e-4` and p99
+`1e-4` limits, so the supported default is margin 60, stride 168. Margin 12
+remains only a developer diagnostic override.
+
+### Measured backend and quality result
+
+The ONNX Runtime CPU export completed in 15.64 seconds wall time, with 12.23
+seconds in the neural wrapper and peak RSS about 1.76 GiB. Direct MIGraphX FP32
+matched CPU after rendering with 99.44 percent exact 16-bit samples and no
+sample differing by more than one code value. With an authenticated compiled
+cache, three full-RAF FP32 exports took 6.73, 7.06, and 7.33 seconds, median
+7.06 seconds; wrapper medians were approximately 3.61 seconds and peak RSS was
+2.23 GiB. Global VRAM sampling indicated an approximately 308 MiB increase;
+this ROCm build reports the process VRAM field as `UNKNOWN`, so that figure is
+an upper-bound delta rather than precise process attribution.
+
+MIGraphX FP16 differs from ONNX Runtime by maximum `0.01431`, RMS `0.000338`,
+and p99 `0.001175` in the rendered normalized TIFF. It nevertheless passed the
+real-image phase, colour and visual gates and its cached runs were 6.37, 6.29,
+and 6.23 seconds, median 6.29 seconds: 10.9 percent faster than FP32. FP16 is
+therefore retained as an explicit developer option; FP32 remains the numerical
+reference and default.
+
+On crop `(3450,1750,700,500)`, PackedXTransNet phase RMS is
+`[0.000540, 0.000464, 0.000746]`, versus Markesteijn
+`[0.000554, 0.000446, 0.000782]`. Its common luminance delta is `1.82e-5` and
+RGB-delta range `0.000281`, both well inside `0.005`. The metallic earring has
+no repeating CFA texture or seam and is at least competitive with X-veon while
+avoiding Markesteijn's colour segmentation. The separate tracked asset
+manifest preserves its full-third and 500-percent earring images without
+changing the earlier comparison manifest.
+
+The small analytical suite is mixed and must not be hidden by the good real
+crop: PackedXTransNet is excellent on constant/black fields but has substantial
+regressions on the artificial saturated-edge and impulse challenges. The ten
+unavailable upstream ground-truth images and the complete public generation
+I-V RAF matrix were not fabricated or silently replaced; those remain open
+coverage. Phase 12 therefore establishes a successful hidden technical and
+`DSCF0771` experiment, not a general superiority claim.
+
+CTest covers mock geometry, both margins, all 18 CFA representations, signed
+outputs, non-finite/error propagation, artifact authentication, cache
+concurrency, reviewed ONNX inference, and optional CPU/MIGraphX FP32 parity.
+Python tests cover schema, fixed masks/kernels, safe checkpoint intake,
+deterministic conversion, ONNX/PyTorch parity, and comparison metrics. The
+comparison assets and detailed measurements are recorded in
+`xtrans-neural-phase12-report.md`.
+
 ## Updating or upgrading the upstream checkpoint
 
 Never edit a .pth file in place and never treat an upstream filename replacement

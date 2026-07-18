@@ -27,6 +27,7 @@ struct RtXveonOrtSession {
     OrtValue *output_value;
     float *input;
     float *output;
+    RtFixedOnnxContract contract;
 };
 
 static void set_message(char *message, size_t size, const char *operation, const char *detail)
@@ -83,7 +84,8 @@ static int validate_value_contract(
     ONNXTensorElementDataType scalar = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
     size_t rank = 0;
     int64_t dimensions[4] = {0, 0, 0, 0};
-    const int64_t channels = input ? 4 : 3;
+    const char *expected_name = input ? state->contract.input_name : state->contract.output_name;
+    const int64_t *expected_dimensions = input ? state->contract.input_shape : state->contract.output_shape;
 
     if (!status_ok(api, input ? api->SessionGetInputCount(state->session, &count)
                               : api->SessionGetOutputCount(state->session, &count),
@@ -91,7 +93,7 @@ static int validate_value_contract(
         return RT_XVEON_ORT_RUNTIME;
     }
     if (count != 1) {
-        set_message(message, message_size, input ? "X-veon model must have one input" : "X-veon model must have one output", NULL);
+        set_message(message, message_size, input ? "model must have one input" : "model must have one output", NULL);
         return RT_XVEON_ORT_SCHEMA;
     }
     if (!status_ok(api, api->GetAllocatorWithDefaultOptions(&allocator), "get ONNX Runtime allocator", message, message_size)) {
@@ -102,9 +104,9 @@ static int validate_value_contract(
                    input ? "query input name" : "query output name", message, message_size)) {
         return RT_XVEON_ORT_RUNTIME;
     }
-    if (!name || strcmp(name, input ? "input" : "output") != 0) {
+    if (!name || strcmp(name, expected_name) != 0) {
         release_allocated(api, allocator, name);
-        set_message(message, message_size, input ? "X-veon input name differs" : "X-veon output name differs", NULL);
+        set_message(message, message_size, input ? "model input name differs" : "model output name differs", NULL);
         return RT_XVEON_ORT_SCHEMA;
     }
     release_allocated(api, allocator, name);
@@ -120,7 +122,7 @@ static int validate_value_contract(
     }
     if (!tensor) {
         api->ReleaseTypeInfo(type);
-        set_message(message, message_size, "X-veon input/output is not a tensor", NULL);
+        set_message(message, message_size, "model input/output is not a tensor", NULL);
         return RT_XVEON_ORT_SCHEMA;
     }
     if (!status_ok(api, api->GetTensorElementType(tensor, &scalar), "read tensor scalar type", message, message_size) ||
@@ -130,7 +132,7 @@ static int validate_value_contract(
     }
     if (scalar != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT || rank != 4) {
         api->ReleaseTypeInfo(type);
-        set_message(message, message_size, "X-veon input/output type or rank differs", NULL);
+        set_message(message, message_size, "model input/output type or rank differs", NULL);
         return RT_XVEON_ORT_SCHEMA;
     }
     if (!status_ok(api, api->GetDimensions(tensor, dimensions, 4), "read tensor dimensions", message, message_size)) {
@@ -138,9 +140,11 @@ static int validate_value_contract(
         return RT_XVEON_ORT_RUNTIME;
     }
     api->ReleaseTypeInfo(type);
-    if (dimensions[0] != 1 || dimensions[1] != channels || dimensions[2] != 288 || dimensions[3] != 288) {
-        set_message(message, message_size, "X-veon input/output shape differs", NULL);
-        return RT_XVEON_ORT_SCHEMA;
+    for (size_t index = 0; index < 4; ++index) {
+        if (dimensions[index] != expected_dimensions[index]) {
+            set_message(message, message_size, "model input/output shape differs", NULL);
+            return RT_XVEON_ORT_SCHEMA;
+        }
     }
     return RT_XVEON_ORT_OK;
 }
@@ -205,15 +209,30 @@ int rt_xveon_ort_create(
     char *message,
     size_t message_size)
 {
+    static const RtFixedOnnxContract contract = {
+        "X-veon", "input", "output", {1, 4, 288, 288}, {1, 3, 288, 288},
+        INPUT_COUNT, OUTPUT_COUNT, 1
+    };
+    return rt_xveon_ort_create_contract(model_data, model_size, &contract, out, message, message_size);
+}
+
+int rt_xveon_ort_create_contract(
+    const void *model_data,
+    size_t model_size,
+    const RtFixedOnnxContract *requested_contract,
+    RtXveonOrtSession **out,
+    char *message,
+    size_t message_size)
+{
     const OrtApiBase *base = OrtGetApiBase();
     const OrtApi *api;
     RtXveonOrtSession *state;
     OrtSessionOptions *options = NULL;
     int contract;
-    const int64_t input_shape[4] = {1, 4, 288, 288};
-    const int64_t output_shape[4] = {1, 3, 288, 288};
     if (out) *out = NULL;
-    if (!base || !out || !model_data) {
+    if (!base || !out || !model_data || !requested_contract || !requested_contract->label ||
+        !requested_contract->input_name || !requested_contract->output_name ||
+        !requested_contract->input_count || !requested_contract->output_count) {
         set_message(message, message_size, "ONNX Runtime API is unavailable", NULL);
         return RT_XVEON_ORT_RUNTIME;
     }
@@ -232,8 +251,9 @@ int rt_xveon_ort_create(
         return RT_XVEON_ORT_ALLOCATION;
     }
     state->api = api;
-    state->input = (float *)malloc(INPUT_COUNT * sizeof(float));
-    state->output = (float *)malloc(OUTPUT_COUNT * sizeof(float));
+    state->contract = *requested_contract;
+    state->input = (float *)malloc(state->contract.input_count * sizeof(float));
+    state->output = (float *)malloc(state->contract.output_count * sizeof(float));
     if (!state->input || !state->output) {
         rt_xveon_ort_release(state);
         set_message(message, message_size, "cannot allocate ONNX Runtime tensor buffers", NULL);
@@ -255,18 +275,18 @@ int rt_xveon_ort_create(
     api->ReleaseSessionOptions(options);
     contract = validate_value_contract(state, 1, message, message_size);
     if (contract == RT_XVEON_ORT_OK) contract = validate_value_contract(state, 0, message, message_size);
-    if (contract == RT_XVEON_ORT_OK) contract = validate_metadata(state, message, message_size);
+    if (contract == RT_XVEON_ORT_OK && state->contract.require_xveon_metadata) contract = validate_metadata(state, message, message_size);
     if (contract != RT_XVEON_ORT_OK) {
         rt_xveon_ort_release(state);
         return contract;
     }
     if (!status_ok(api, api->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault, &state->memory),
                    "create CPU tensor memory info", message, message_size) ||
-        !status_ok(api, api->CreateTensorWithDataAsOrtValue(state->memory, state->input, INPUT_COUNT * sizeof(float),
-                   input_shape, 4, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &state->input_value),
+        !status_ok(api, api->CreateTensorWithDataAsOrtValue(state->memory, state->input, state->contract.input_count * sizeof(float),
+                   state->contract.input_shape, 4, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &state->input_value),
                    "create X-veon input tensor", message, message_size) ||
-        !status_ok(api, api->CreateTensorWithDataAsOrtValue(state->memory, state->output, OUTPUT_COUNT * sizeof(float),
-                   output_shape, 4, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &state->output_value),
+        !status_ok(api, api->CreateTensorWithDataAsOrtValue(state->memory, state->output, state->contract.output_count * sizeof(float),
+                   state->contract.output_shape, 4, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &state->output_value),
                    "create X-veon output tensor", message, message_size)) {
         rt_xveon_ort_release(state);
         return RT_XVEON_ORT_RUNTIME;
@@ -284,14 +304,16 @@ int rt_xveon_ort_run(
     char *message,
     size_t message_size)
 {
-    const char *input_names[1] = {"input"};
-    const char *output_names[1] = {"output"};
+    const char *input_names[1];
+    const char *output_names[1];
     const OrtValue *inputs[1];
     OrtValue *outputs[1];
-    if (!state || !input || !output || input_count != INPUT_COUNT || output_count != OUTPUT_COUNT) {
-        set_message(message, message_size, "X-veon inference tensor size differs", NULL);
+    if (!state || !input || !output || input_count != state->contract.input_count || output_count != state->contract.output_count) {
+        set_message(message, message_size, "inference tensor size differs", NULL);
         return RT_XVEON_ORT_SCHEMA;
     }
+    input_names[0] = state->contract.input_name;
+    output_names[0] = state->contract.output_name;
     memcpy(state->input, input, input_count * sizeof(float));
     inputs[0] = state->input_value;
     outputs[0] = state->output_value;

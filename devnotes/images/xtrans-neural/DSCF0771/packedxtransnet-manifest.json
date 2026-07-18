@@ -1,0 +1,24 @@
+{
+  "format": "rawtherapee-xtrans-packedxtrans-assets-v1",
+  "generation": {
+    "earring": "source rectangle (3510,1930,140,160), nearest-neighbour 5x",
+    "full": "2584x1726 Lanczos downsample from 7752x5178 TIFF"
+  },
+  "identity": {
+    "packedxtrans_onnx_sha256": "ad000f496fe9b4a8493bc891dedc3a1e379aec86c93b2fb53f8b8a66a2888e3c",
+    "raw_sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0"
+  },
+  "images": {
+    "earring_500": {
+      "bytes": 51709,
+      "filename": "DSCF0771-packedxtransnet-earring-500.png",
+      "sha256": "d01cd49f27020465479cb7795e848a116edcd13398685d01663ca2a85a99bcf3"
+    },
+    "full_third": {
+      "bytes": 6254526,
+      "filename": "DSCF0771-packedxtransnet-full-third.png",
+      "sha256": "2cc9c09bef9311beefdfcd1300cbac934640e4df7eb902a70d2b1ea93e74a85b"
+    }
+  },
+  "source_tiff_sha256": "a7cc80a5cd6fb938cb03dc4666299693a4956c68ce493c56a33eddf18caba097"
+}

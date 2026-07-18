@@ -50,6 +50,11 @@ XVEON_COMPLETION_RE = re.compile(
     r"X-veon X-Trans completed:.*?artifact=([0-9a-f]{64}).*?(?:ort|runtime)=(\S+).*?provider=(\S+).*?"
     r"tiles=(\d+).*?working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
 )
+PACKED_COMPLETION_RE = re.compile(
+    r"PackedXTransNet X-Trans completed:.*?artifact=([0-9a-f]{64}).*?runtime=(\S+).*?provider=(\S+).*?"
+    r"precision=(\S+).*?compile_source=(\S+).*?margin=(\d+).*?stride=(\d+).*?tiles=(\d+).*?"
+    r"working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
+)
 
 
 def dependencies():
@@ -191,6 +196,20 @@ def run_cli(cli: Path, profile: Path, source: Path, output: Path, environment) -
             "working_buffer_estimate_bytes": int(xveon_match.group(5)),
             "engine_elapsed_us": int(xveon_match.group(6)),
         }
+    packed_match = PACKED_COMPLETION_RE.search(combined)
+    if packed_match:
+        completion = {
+            "artifact_sha256": packed_match.group(1),
+            "runtime_version": packed_match.group(2),
+            "provider": packed_match.group(3),
+            "precision": packed_match.group(4),
+            "compile_source": packed_match.group(5),
+            "margin": int(packed_match.group(6)),
+            "stride": int(packed_match.group(7)),
+            "tiles": int(packed_match.group(8)),
+            "working_buffer_estimate_bytes": int(packed_match.group(9)),
+            "engine_elapsed_us": int(packed_match.group(10)),
+        }
     rss = None
     if time_file.is_file():
         rss = int(time_file.read_text(encoding="utf-8").strip().split("=", 1)[1])
@@ -304,6 +323,11 @@ def main() -> int:
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--xveon-model", type=Path,
                         help="external pinned xtrans.onnx; enables the hidden X-veon method")
+    parser.add_argument("--packed-model", type=Path,
+                        help="external converted PackedXTransNet ONNX; enables its hidden method")
+    parser.add_argument("--packed-backend", choices=("onnxruntime-cpu", "migraphx"),
+                        default="onnxruntime-cpu")
+    parser.add_argument("--packed-precision", choices=("fp32", "fp16"), default="fp32")
     parser.add_argument("--size", type=int, default=384)
     parser.add_argument("--ground-truth-dir", type=Path)
     parser.add_argument("--skip-synthetic", action="store_true")
@@ -320,11 +344,16 @@ def main() -> int:
     cli = args.rawtherapee_cli.resolve()
     model = args.model.resolve()
     xveon_model = args.xveon_model.resolve() if args.xveon_model else None
-    if not cli.is_file() or not model.is_file() or (xveon_model and not xveon_model.is_file()):
+    packed_model = args.packed_model.resolve() if args.packed_model else None
+    if (not cli.is_file() or not model.is_file() or
+            (xveon_model and not xveon_model.is_file()) or
+            (packed_model and not packed_model.is_file())):
         raise SystemExit("rawtherapee-cli or RTNN model does not exist")
     methods = dict(METHODS)
     if xveon_model:
         methods["xveon"] = "xveon-xtrans-onnx"
+    if packed_model:
+        methods["packedxtransnet"] = "packedxtransnet-onnx"
     temporary = None
     if args.work_dir:
         work = args.work_dir.resolve()
@@ -340,6 +369,10 @@ def main() -> int:
     environment["RT_DEMOSAICNET_XTRANS_MODEL"] = str(model)
     if xveon_model:
         environment["RT_XVEON_XTRANS_MODEL"] = str(xveon_model)
+    if packed_model:
+        environment["RT_PACKED_XTRANS_MODEL"] = str(packed_model)
+        environment["RT_PACKED_XTRANS_BACKEND"] = args.packed_backend
+        environment["RT_PACKED_XTRANS_PRECISION"] = args.packed_precision
     environment["XDG_CONFIG_HOME"] = str(work / "config")
     report = {"synthetic_and_ground_truth": [], "real_raf": [], "gate": {}}
 
@@ -441,6 +474,12 @@ def main() -> int:
             report["gate"]["xveon_upstream_mean_cpsnr_db"] = means["xveon"]
             report["gate"]["xveon_upstream_wins"] = sum(
                 rows["xveon"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
+        if "packedxtransnet" in methods:
+            report["gate"]["packedxtransnet_upstream_mean_cpsnr_db"] = means["packedxtransnet"]
+            report["gate"]["packedxtransnet_upstream_wins"] = sum(
+                rows["packedxtransnet"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
                 for rows in by_scene.values()
             )
     for filename in {row["file"] for row in report["real_raf"]}:
