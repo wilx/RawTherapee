@@ -49,6 +49,7 @@
 #include "lensmetadata.h"
 #include "rtgui/options.h"
 #include "xtrans_demosaicnet.h"
+#include "xtrans_mlri.h"
 #include "xtrans_packed.h"
 #include "xtrans_xveon.h"
 
@@ -1965,6 +1966,76 @@ bool RawImageSource::packed_xtrans_interpolate()
     return true;
 }
 
+bool RawImageSource::mlri_xtrans_interpolate(MlriXTransVariant variant)
+{
+    const auto started = std::chrono::steady_clock::now();
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const char *method = nullptr;
+    switch (variant) {
+        case MlriXTransVariant::MATLAB_REFERENCE:
+            method = MLRI_XTRANS_TWO_PASS_METHOD;
+            break;
+        case MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES:
+            method = MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD;
+            break;
+        case MlriXTransVariant::PAPER_CORE_2014:
+            method = MLRI_XTRANS_PAPER_CORE_2014_METHOD;
+            break;
+        case MlriXTransVariant::PAPER_CORE_2016:
+            method = MLRI_XTRANS_PAPER_CORE_2016_METHOD;
+            break;
+    }
+    const MlriXTransRunResult run = demosaicMlriXTrans(
+        rawData, red, green, blue, W, H, xtrans, variant);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "MLRI X-Trans error [%s]: method=%s: %s; falling back to 3-pass (Markesteijn)\n",
+            mlriXTransErrorCodeName(run.code),
+            method,
+            run.message.c_str());
+        return false;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    if (variant == MlriXTransVariant::PAPER_CORE_2014 ||
+            variant == MlriXTransVariant::PAPER_CORE_2016) {
+        std::fprintf(
+            stderr,
+            "MLRI X-Trans completed: method=%s passes=1 sigma=2 epsilon=0.01 "
+            "coefficient_average=%s final=direct core=%dx%d halo=%d boundary=zero "
+            "tiles=%llu workers=%u workspace_per_worker_estimate=%llu elapsed_us=%lld\n",
+            method,
+            variant == MlriXTransVariant::PAPER_CORE_2014 ? "uniform" : "residual-weighted",
+            run.coreSize,
+            run.coreSize,
+            run.halo,
+            static_cast<unsigned long long>(run.tileCount),
+            run.workerCount,
+            static_cast<unsigned long long>(run.workspaceBytesPerWorker),
+            static_cast<long long>(elapsed));
+    } else {
+        // Keep the reviewed source-compatible diagnostic byte-for-byte stable;
+        // existing comparison manifests authenticate this contract.
+        std::fprintf(
+            stderr,
+            "MLRI X-Trans completed: method=%s passes=2 sigma=2,1 epsilon=0.01 "
+            "core=%dx%d halo=%d boundary=zero tiles=%llu workers=%u "
+            "workspace_per_worker_estimate=%llu elapsed_us=%lld\n",
+            method,
+            run.coreSize,
+            run.coreSize,
+            run.halo,
+            static_cast<unsigned long long>(run.tileCount),
+            run.workerCount,
+            static_cast<unsigned long long>(run.workspaceBytesPerWorker),
+            static_cast<long long>(elapsed));
+    }
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -2032,6 +2103,21 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             }
         } else if (raw.xtranssensor.method == PACKED_XTRANS_ONNX_METHOD) {
             if (!packed_xtrans_interpolate()) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_METHOD ||
+                   raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD ||
+                   raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2014_METHOD ||
+                   raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2016_METHOD) {
+            const MlriXTransVariant variant =
+                raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_METHOD
+                    ? MlriXTransVariant::MATLAB_REFERENCE
+                : raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD
+                    ? MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES
+                : raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2014_METHOD
+                    ? MlriXTransVariant::PAPER_CORE_2014
+                    : MlriXTransVariant::PAPER_CORE_2016;
+            if (!mlri_xtrans_interpolate(variant)) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {

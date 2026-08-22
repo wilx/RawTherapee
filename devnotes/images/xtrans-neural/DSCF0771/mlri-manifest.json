@@ -1,0 +1,295 @@
+{
+  "aligned_block_count": 9628,
+  "assets": [
+    {
+      "bytes": 5663002,
+      "filename": "DSCF0771-mlri-full-third.png",
+      "method": "mlri-xtrans-2pass",
+      "role": "full-frame-third",
+      "sha256": "152c2bfbe85cddb4fb00929df635f6a8a3680f3f50f83e39d40871cb7f1014cf",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 49983,
+      "filename": "DSCF0771-mlri-earring-500.png",
+      "method": "mlri-xtrans-2pass",
+      "role": "earring-500-percent",
+      "sha256": "8b718651c87296b1849d31856945d0a845db7cd1405beb5979d455c191bfe6d3",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    }
+  ],
+  "comparison_order": [
+    "mlri-xtrans-2pass",
+    "3-pass (Markesteijn)"
+  ],
+  "crop": {
+    "height": 500,
+    "width": 700,
+    "x": 3450,
+    "y": 1750
+  },
+  "execution": {
+    "markesteijn": {
+      "elapsed_seconds": 4.2,
+      "max_rss_kb": 1803616
+    },
+    "mlri": {
+      "completion_capture": "strace prefix; dynamic stderr suffix lost to EPIPE",
+      "core": [
+        384,
+        384
+      ],
+      "elapsed_seconds": 4602.98,
+      "engine_elapsed_us": null,
+      "halo": 228,
+      "max_rss_kb": 1888272,
+      "tiles": 294,
+      "workers": 2,
+      "workspace_per_worker_estimate_bytes": 508032000
+    }
+  },
+  "format": "rawtherapee-xtrans-mlri-comparison-v1",
+  "generation": {
+    "earring": {
+      "filter": "nearest-neighbour",
+      "output_depth_bits": 8,
+      "output_shape": [
+        800,
+        700,
+        3
+      ],
+      "scale": 5,
+      "source_rectangle": {
+        "height": 160,
+        "width": 140,
+        "x": 3510,
+        "y": 1930
+      }
+    },
+    "full_frame": {
+      "filter": "Lanczos",
+      "output_depth_bits": 8,
+      "output_shape": [
+        1726,
+        2584,
+        3
+      ],
+      "source_shape": [
+        5178,
+        7752,
+        3
+      ]
+    },
+    "png": {
+      "compression_level": 9,
+      "lossless_at_output_depth": true
+    }
+  },
+  "identity": {
+    "raw_filename": "DSCF0771.RAF",
+    "raw_sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0"
+  },
+  "low_detail_block_count": 4814,
+  "metadata": {
+    "bits_per_sample": 16,
+    "dtype": "uint16",
+    "icc_profile_bytes": 748,
+    "icc_profile_sha256": "17aebbdf8a88c39b07eb881dcd824eb1cf9828914d5e74a7324d7a31045e8871",
+    "photometric": 2,
+    "shape": [
+      5178,
+      7752,
+      3
+    ]
+  },
+  "methods": {
+    "markesteijn": {
+      "crop_mean_rgb": [
+        0.2264802975073298,
+        0.19277879894058791,
+        0.18304129134922453
+      ],
+      "full_mean_rgb": [
+        0.20395553824852988,
+        0.19886402851133098,
+        0.20498978762088294
+      ],
+      "phase": {
+        "bias_matrix_rgb": [
+          [
+            [
+              -0.0002194613169408729,
+              -0.0005615156993609247,
+              -0.00020671623351755343
+            ],
+            [
+              -0.00021006865041918658,
+              -0.0004874560334155868,
+              -0.00010411325802096206
+            ],
+            [
+              0.0007080005133955915,
+              0.000178237815135094,
+              -0.001320294388886936
+            ]
+          ],
+          [
+            [
+              -1.2221199495218468e-05,
+              -0.0003894348851212561,
+              1.9079412424831586e-05
+            ],
+            [
+              -3.3634228672993963e-07,
+              -0.0003236672011621654,
+              0.0001609116088913005
+            ],
+            [
+              0.0009242901754019202,
+              0.0003055812311508397,
+              -0.001024986037304746
+            ]
+          ],
+          [
+            [
+              -0.0007402063439150244,
+              0.00019497630285444378,
+              0.0011141796973856218
+            ],
+            [
+              -0.0008013327684615266,
+              0.00020162716340590771,
+              0.0011621636791528962
+            ],
+            [
+              0.0003513359327202781,
+              0.000881651306513084,
+              0.0001997755198749722
+            ]
+          ]
+        ],
+        "rms_rgb": [
+          0.0005539249055283396,
+          0.00044602692464189064,
+          0.0007821290363201463
+        ],
+        "spread_rgb": [
+          0.0017256229438634468,
+          0.0014431670058740087,
+          0.0024824580680398323
+        ]
+      }
+    },
+    "mlri": {
+      "crop_mean_rgb": [
+        0.2264139533291916,
+        0.1929295231119685,
+        0.18310815843224448
+      ],
+      "full_mean_rgb": [
+        0.2041239567114947,
+        0.19898946724062558,
+        0.20494486579070464
+      ],
+      "phase": {
+        "bias_matrix_rgb": [
+          [
+            [
+              -0.0003914470396439898,
+              -0.00043480561058808104,
+              -0.0005507563561446416
+            ],
+            [
+              -0.00034707098925892125,
+              -0.00037528940272698344,
+              -0.0004262601392187724
+            ],
+            [
+              -4.797720210116034e-07,
+              -0.00011348893133288765,
+              -0.00041577946703318515
+            ]
+          ],
+          [
+            [
+              -0.0002059725824827513,
+              -0.000260040045300122,
+              -0.0003240280207146848
+            ],
+            [
+              -0.0001598080187812639,
+              -0.00019814892631395638,
+              -0.00019772585702406282
+            ],
+            [
+              0.00035856368192675216,
+              0.00018487978286693126,
+              -2.8244211449808532e-05
+            ]
+          ],
+          [
+            [
+              0.00010525567717508288,
+              0.0003221919616298928,
+              0.0005714347151467887
+            ],
+            [
+              -1.2027846704255692e-05,
+              0.00022526278114681897,
+              0.0004890062015565198
+            ],
+            [
+              0.0006529868897896438,
+              0.0006494383906177982,
+              0.0008823531348813785
+            ]
+          ]
+        ],
+        "rms_rgb": [
+          0.00031760139467958473,
+          0.00034321411401343937,
+          0.000488421720899988
+        ],
+        "spread_rgb": [
+          0.0010444339294336336,
+          0.0010842440012058792,
+          0.00143310949102602
+        ]
+      }
+    }
+  },
+  "mlri_minus_markesteijn": {
+    "common_luminance_delta": 5.041569208745026e-05,
+    "crop_mean_rgb_delta": [
+      -6.63441781381946e-05,
+      0.00015072417138059513,
+      6.686708301995026e-05
+    ],
+    "observed_sample_delta_rms": 0.007283471211193036,
+    "rgb_delta_range": 0.00021706834951878973
+  },
+  "source_tiffs": [
+    {
+      "bytes": 240862232,
+      "method": "mlri-xtrans-2pass",
+      "sha256": "d4a78823b506798afbd53e80c9120a38bed30ffe75401442914b0eb9742576d5"
+    },
+    {
+      "bytes": 240862232,
+      "method": "3-pass (Markesteijn)",
+      "sha256": "83f4ea3c9bfc5caed664fd5505f682c9e91310b11bafcbf7a2d9418794b98fb1"
+    }
+  ],
+  "visual": {
+    "note": "No visible seams, repeating CFA texture, or global cast. The metallic earring is substantially more neutral and continuous than Markesteijn, but MLRI is visibly softer in adjacent hair and metal and may suppress real fine detail.",
+    "verdict": "pass"
+  }
+}

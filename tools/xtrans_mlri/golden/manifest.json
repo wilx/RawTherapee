@@ -1,0 +1,96 @@
+{
+  "arithmetic": {
+    "boundary": "zero",
+    "epsilon": 0.01,
+    "input": "little-endian row-major float32 in the 0..65535 domain",
+    "oracle_input_type": "uint16",
+    "output": "uint16 oracle values stored as little-endian channel-major row-major float32",
+    "passes": 2,
+    "sigma_by_pass": [
+      2.0,
+      1.0
+    ]
+  },
+  "cases": [
+    {
+      "height": 48,
+      "input_bytes": 9216,
+      "input_file": "flat-input.f32",
+      "input_sha256": "5a41acf943b1fe099ef847941d19752a990661fb12f57b48f40299f7653b8e65",
+      "name": "flat",
+      "origin": [
+        0,
+        0
+      ],
+      "output_bytes": 27648,
+      "output_file": "flat-output.f32",
+      "output_sha256": "2dcbfa609ccd38ee40fb4c10e2b81005159d4994c5a81463c4ea14e4ec11f6ad",
+      "width": 48
+    },
+    {
+      "height": 48,
+      "input_bytes": 10368,
+      "input_file": "gradient-input.f32",
+      "input_sha256": "94c83d110f4cfc23813b50524fee15cb9ce34bc3142d94464324124d6d027a07",
+      "name": "gradient",
+      "origin": [
+        0,
+        0
+      ],
+      "output_bytes": 31104,
+      "output_file": "gradient-output.f32",
+      "output_sha256": "e70df0cc036b8437ecaa27ae1908e35b217e87e1a75d508cbdef5b959aa1409c",
+      "width": 54
+    },
+    {
+      "height": 48,
+      "input_bytes": 9216,
+      "input_file": "impulse-input.f32",
+      "input_sha256": "a512fbee4a285f29e7eb476b9ee85aeb6d6e0e8ecff5fee19b4b5a1f51f8c626",
+      "name": "impulse",
+      "origin": [
+        0,
+        0
+      ],
+      "output_bytes": 27648,
+      "output_file": "impulse-output.f32",
+      "output_sha256": "3e39b866cf9ff4a5f21c9d75b2996c162486f1e7b510c1ff1a7b9cdcb2c170eb",
+      "width": 48
+    },
+    {
+      "height": 48,
+      "input_bytes": 9216,
+      "input_file": "saturated-input.f32",
+      "input_sha256": "b5d448c8951745c13b12fb32cdf45d9115045129d1a6c49eae061359e908adfe",
+      "name": "saturated",
+      "origin": [
+        0,
+        0
+      ],
+      "output_bytes": 27648,
+      "output_file": "saturated-output.f32",
+      "output_sha256": "66a5a847cfd867200df4182329b312cb9e094f6165d644eff392f1d7d84ae4f3",
+      "width": 48
+    },
+    {
+      "height": 35,
+      "input_bytes": 5180,
+      "input_file": "boundary-input.f32",
+      "input_sha256": "04eebee8d4148b28e38f0be4f100e6f31a6be51c263094d1a170fd6adeff4564",
+      "name": "boundary",
+      "origin": [
+        0,
+        0
+      ],
+      "output_bytes": 15540,
+      "output_file": "boundary-output.f32",
+      "output_sha256": "843794aac0a8c773599b57a156b83f279998f709d3232fa3ef599fbc2c2a4f51",
+      "width": 37
+    }
+  ],
+  "format": "rawtherapee-xtrans-mlri-golden-v1",
+  "octave_packages": [
+    "image"
+  ],
+  "reference_sha256": "055d1807729cbd556406bf695a6617f189d2376f7dbd35f4477f44e671fffa0c"
+}

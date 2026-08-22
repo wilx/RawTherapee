@@ -626,6 +626,7 @@ add_subdirectory(rtdata)
 
 if(BUILD_TESTING)
     add_subdirectory(tests/neuralmodel)
+    add_subdirectory(tests/xtransmlri)
 endif()
 
 include(cmake/AboutThisBuild.cmake)

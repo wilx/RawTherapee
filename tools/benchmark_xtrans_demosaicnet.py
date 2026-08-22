@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Developer quality/performance gate for hidden Phase 9 X-Trans methods.
+"""Developer quality/performance benchmark for hidden X-Trans methods.
 
 Optional dependencies::
 
@@ -7,7 +7,7 @@ Optional dependencies::
 
 The script commits no inputs or outputs. Synthetic and external RGB images are
 mosaicked into neutral X-Trans DNGs; real RAFs are exported for timing and
-side-by-side crop review. A neural fallback marker is always a failed row even
+side-by-side crop review. A loud fallback marker is always a failed row even
 when rawtherapee-cli itself exits successfully.
 """
 
@@ -37,8 +37,6 @@ CANONICAL_XTRANS = (
     (1, 0, 1, 1, 2, 1),
 )
 METHODS = {
-    "linear": "demosaicnet-xtrans-linear",
-    "gamma22": "demosaicnet-xtrans-gamma22",
     "markesteijn": "3-pass (best)",
 }
 FALLBACK_MARKER = "falling back to 3-pass (Markesteijn)"
@@ -54,6 +52,17 @@ PACKED_COMPLETION_RE = re.compile(
     r"PackedXTransNet X-Trans completed:.*?artifact=([0-9a-f]{64}).*?runtime=(\S+).*?provider=(\S+).*?"
     r"precision=(\S+).*?compile_source=(\S+).*?margin=(\d+).*?stride=(\d+).*?tiles=(\d+).*?"
     r"working_buffer_estimate=(\d+).*?elapsed_us=(\d+)"
+)
+MLRI_COMPLETION_RE = re.compile(
+    r"MLRI X-Trans completed:.*?passes=2 sigma=2,1 epsilon=0.01.*?"
+    r"core=(\d+)x(\d+) halo=(\d+).*?tiles=(\d+).*?workers=(\d+).*?"
+    r"workspace_per_worker_estimate=(\d+).*?elapsed_us=(\d+)"
+)
+MLRI_PAPER_CORE_COMPLETION_RE = re.compile(
+    r"MLRI X-Trans completed:.*?passes=1 sigma=2 epsilon=0.01 "
+    r"coefficient_average=(uniform|residual-weighted) final=direct.*?"
+    r"core=(\d+)x(\d+) halo=(\d+).*?tiles=(\d+).*?workers=(\d+).*?"
+    r"workspace_per_worker_estimate=(\d+).*?elapsed_us=(\d+)"
 )
 
 
@@ -94,6 +103,45 @@ def synthetic_images(np, size: int):
     asymmetric = np.stack(
         (xn, np.mod(3 * xn + 5 * yn, 1), np.where(x > 2 * y, 0.9, 0.1)), axis=-1
     ).astype(np.float32)
+    one_pixel_lines = np.full_like(constant, 0.08)
+    line_mask = (np.mod(x, 11) == 0) | (np.mod(y, 13) == 0)
+    one_pixel_lines[line_mask] = 0.92
+    diagonal_lines = np.full_like(constant, 0.1)
+    diagonal_lines[(np.mod(x - y, 11) == 0) | (np.mod(x + y, 17) == 0)] = 0.9
+    radius = np.sqrt((x - (size - 1) / 2) ** 2 + (y - (size - 1) / 2) ** 2)
+    circles_scalar = 0.5 + 0.45 * np.sign(np.sin(radius * math.pi / 2.5))
+    concentric_circles = np.repeat(circles_scalar[..., None], 3, axis=2).astype(np.float32)
+    centered_x = x - (size - 1) / 2
+    centered_y = y - (size - 1) / 2
+    zone_scalar = 0.5 + 0.45 * np.sin(
+        math.pi * (centered_x * centered_x + centered_y * centered_y) / max(1, size)
+    )
+    zone_plate = np.repeat(zone_scalar[..., None], 3, axis=2).astype(np.float32)
+    grating_scalar = 0.5 + 0.45 * np.sin(2 * math.pi * (0.37 * x + 0.29 * y))
+    sinusoidal_grating = np.repeat(grating_scalar[..., None], 3, axis=2).astype(np.float32)
+    checker_scalar = np.where(np.mod(x + y, 2) == 0, 0.95, 0.05)
+    fine_checkerboard = np.repeat(checker_scalar[..., None], 3, axis=2).astype(np.float32)
+    red_green = np.zeros_like(constant)
+    red_green[:, : size // 2, 0] = 0.95
+    red_green[:, size // 2 :, 1] = 0.95
+    blue_green = np.zeros_like(constant)
+    blue_green[:, : size // 2, 2] = 0.95
+    blue_green[:, size // 2 :, 1] = 0.95
+    nyquist_chromatic = np.zeros_like(constant)
+    nyquist_chromatic[..., 0] = np.where(np.mod(x + y, 2) == 0, 0.95, 0.05)
+    nyquist_chromatic[..., 2] = np.where(np.mod(x + y, 2) == 0, 0.05, 0.95)
+    nyquist_achromatic_scalar = 0.5 + 0.45 * np.sin(2 * math.pi * 0.45 * x)
+    nyquist_achromatic = np.repeat(
+        nyquist_achromatic_scalar[..., None], 3, axis=2
+    ).astype(np.float32)
+    text_like = np.full_like(constant, 0.05)
+    glyph = ((np.mod(x, 16) == 2) | (np.mod(x, 16) == 9) |
+             (np.mod(y, 18) == 3) | ((np.mod(y, 18) == 10) & (np.mod(x, 16) < 10)))
+    text_like[glyph] = 0.95
+    colored_text_like = np.full_like(constant, 0.05)
+    colored_text_like[..., 0][glyph] = 0.95
+    colored_text_like[..., 1][np.roll(glyph, 5, axis=1)] = 0.9
+    colored_text_like[..., 2][np.roll(glyph, 7, axis=0)] = 0.85
     return {
         "constant": constant,
         "gradient": gradient,
@@ -102,6 +150,18 @@ def synthetic_images(np, size: int):
         "saturated-edges": edges,
         "black": np.zeros_like(constant),
         "asymmetric-orientation": asymmetric,
+        "one-pixel-lines": one_pixel_lines,
+        "diagonal-lines": diagonal_lines,
+        "concentric-circles": concentric_circles,
+        "zone-plate": zone_plate,
+        "sinusoidal-grating": sinusoidal_grating,
+        "fine-checkerboard": fine_checkerboard,
+        "red-green-transition": red_green,
+        "blue-green-transition": blue_green,
+        "near-nyquist-achromatic": nyquist_achromatic,
+        "near-nyquist-chromatic": nyquist_chromatic,
+        "black-white-text-like": text_like,
+        "colored-text-like": colored_text_like,
     }
 
 
@@ -124,7 +184,7 @@ def write_dng(tifffile, path: Path, data, pattern=CANONICAL_XTRANS):
     )
     tags = [
         (271, "s", 0, "Synthetic", False),
-        (272, "s", 0, "DemosaicNet X-Trans Phase 9", False),
+        (272, "s", 0, "RawTherapee X-Trans demosaic benchmark", False),
         (33421, "H", 2, (6, 6), False),
         (33422, "B", 36, tuple(value for row in pattern for value in row), False),
         (50706, "B", 4, (1, 4, 0, 0), False),
@@ -210,6 +270,31 @@ def run_cli(cli: Path, profile: Path, source: Path, output: Path, environment) -
             "working_buffer_estimate_bytes": int(packed_match.group(9)),
             "engine_elapsed_us": int(packed_match.group(10)),
         }
+    mlri_match = MLRI_COMPLETION_RE.search(combined)
+    if mlri_match:
+        completion = {
+            "core_width": int(mlri_match.group(1)),
+            "core_height": int(mlri_match.group(2)),
+            "halo": int(mlri_match.group(3)),
+            "tiles": int(mlri_match.group(4)),
+            "active_workers": int(mlri_match.group(5)),
+            "workspace_per_worker_estimate_bytes": int(mlri_match.group(6)),
+            "engine_elapsed_us": int(mlri_match.group(7)),
+        }
+    mlri_paper_match = MLRI_PAPER_CORE_COMPLETION_RE.search(combined)
+    if mlri_paper_match:
+        completion = {
+            "coefficient_average": mlri_paper_match.group(1),
+            "core_width": int(mlri_paper_match.group(2)),
+            "core_height": int(mlri_paper_match.group(3)),
+            "halo": int(mlri_paper_match.group(4)),
+            "tiles": int(mlri_paper_match.group(5)),
+            "active_workers": int(mlri_paper_match.group(6)),
+            "workspace_per_worker_estimate_bytes": int(mlri_paper_match.group(7)),
+            "engine_elapsed_us": int(mlri_paper_match.group(8)),
+            "final_reconstruction": "direct",
+            "passes": 1,
+        }
     rss = None
     if time_file.is_file():
         rss = int(time_file.read_text(encoding="utf-8").strip().split("=", 1)[1])
@@ -248,6 +333,31 @@ def quality_metrics(np, structural_similarity, reference, actual, pattern):
         "psnr_db": psnr if math.isfinite(psnr) else None,
         "ssim": ssim,
         "observed_sample_rmse": float(np.sqrt(np.mean(error * error, dtype=np.float64))),
+    }
+
+
+def write_difference_assets(np, tifffile, Image, work: Path, scene: str,
+                            method: str, reference, actual) -> dict[str, dict[str, object]]:
+    """Write quantitative float error and an explicitly amplified visual map."""
+    rendered = np.asarray(actual[..., :3], dtype=np.float32) / 65535.0
+    height = min(reference.shape[0], rendered.shape[0])
+    width = min(reference.shape[1], rendered.shape[1])
+    expected = srgb_encode(np, reference[:height, :width])
+    error = np.abs(rendered[:height, :width] - expected).astype(np.float32)
+    float_path = work / f"{scene}-{method}-absolute-error.f32.tif"
+    visual_path = work / f"{scene}-{method}-absolute-error-8x.png"
+    tifffile.imwrite(float_path, error, photometric="rgb", metadata=None)
+    visible = np.rint(np.clip(error * 8.0, 0.0, 1.0) * 255.0).astype(np.uint8)
+    Image.fromarray(visible, mode="RGB").save(visual_path, compress_level=9)
+    return {
+        "absolute_error_float32": {
+            "filename": float_path.name,
+            "sha256": file_sha256(float_path),
+        },
+        "absolute_error_visual_8x": {
+            "filename": visual_path.name,
+            "sha256": file_sha256(visual_path),
+        },
     }
 
 
@@ -320,7 +430,16 @@ def camera_metadata(path: Path) -> dict[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rawtherapee-cli", type=Path, default=Path("build/dev/rtgui/rawtherapee-cli"))
-    parser.add_argument("--model", type=Path, required=True)
+    parser.add_argument("--model", type=Path,
+                        help="external Gharbi RTNN; enables the linear and gamma methods")
+    parser.add_argument("--mlri", action="store_true",
+                        help="enable the hidden two-pass algorithmic MLRI method")
+    parser.add_argument("--mlri-corrected", action="store_true",
+                        help="enable MLRI with corrected blue diagonal guides")
+    parser.add_argument("--mlri-paper-core-2014", action="store_true",
+                        help="enable one-pass MLRI with uniform 2014 coefficient averaging")
+    parser.add_argument("--mlri-paper-core-2016", action="store_true",
+                        help="enable one-pass MLRI with weighted 2016 coefficient averaging")
     parser.add_argument("--xveon-model", type=Path,
                         help="external pinned xtrans.onnx; enables the hidden X-veon method")
     parser.add_argument("--packed-model", type=Path,
@@ -342,14 +461,27 @@ def main() -> int:
     args = parser.parse_args()
     np, tifffile, Image, structural_similarity = dependencies()
     cli = args.rawtherapee_cli.resolve()
-    model = args.model.resolve()
+    model = args.model.resolve() if args.model else None
     xveon_model = args.xveon_model.resolve() if args.xveon_model else None
     packed_model = args.packed_model.resolve() if args.packed_model else None
-    if (not cli.is_file() or not model.is_file() or
+    if (not cli.is_file() or (model and not model.is_file()) or
             (xveon_model and not xveon_model.is_file()) or
             (packed_model and not packed_model.is_file())):
         raise SystemExit("rawtherapee-cli or RTNN model does not exist")
     methods = dict(METHODS)
+    if model:
+        methods["linear"] = "demosaicnet-xtrans-linear"
+        methods["gamma22"] = "demosaicnet-xtrans-gamma22"
+    if args.mlri:
+        methods["mlri"] = "mlri-xtrans-2pass"
+    if args.mlri_corrected:
+        methods["mlri-corrected"] = "mlri-xtrans-2pass-corrected"
+    if args.mlri_paper_core_2014:
+        methods["mlri-paper-2014"] = "mlri-xtrans-paper-core-2014"
+    if args.mlri_paper_core_2016:
+        methods["mlri-paper-2016"] = "mlri-xtrans-paper-core-2016"
+    if len(methods) == 1 and not xveon_model and not packed_model:
+        raise SystemExit("select at least one experimental method")
     if xveon_model:
         methods["xveon"] = "xveon-xtrans-onnx"
     if packed_model:
@@ -366,7 +498,8 @@ def main() -> int:
         profiles[key] = work / f"{key}.pp3"
         write_profile(profiles[key], method)
     environment = os.environ.copy()
-    environment["RT_DEMOSAICNET_XTRANS_MODEL"] = str(model)
+    if model:
+        environment["RT_DEMOSAICNET_XTRANS_MODEL"] = str(model)
     if xveon_model:
         environment["RT_XVEON_XTRANS_MODEL"] = str(xveon_model)
     if packed_model:
@@ -394,6 +527,9 @@ def main() -> int:
                 "method": method,
                 "source": source_identity,
                 **quality_metrics(np, structural_similarity, reference, image, CANONICAL_XTRANS),
+                "difference_assets": write_difference_assets(
+                    np, tifffile, Image, work, scene_name, method, reference, image
+                ),
                 "seconds": execution.seconds,
                 "max_rss_kb": execution.max_rss_kb,
                 "fallback": execution.fallback,
@@ -457,19 +593,20 @@ def main() -> int:
             method: statistics.mean(row["cpsnr_db"] for row in upstream if row["method"] == method)
             for method in methods
         }
-        selected = "gamma22" if means["gamma22"] >= means["linear"] - 0.1 else "linear"
-        report["gate"]["selected_wrapper"] = selected
-        report["gate"]["selected_within_0_5_db_of_markesteijn"] = (
-            means[selected] >= means["markesteijn"] - 0.5
-        )
         by_scene = {
             name: {row["method"]: row for row in upstream if row["scene"] == name}
             for name in {row["scene"] for row in upstream}
         }
-        report["gate"]["selected_upstream_wins"] = sum(
-            rows[selected]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
-            for rows in by_scene.values()
-        )
+        if "linear" in methods and "gamma22" in methods:
+            selected = "gamma22" if means["gamma22"] >= means["linear"] - 0.1 else "linear"
+            report["gate"]["selected_wrapper"] = selected
+            report["gate"]["selected_within_0_5_db_of_markesteijn"] = (
+                means[selected] >= means["markesteijn"] - 0.5
+            )
+            report["gate"]["selected_upstream_wins"] = sum(
+                rows[selected]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
         if "xveon" in methods:
             report["gate"]["xveon_upstream_mean_cpsnr_db"] = means["xveon"]
             report["gate"]["xveon_upstream_wins"] = sum(
@@ -480,6 +617,18 @@ def main() -> int:
             report["gate"]["packedxtransnet_upstream_mean_cpsnr_db"] = means["packedxtransnet"]
             report["gate"]["packedxtransnet_upstream_wins"] = sum(
                 rows["packedxtransnet"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
+        if "mlri" in methods:
+            report["gate"]["mlri_upstream_mean_cpsnr_db"] = means["mlri"]
+            report["gate"]["mlri_upstream_wins"] = sum(
+                rows["mlri"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
+        if "mlri-corrected" in methods:
+            report["gate"]["mlri_corrected_upstream_mean_cpsnr_db"] = means["mlri-corrected"]
+            report["gate"]["mlri_corrected_upstream_wins"] = sum(
+                rows["mlri-corrected"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
                 for rows in by_scene.values()
             )
     for filename in {row["file"] for row in report["real_raf"]}:

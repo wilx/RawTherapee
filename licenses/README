@@ -14,6 +14,7 @@ RawTherapee's GPL-3.0-or-later license:
 - libiptcdata (LGPL-2.0)
 - LibRaw (LGPL-2.1)
 - librsvg (LGPL-2.1)
+- Unified Laplacian Residual Interpolation Demosaicing reference (BSD-3-Clause)
 
 The following libraries are re-licensed under GPL-3.0-or-later for
 compatibility with RawTherapee's license:

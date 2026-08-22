@@ -118,9 +118,10 @@ set(RTENGINESOURCEFILES
     vng4_demosaic_RT.cc
     xtrans_cfa.cc
     xtrans_demosaicnet.cc
+    xtrans_mlri.cc
     xtrans_packed.cc
-    xtrans_xveon.cc
     xtrans_rafinazari.cc
+    xtrans_xveon.cc
     xtrans_demosaic.cc
     ${PROCPARAM_SRCS}
 )
