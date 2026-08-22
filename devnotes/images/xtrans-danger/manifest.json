@@ -1,0 +1,48 @@
+{
+  "assets": [
+    {
+      "bytes": 26090,
+      "filename": "danger-cost-curve.png",
+      "sha256": "73d04b754d1878d669136fd6baf4e84488b0e86cf79431a55d1d58e05fe11612"
+    },
+    {
+      "bytes": 208550,
+      "filename": "danger-map-astronaut.png",
+      "sha256": "4bda96437d953a6439a1477845c213919f16c858c2182a153a69ed953e036a4b"
+    },
+    {
+      "bytes": 98058,
+      "filename": "danger-map-brick.png",
+      "sha256": "e471667c46388a41eb5cda83af5bf7b615c54414873e228e709b01230467dc84"
+    },
+    {
+      "bytes": 224390,
+      "filename": "danger-map-hubble.png",
+      "sha256": "fc75a7d6450c7fdb1d6e9164015bce550a8d7d8f28de8acf3f190fdcba287dd8"
+    },
+    {
+      "bytes": 82134,
+      "filename": "danger-map-nasa-hydra-starfield.png",
+      "sha256": "82c883ca2367585c631c589bfa29a716a64824a6500351090280f22151fd0c3e"
+    },
+    {
+      "bytes": 184307,
+      "filename": "danger-map-page.png",
+      "sha256": "1faa9b8761d6c982388f0aff76ae4f6b0e6b98887fd121e4392ffc8b1403e91b"
+    },
+    {
+      "bytes": 8905,
+      "filename": "dataset.json",
+      "sha256": "dae1f5c4f93fac4540321b202046e30351b038e5e7775d34a0139ca389cee71b"
+    },
+    {
+      "bytes": 512976,
+      "filename": "results.json",
+      "sha256": "c7c894c5f5016f6aaf382cc70ab87d6a029bc15a861b3ec48c2afa0dc6fbd06f"
+    }
+  ],
+  "dataset_sha256": "dae1f5c4f93fac4540321b202046e30351b038e5e7775d34a0139ca389cee71b",
+  "format": "rawtherapee-xtrans-danger-corpus-v1",
+  "frozen_blender_results_sha256": "a1e18f4936518ae164cdb867e986518afb6212163ec73c36695b508d83bf4266",
+  "results_sha256": "c7c894c5f5016f6aaf382cc70ab87d6a029bc15a861b3ec48c2afa0dc6fbd06f"
+}

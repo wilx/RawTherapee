@@ -1,0 +1,521 @@
+{
+  "crop_count": 60,
+  "crop_shape_chw": [
+    3,
+    168,
+    168
+  ],
+  "crops_per_source": 3,
+  "format": "rawtherapee-xtrans-hybrid-dataset-v1",
+  "image_source": "scikit-image 0.26.0 bundled sample data",
+  "linearization": "IEC 61966-2-1 sRGB inverse EOTF applied to normalized samples",
+  "source_count": 20,
+  "source_split_counts": {
+    "test": 4,
+    "train": 12,
+    "validation": 4
+  },
+  "sources": [
+    {
+      "category": "portrait, fabric, saturated edges",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          295,
+          33
+        ],
+        [
+          64,
+          194
+        ]
+      ],
+      "filename": "astronaut.png",
+      "group": "astronaut",
+      "height": 512,
+      "id": "astronaut",
+      "license": "public domain; no known copyright restrictions",
+      "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+      "split": "test",
+      "width": 512
+    },
+    {
+      "category": "architecture-like periodic texture",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          241,
+          75
+        ],
+        [
+          258,
+          94
+        ]
+      ],
+      "filename": "brick.png",
+      "group": "brick",
+      "height": 512,
+      "id": "brick",
+      "license": "CC0",
+      "sha256": "7966caf324f6ba843118d98f7a07746d22f6a343430add0233eca5f6eaaa8fcf",
+      "split": "test",
+      "width": 512
+    },
+    {
+      "category": "portrait, equipment, grayscale edges",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          69,
+          262
+        ],
+        [
+          302,
+          96
+        ]
+      ],
+      "filename": "camera.png",
+      "group": "camera",
+      "height": 512,
+      "id": "camera",
+      "license": "CC0; photographer Lav Varshney",
+      "sha256": "b0793d2adda0fa6ae899c03989482bff9a42d3d5690fc7e3648f2795d730c23a",
+      "split": "train",
+      "width": 512
+    },
+    {
+      "category": "low-contrast microscopy and banding",
+      "crops": [
+        [
+          191,
+          246
+        ],
+        [
+          323,
+          211
+        ],
+        [
+          68,
+          131
+        ]
+      ],
+      "filename": "cell.png",
+      "group": "cell",
+      "height": 660,
+      "id": "cell",
+      "license": "CC0",
+      "sha256": "8d23a7fb81f7cc877cd09f330357fc7f595651306e84e17252f6e0a1b3f61515",
+      "split": "train",
+      "width": 550
+    },
+    {
+      "category": "fur, portrait, diagonal edges",
+      "crops": [
+        [
+          141,
+          66
+        ],
+        [
+          207,
+          86
+        ],
+        [
+          100,
+          6
+        ]
+      ],
+      "filename": "chelsea.png",
+      "group": "chelsea",
+      "height": 300,
+      "id": "chelsea",
+      "license": "CC0; photographer Stefan van der Walt",
+      "sha256": "596aa1e7cb875eb79f437e310381d26b338a81c2da23439704a73c4651e8c4bb",
+      "split": "train",
+      "width": 451
+    },
+    {
+      "category": "motion blur and smooth grayscale",
+      "crops": [
+        [
+          116,
+          66
+        ],
+        [
+          227,
+          31
+        ],
+        [
+          160,
+          126
+        ]
+      ],
+      "filename": "clock_motion.png",
+      "group": "clock",
+      "height": 300,
+      "id": "clock",
+      "license": "public domain; photographer Stefan van der Walt",
+      "sha256": "f029226b28b642e80113d86622e9b215ee067a0966feaf5e60604a1e05733955",
+      "split": "train",
+      "width": 400
+    },
+    {
+      "category": "saturated objects and texture",
+      "crops": [
+        [
+          216,
+          116
+        ],
+        [
+          375,
+          186
+        ],
+        [
+          110,
+          74
+        ]
+      ],
+      "filename": "coffee.png",
+      "group": "coffee",
+      "height": 400,
+      "id": "coffee",
+      "license": "CC0; photographer Rachel Michetti",
+      "sha256": "cc02f8ca188b167c775a7101b5d767d1e71792cf762c33d6fa15a4599b5a8de7",
+      "split": "validation",
+      "width": 600
+    },
+    {
+      "category": "specular objects and grayscale edges",
+      "crops": [
+        [
+          108,
+          67
+        ],
+        [
+          12,
+          17
+        ],
+        [
+          96,
+          90
+        ]
+      ],
+      "filename": "coins.png",
+      "group": "coins",
+      "height": 303,
+      "id": "coins",
+      "license": "no known copyright restrictions; Brooklyn Museum",
+      "sha256": "f8d773fc9cfa6f4d8e5942dc34d0a0788fcaed2a4fefbbed0aef5398d7ef4cba",
+      "split": "train",
+      "width": 384
+    },
+    {
+      "category": "foliage-like irregular texture",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          266,
+          55
+        ],
+        [
+          80,
+          80
+        ]
+      ],
+      "filename": "grass.png",
+      "group": "grass",
+      "height": 512,
+      "id": "grass",
+      "license": "CC0",
+      "sha256": "b6b6022426b38936c43a4ac09635cd78af074e90f42ffa8227ac8b7452d39f89",
+      "split": "validation",
+      "width": 512
+    },
+    {
+      "category": "irregular high-frequency texture",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          118,
+          265
+        ],
+        [
+          165,
+          119
+        ]
+      ],
+      "filename": "gravel.png",
+      "group": "gravel",
+      "height": 512,
+      "id": "gravel",
+      "license": "CC0",
+      "sha256": "c48615b451bf1e606fbd72c0aa9f8cc0f068ab7111ef7d93bb9b0f2586440c12",
+      "split": "train",
+      "width": 512
+    },
+    {
+      "category": "binary silhouette and strong edges",
+      "crops": [
+        [
+          116,
+          80
+        ],
+        [
+          162,
+          158
+        ],
+        [
+          85,
+          22
+        ]
+      ],
+      "filename": "horse.png",
+      "group": "horse",
+      "height": 328,
+      "id": "horse",
+      "license": "CC0; Andreas Preuss",
+      "sha256": "c7fb60789fe394c485f842291ea3b21e50d140f39d6dcb5fb9917cc178225455",
+      "split": "train",
+      "width": 400
+    },
+    {
+      "category": "night-like field and fine colored detail",
+      "crops": [
+        [
+          416,
+          352
+        ],
+        [
+          241,
+          145
+        ],
+        [
+          76,
+          35
+        ]
+      ],
+      "filename": "hubble_deep_field.jpg",
+      "group": "hubble",
+      "height": 872,
+      "id": "hubble",
+      "license": "NASA public domain",
+      "sha256": "3a19c5dd8a927a9334bb1229a6d63711b1c0c767fb27e2286e7c84a3e2c2f5f4",
+      "split": "test",
+      "width": 1000
+    },
+    {
+      "category": "fine saturated biological texture",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          67,
+          42
+        ],
+        [
+          312,
+          137
+        ]
+      ],
+      "filename": "ihc.png",
+      "group": "ihc",
+      "height": 512,
+      "id": "ihc",
+      "license": "no known copyright restrictions; CMMI",
+      "sha256": "f8dd1aa387ddd1f49d8ad13b50921b237df8e9b262606d258770687b0ef93cef",
+      "split": "train",
+      "width": 512
+    },
+    {
+      "category": "low-contrast natural texture",
+      "crops": [
+        [
+          172,
+          172
+        ],
+        [
+          171,
+          233
+        ],
+        [
+          301,
+          339
+        ]
+      ],
+      "filename": "moon.png",
+      "group": "moon",
+      "height": 512,
+      "id": "moon",
+      "license": "not stated in scikit-image 0.26.0 data docstring",
+      "sha256": "78739619d11f7eb9c165bb5d2efd4772cee557812ec847532dbb1d92ef71f577",
+      "split": "train",
+      "width": 512
+    },
+    {
+      "category": "vehicles, fabric, fine text",
+      "crops": [
+        [
+          286,
+          166
+        ],
+        [
+          226,
+          252
+        ],
+        [
+          397,
+          215
+        ]
+      ],
+      "filename": "motorcycle_left.png",
+      "group": "middlebury-motorcycle",
+      "height": 500,
+      "id": "motorcycle-left",
+      "license": "Middlebury 2014 stereo benchmark; terms not stated in local docstring",
+      "sha256": "db18e9c4157617403c3537a6ba355dfeafe9a7eabb6b9b94cb33f6525dd49179",
+      "split": "validation",
+      "width": 741
+    },
+    {
+      "category": "vehicles, fabric, fine text",
+      "crops": [
+        [
+          286,
+          166
+        ],
+        [
+          407,
+          122
+        ],
+        [
+          489,
+          91
+        ]
+      ],
+      "filename": "motorcycle_right.png",
+      "group": "middlebury-motorcycle",
+      "height": 500,
+      "id": "motorcycle-right",
+      "license": "Middlebury 2014 stereo benchmark; terms not stated in local docstring",
+      "sha256": "5fc913ae870e42a4b662314bc904d1786bcad8e2f0b9b67dba5a229406357797",
+      "split": "validation",
+      "width": 741
+    },
+    {
+      "category": "fine text and uneven illumination",
+      "crops": [
+        [
+          108,
+          11
+        ],
+        [
+          94,
+          21
+        ],
+        [
+          175,
+          10
+        ]
+      ],
+      "filename": "page.png",
+      "group": "page",
+      "height": 191,
+      "id": "page",
+      "license": "not stated in scikit-image 0.26.0 data docstring",
+      "sha256": "341a6f0a61557662b02734a9b6e56ec33a915b2c41886b97509dedf2a43b47a3",
+      "split": "test",
+      "width": 384
+    },
+    {
+      "category": "saturated biological structure",
+      "crops": [
+        [
+          621,
+          621
+        ],
+        [
+          330,
+          501
+        ],
+        [
+          1139,
+          302
+        ]
+      ],
+      "filename": "retina.jpg",
+      "group": "retina",
+      "height": 1411,
+      "id": "retina",
+      "license": "CC0 1.0; Mikael Haeggstroem",
+      "sha256": "38a07f36f27f095e818aea7b96d34202c05176d30253c66733f2e00379e9e0e6",
+      "split": "train",
+      "width": 1411
+    },
+    {
+      "category": "smooth sky, architecture, fine detail",
+      "crops": [
+        [
+          236,
+          129
+        ],
+        [
+          31,
+          89
+        ],
+        [
+          414,
+          42
+        ]
+      ],
+      "filename": "rocket.jpg",
+      "group": "rocket",
+      "height": 427,
+      "id": "rocket",
+      "license": "SpaceX public domain",
+      "sha256": "c2dd0de7c538df8d111e479619b129464d0269d0ae5fd18ca91d33a7fdfea95c",
+      "split": "train",
+      "width": 640
+    },
+    {
+      "category": "fine text and corners",
+      "crops": [
+        [
+          140,
+          2
+        ],
+        [
+          256,
+          0
+        ],
+        [
+          37,
+          4
+        ]
+      ],
+      "filename": "text.png",
+      "group": "text",
+      "height": 172,
+      "id": "text",
+      "license": "public domain; no known copyright restrictions",
+      "sha256": "bd84aa3a6e3c9887850d45d606c96b2e59433fbef50338570b63c319e668e6d1",
+      "split": "train",
+      "width": 448
+    }
+  ],
+  "split_policy": "frozen source-level split; related stereo views share one group"
+}

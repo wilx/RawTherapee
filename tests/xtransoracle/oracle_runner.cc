@@ -103,7 +103,8 @@ MethodOutput runMethod(
     const std::string &method,
     const std::vector<float> &normalizedMosaic,
     int width,
-    int height)
+    int height,
+    const int cfa[6][6])
 {
     const std::size_t pixels = static_cast<std::size_t>(width) * height;
     require(normalizedMosaic.size() == pixels, "mosaic dimensions differ");
@@ -120,14 +121,14 @@ MethodOutput runMethod(
         const auto result = rtengine::demosaicMarkesteijnXTransReference(
             static_cast<const float *>(raw), static_cast<float *>(red),
             static_cast<float *>(green), static_cast<float *>(blue),
-            width, height, CFA);
+            width, height, cfa);
         require(static_cast<bool>(result),
                 std::string("Markesteijn failed [") +
                 rtengine::markesteijnXTransErrorCodeName(result.code) + "]: " +
                 result.message);
     } else if (method == "mlri-final") {
         const auto result = rtengine::demosaicMlriXTrans(
-            raw, red, green, blue, width, height, CFA,
+            raw, red, green, blue, width, height, cfa,
             rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
         require(static_cast<bool>(result),
                 std::string("MLRI failed [") +
@@ -140,7 +141,7 @@ MethodOutput runMethod(
         const auto result = rtengine::demosaicTriangulatedXTransReference(
             static_cast<const float *>(raw), static_cast<float *>(red),
             static_cast<float *>(green), static_cast<float *>(blue),
-            width, height, CFA, variant);
+            width, height, cfa, variant);
         require(static_cast<bool>(result),
                 std::string("triangulation failed [") +
                 rtengine::triangulatedXTransErrorCodeName(result.code) + "]: " +
@@ -151,7 +152,7 @@ MethodOutput runMethod(
         const auto result = rtengine::demosaicGlobalXTransReference(
             static_cast<const float *>(raw), static_cast<float *>(red),
             static_cast<float *>(green), static_cast<float *>(blue),
-            width, height, CFA,
+            width, height, cfa,
             rtengine::GlobalXTransVariant::GREEN_COLOR_DIFFERENCE, options);
         require(static_cast<bool>(result),
                 std::string("global B failed [") +
@@ -238,8 +239,8 @@ int synthetic()
         }
     }
     for (const char *method : METHODS) {
-        const MethodOutput first = runMethod(method, mosaic, width, height);
-        const MethodOutput second = runMethod(method, mosaic, width, height);
+        const MethodOutput first = runMethod(method, mosaic, width, height, CFA);
+        const MethodOutput second = runMethod(method, mosaic, width, height, CFA);
         require(first.values == second.values,
                 std::string("repeated output differs for ") + method);
         for (float value : first.values) {
@@ -259,19 +260,34 @@ int synthetic()
     return 0;
 }
 
-int runFiles(int argc, char **argv)
+int runFiles(int argc, char **argv, bool pairOnly, bool customCfa)
 {
-    require(argc == 6, "usage: oracle_runner run INPUT OUTPUT_DIR WIDTH HEIGHT");
+    require(argc == (customCfa ? 7 : 6),
+            "usage: oracle_runner run[-pair][-cfa] INPUT OUTPUT_DIR WIDTH HEIGHT [CFA36]");
     const std::string inputPath = argv[2];
     const std::string outputDirectory = argv[3];
     const int width = std::stoi(argv[4]);
     const int height = std::stoi(argv[5]);
     require(width >= 32 && height >= 32, "dimensions must be at least 32x32");
+    int selectedCfa[6][6];
+    std::memcpy(selectedCfa, CFA, sizeof(selectedCfa));
+    if (customCfa) {
+        const std::string encoded = argv[6];
+        require(encoded.size() == 36, "CFA encoding must contain 36 digits");
+        for (std::size_t index = 0; index < encoded.size(); ++index) {
+            require(encoded[index] >= '0' && encoded[index] <= '2',
+                    "CFA encoding contains an invalid color");
+            selectedCfa[index / 6][index % 6] = encoded[index] - '0';
+        }
+    }
     const std::size_t pixels = static_cast<std::size_t>(width) * height;
     const std::vector<float> mosaic = readFloat32Le(inputPath, pixels);
     std::cout << std::setprecision(17);
-    for (const char *method : METHODS) {
-        const MethodOutput output = runMethod(method, mosaic, width, height);
+    const std::size_t methodCount = pairOnly ? 2 : sizeof(METHODS) / sizeof(METHODS[0]);
+    for (std::size_t methodIndex = 0; methodIndex < methodCount; ++methodIndex) {
+        const char *method = METHODS[methodIndex];
+        const MethodOutput output = runMethod(
+            method, mosaic, width, height, selectedCfa);
         writeFloat32Le(outputDirectory + "/" + method + ".f32le", output.values);
         std::cout << method << '\t' << output.seconds << '\n';
     }
@@ -292,7 +308,13 @@ int main(int argc, char **argv)
             return synthetic();
         }
         if (mode == "run") {
-            return runFiles(argc, argv);
+            return runFiles(argc, argv, false, false);
+        }
+        if (mode == "run-pair") {
+            return runFiles(argc, argv, true, false);
+        }
+        if (mode == "run-pair-cfa") {
+            return runFiles(argc, argv, true, true);
         }
         throw std::runtime_error("unknown mode " + mode);
     } catch (const std::exception &error) {

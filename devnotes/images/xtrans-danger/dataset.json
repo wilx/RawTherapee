@@ -1,0 +1,365 @@
+{
+  "format": "rawtherapee-xtrans-danger-dataset-v1",
+  "frozen_blender_source": "devnotes/images/xtrans-hybrid/results.json",
+  "hard_negative_synthetic_cases": [
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 0,
+      "id": "cfa-impulse-00",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 1,
+      "id": "cfa-impulse-01",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 2,
+      "id": "cfa-impulse-02",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 3,
+      "id": "cfa-impulse-03",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 4,
+      "id": "cfa-impulse-04",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 5,
+      "id": "cfa-impulse-05",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 6,
+      "id": "cfa-impulse-06",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 7,
+      "id": "cfa-impulse-07",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 8,
+      "id": "cfa-impulse-08",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 9,
+      "id": "cfa-impulse-09",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 10,
+      "id": "cfa-impulse-10",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 11,
+      "id": "cfa-impulse-11",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 12,
+      "id": "cfa-impulse-12",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 13,
+      "id": "cfa-impulse-13",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 14,
+      "id": "cfa-impulse-14",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 15,
+      "id": "cfa-impulse-15",
+      "split": "test",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 16,
+      "id": "cfa-impulse-16",
+      "split": "test",
+      "transition": null
+    },
+    {
+      "category": "isolated colored point across CFA variants",
+      "cfa_variant": 17,
+      "id": "cfa-impulse-17",
+      "split": "test",
+      "transition": null
+    },
+    {
+      "category": "isolated white impulse",
+      "cfa_variant": 1,
+      "id": "white-impulse",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "two-pixel saturated red dot",
+      "cfa_variant": 2,
+      "id": "red-dot-2",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "three-pixel saturated green dot",
+      "cfa_variant": 3,
+      "id": "green-dot-3",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "colored point on dark background",
+      "cfa_variant": 4,
+      "id": "blue-dark-point",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "tiny saturated specular highlight",
+      "cfa_variant": 5,
+      "id": "tiny-specular",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "thin colored line",
+      "cfa_variant": 6,
+      "id": "thin-red-line",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "intersection of thin lines",
+      "cfa_variant": 7,
+      "id": "line-intersection",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "sparse bright microtexture",
+      "cfa_variant": 8,
+      "id": "sparse-microtexture",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "progressively denser point pattern",
+      "cfa_variant": 9,
+      "id": "medium-points",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "tiny colored structure adjacent to edge",
+      "cfa_variant": 10,
+      "id": "point-next-edge",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "sparse star field",
+      "cfa_variant": 11,
+      "id": "star-field-a",
+      "split": "train",
+      "transition": null
+    },
+    {
+      "category": "sparse star field",
+      "cfa_variant": 12,
+      "id": "star-field-b",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "low-intensity colored point",
+      "cfa_variant": 13,
+      "id": "dim-blue-dot",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "tiny saturated structure adjacent to edge",
+      "cfa_variant": 14,
+      "id": "bright-edge-point",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "dense bright microtexture",
+      "cfa_variant": 15,
+      "id": "dense-microtexture",
+      "split": "validation",
+      "transition": null
+    },
+    {
+      "category": "point-density transition",
+      "cfa_variant": 1,
+      "id": "transition-points-01",
+      "split": "test",
+      "transition": "points:1"
+    },
+    {
+      "category": "point-density transition",
+      "cfa_variant": 3,
+      "id": "transition-points-03",
+      "split": "test",
+      "transition": "points:3"
+    },
+    {
+      "category": "point-density transition",
+      "cfa_variant": 8,
+      "id": "transition-points-08",
+      "split": "test",
+      "transition": "points:8"
+    },
+    {
+      "category": "point-density transition",
+      "cfa_variant": 6,
+      "id": "transition-points-24",
+      "split": "test",
+      "transition": "points:24"
+    },
+    {
+      "category": "point-density transition",
+      "cfa_variant": 0,
+      "id": "transition-points-72",
+      "split": "test",
+      "transition": "points:72"
+    },
+    {
+      "category": "line-thickness transition",
+      "cfa_variant": 14,
+      "id": "transition-line-1",
+      "split": "test",
+      "transition": "line:1"
+    },
+    {
+      "category": "line-thickness transition",
+      "cfa_variant": 15,
+      "id": "transition-line-2",
+      "split": "test",
+      "transition": "line:2"
+    },
+    {
+      "category": "line-thickness transition",
+      "cfa_variant": 16,
+      "id": "transition-line-3",
+      "split": "test",
+      "transition": "line:3"
+    },
+    {
+      "category": "line-thickness transition",
+      "cfa_variant": 0,
+      "id": "transition-line-5",
+      "split": "test",
+      "transition": "line:5"
+    }
+  ],
+  "natural_case_count": 63,
+  "natural_source_splits": {
+    "test": [
+      "astronaut",
+      "brick",
+      "hubble",
+      "nasa-hydra-starfield",
+      "page"
+    ],
+    "train": [
+      "camera",
+      "cell",
+      "chelsea",
+      "clock",
+      "coins",
+      "gravel",
+      "horse",
+      "ihc",
+      "moon",
+      "retina",
+      "rocket",
+      "text"
+    ],
+    "validation": [
+      "coffee",
+      "grass",
+      "motorcycle-left",
+      "motorcycle-right"
+    ]
+  },
+  "starfield": {
+    "credit": "NASA's Goddard Space Flight Center Scientific Visualization Studio",
+    "crop_size": 168,
+    "crops": [
+      [
+        1416,
+        1416
+      ],
+      [
+        365,
+        1789
+      ],
+      [
+        1208,
+        2143
+      ]
+    ],
+    "filename": "grail_free_air_stars1.tif",
+    "height": 3000,
+    "id": "nasa-hydra-starfield",
+    "landing_page": "https://svs.gsfc.nasa.gov/4041/",
+    "license": "NASA media; use subject to NASA reproduction guidelines",
+    "sha256": "bc5ae5f68fc1977545c0d16c1c60c20dafb4fdbeb045f55774e7a5d03498f6d0",
+    "source_url": "https://svs.gsfc.nasa.gov/vis/a000000/a004000/a004041/grail_free_air_stars1.tif",
+    "width": 3000
+  },
+  "synthetic_case_count": 42,
+  "test_sources_never_used_for_detector_fitting_or_threshold_selection": [
+    "astronaut",
+    "brick",
+    "hubble",
+    "page",
+    "nasa-hydra-starfield"
+  ],
+  "xtrans_cfa_variant_count": 18
+}

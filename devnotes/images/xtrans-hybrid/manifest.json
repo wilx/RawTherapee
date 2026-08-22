@@ -1,0 +1,58 @@
+{
+  "assets": [
+    {
+      "bytes": 5304,
+      "filename": "blend-calibration.png",
+      "sha256": "877f0ab24b42d19438d05dc72028c061bb7e37b9c11fc373a8a3f3de62776747"
+    },
+    {
+      "bytes": 10982,
+      "filename": "dataset.json",
+      "sha256": "ecb64b1013305b9bbe499638ba28b83d05e9ce0627bfd46db276dd0c1c69d00b"
+    },
+    {
+      "bytes": 21163,
+      "filename": "feature-ablation.png",
+      "sha256": "868cdaae090d9303d3b66e4f6c43955f343a29e671cb22ac255568ce29575b6f"
+    },
+    {
+      "bytes": 4964,
+      "filename": "gating-coverage.png",
+      "sha256": "2b23589f1b808372d97edaa0f5775674d7aae11068293bbd5028d11f12e71b5d"
+    },
+    {
+      "bytes": 6925,
+      "filename": "grouped-folds.png",
+      "sha256": "e33d5695a846c3caf9270d9599273ce16d837f1d22f226338a2ce89a117f2796"
+    },
+    {
+      "bytes": 177930,
+      "filename": "map-astronaut.png",
+      "sha256": "70111a5e62b119e858591915b74fd86b8a14ced88951b8d716005f28f33e18ad"
+    },
+    {
+      "bytes": 114526,
+      "filename": "map-brick.png",
+      "sha256": "b104156d43ca04f27dc20a1d2e0c52ca85be942a8679cd3173f7cd5da093b6de"
+    },
+    {
+      "bytes": 136191,
+      "filename": "map-hubble.png",
+      "sha256": "2a653b4a7b7ac857bb1d5bc9e80c81d122b375be419414b0ed21d059beb4e468"
+    },
+    {
+      "bytes": 123540,
+      "filename": "map-page.png",
+      "sha256": "b9dc57ecdfb20cbb62a4970536e8f42d4203290a8e90fd7edac5bd717e0f76a7"
+    },
+    {
+      "bytes": 299447,
+      "filename": "results.json",
+      "sha256": "a1e18f4936518ae164cdb867e986518afb6212163ec73c36695b508d83bf4266"
+    }
+  ],
+  "dataset_sha256": "ecb64b1013305b9bbe499638ba28b83d05e9ce0627bfd46db276dd0c1c69d00b",
+  "format": "rawtherapee-xtrans-hybrid-corpus-v1",
+  "oracle_study_commit": "dba78e8f2",
+  "results_sha256": "a1e18f4936518ae164cdb867e986518afb6212163ec73c36695b508d83bf4266"
+}
