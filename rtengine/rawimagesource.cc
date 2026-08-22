@@ -49,6 +49,7 @@
 #include "lensmetadata.h"
 #include "rtgui/options.h"
 #include "xtrans_demosaicnet.h"
+#include "xtrans_global.h"
 #include "xtrans_mlri.h"
 #include "xtrans_packed.h"
 #include "xtrans_triangulation.h"
@@ -2089,6 +2090,95 @@ bool RawImageSource::triangulated_xtrans_interpolate(TriangulatedXTransVariant v
     return true;
 }
 
+bool RawImageSource::global_xtrans_interpolate(GlobalXTransVariant variant)
+{
+    const auto started = std::chrono::steady_clock::now();
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const char *const method =
+        variant == GlobalXTransVariant::INDEPENDENT_RGB
+            ? XTRANS_GLOBAL_SPECTRAL_RGB_METHOD
+        : variant == GlobalXTransVariant::GREEN_COLOR_DIFFERENCE
+            ? XTRANS_GLOBAL_SPECTRAL_DIFF_METHOD
+            : XTRANS_GLOBAL_SPECTRAL_EDGE_METHOD;
+
+    GlobalXTransOptions solver;
+    const auto readDouble = [](const char *name, double &destination) {
+        if (const char *value = std::getenv(name)) {
+            char *end = nullptr;
+            const double parsed = std::strtod(value, &end);
+            destination = end && *end == '\0' ? parsed
+                                               : std::numeric_limits<double>::quiet_NaN();
+        }
+    };
+    const auto readInteger = [](const char *name, int &destination) {
+        if (const char *value = std::getenv(name)) {
+            char *end = nullptr;
+            const long parsed = std::strtol(value, &end, 10);
+            destination = end && *end == '\0' &&
+                    parsed >= std::numeric_limits<int>::min() &&
+                    parsed <= std::numeric_limits<int>::max()
+                ? static_cast<int>(parsed) : -1;
+        }
+    };
+    readDouble("RT_XTRANS_GLOBAL_LAMBDA_RGB", solver.lambdaRgb);
+    readDouble("RT_XTRANS_GLOBAL_LAMBDA_G", solver.lambdaGreen);
+    readDouble("RT_XTRANS_GLOBAL_LAMBDA_C", solver.lambdaChroma);
+    readDouble("RT_XTRANS_GLOBAL_TOLERANCE", solver.relativeTolerance);
+    readDouble("RT_XTRANS_GLOBAL_EDGE_EPSILON", solver.charbonnierEpsilon);
+    readInteger("RT_XTRANS_GLOBAL_P", solver.spectralExponent);
+    readInteger("RT_XTRANS_GLOBAL_ITERATIONS", solver.maximumIterations);
+    readInteger("RT_XTRANS_GLOBAL_EDGE_OUTER", solver.edgeOuterIterations);
+    readInteger("RT_XTRANS_GLOBAL_EDGE_INNER", solver.edgeInnerIterations);
+    readInteger("RT_XTRANS_GLOBAL_TILE", solver.tileSize);
+    if (const char *initialization = std::getenv("RT_XTRANS_GLOBAL_INITIALIZATION")) {
+        if (std::strcmp(initialization, "zero") == 0) {
+            solver.initialization = GlobalXTransInitialization::ZERO_FILLED;
+        } else if (std::strcmp(initialization, "triangulated") != 0) {
+            solver.maximumIterations = -1;
+        }
+    }
+    if (const char *prefix = std::getenv("RT_XTRANS_GLOBAL_DEBUG_PREFIX")) {
+        solver.debugOutputPrefix = prefix;
+    }
+
+    const GlobalXTransRunResult run = demosaicGlobalXTrans(
+        rawData, red, green, blue, W, H, xtrans, variant, solver);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "Global X-Trans error [%s]: method=%s: %s; "
+            "falling back to 3-pass (Markesteijn)\n",
+            globalXTransErrorCodeName(run.code), method, run.message.c_str());
+        return false;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    std::fprintf(
+        stderr,
+        "Global X-Trans completed: method=%s boundary=mirror-neumann "
+        "penalty=normalized-discrete-spectral p=%d lambda_rgb=%.9g "
+        "lambda_g=%.9g lambda_c=%.9g iterations=%d outer=%d "
+        "relative_residual=%.9g tolerance=%.9g tile=%d tiles=%llu "
+        "sample_pre_max=%.9g sample_pre_rms=%.9g sample_final_max=%.9g "
+        "setup_us=%llu solver_us=%llu total_us=%llu wrapper_us=%lld "
+        "workspace_estimate=%llu\n",
+        method, solver.spectralExponent, solver.lambdaRgb, solver.lambdaGreen,
+        solver.lambdaChroma, run.completedIterations,
+        run.completedOuterIterations, run.finalRelativeResidual,
+        solver.relativeTolerance, solver.tileSize,
+        static_cast<unsigned long long>(run.tileCount),
+        run.preProjectionSampleMaximum, run.preProjectionSampleRms,
+        run.finalSampleMaximum,
+        static_cast<unsigned long long>(run.setupMicroseconds),
+        static_cast<unsigned long long>(run.solverMicroseconds),
+        static_cast<unsigned long long>(run.totalMicroseconds),
+        static_cast<long long>(elapsed),
+        static_cast<unsigned long long>(run.workingBufferBytes));
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -2183,6 +2273,18 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
                     ? TriangulatedXTransVariant::INDEPENDENT_RGB
                     : TriangulatedXTransVariant::GREEN_CHROMA_DIFFERENCE;
             if (!triangulated_xtrans_interpolate(variant)) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method == XTRANS_GLOBAL_SPECTRAL_RGB_METHOD ||
+                   raw.xtranssensor.method == XTRANS_GLOBAL_SPECTRAL_DIFF_METHOD ||
+                   raw.xtranssensor.method == XTRANS_GLOBAL_SPECTRAL_EDGE_METHOD) {
+            const GlobalXTransVariant variant =
+                raw.xtranssensor.method == XTRANS_GLOBAL_SPECTRAL_RGB_METHOD
+                    ? GlobalXTransVariant::INDEPENDENT_RGB
+                : raw.xtranssensor.method == XTRANS_GLOBAL_SPECTRAL_DIFF_METHOD
+                    ? GlobalXTransVariant::GREEN_COLOR_DIFFERENCE
+                    : GlobalXTransVariant::EDGE_PRESERVING_GREEN;
+            if (!global_xtrans_interpolate(variant)) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {
