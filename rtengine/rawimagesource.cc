@@ -1979,6 +1979,9 @@ bool RawImageSource::mlri_xtrans_interpolate(MlriXTransVariant variant)
         case MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES:
             method = MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD;
             break;
+        case MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY:
+            method = MLRI_XTRANS_TWO_PASS_CORRECTED_FINAL_ONLY_METHOD;
+            break;
         case MlriXTransVariant::PAPER_CORE_2014:
             method = MLRI_XTRANS_PAPER_CORE_2014_METHOD;
             break;
@@ -2009,6 +2012,20 @@ bool RawImageSource::mlri_xtrans_interpolate(MlriXTransVariant variant)
             "tiles=%llu workers=%u workspace_per_worker_estimate=%llu elapsed_us=%lld\n",
             method,
             variant == MlriXTransVariant::PAPER_CORE_2014 ? "uniform" : "residual-weighted",
+            run.coreSize,
+            run.coreSize,
+            run.halo,
+            static_cast<unsigned long long>(run.tileCount),
+            run.workerCount,
+            static_cast<unsigned long long>(run.workspaceBytesPerWorker),
+            static_cast<long long>(elapsed));
+    } else if (variant == MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY) {
+        std::fprintf(
+            stderr,
+            "MLRI X-Trans completed: method=%s passes=2 sigma=2,1 epsilon=0.01 "
+            "blue_diagonal_guides=corrected final=direct core=%dx%d halo=%d boundary=zero "
+            "tiles=%llu workers=%u workspace_per_worker_estimate=%llu elapsed_us=%lld\n",
+            method,
             run.coreSize,
             run.coreSize,
             run.halo,
@@ -2107,6 +2124,7 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             }
         } else if (raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_METHOD ||
                    raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD ||
+                   raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_FINAL_ONLY_METHOD ||
                    raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2014_METHOD ||
                    raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2016_METHOD) {
             const MlriXTransVariant variant =
@@ -2114,6 +2132,8 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
                     ? MlriXTransVariant::MATLAB_REFERENCE
                 : raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD
                     ? MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES
+                : raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_CORRECTED_FINAL_ONLY_METHOD
+                    ? MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY
                 : raw.xtranssensor.method == MLRI_XTRANS_PAPER_CORE_2014_METHOD
                     ? MlriXTransVariant::PAPER_CORE_2014
                     : MlriXTransVariant::PAPER_CORE_2016;

@@ -30,6 +30,15 @@ from tools.neural_demosaic.compare_gamma22_outputs import (
 
 FORMAT = "rawtherapee-xtrans-mlri-comparison-v1"
 METHOD = "mlri-xtrans-2pass"
+# Decoded full-frame CFA reported by RawImageSource for the pinned DSCF0771.RAF.
+# The exported TIFF retains the same 7752x5178 coordinate system.  This is a
+# translated representation of the canonical MLRI cell, so using the canonical
+# matrix here misclassifies observed samples in method-delta measurements.
+DSCF0771_CFA = np.asarray(
+    ((1,1,0,1,1,2),(1,1,2,1,1,0),(2,0,1,0,2,1),
+     (1,1,2,1,1,0),(1,1,0,1,1,2),(0,2,1,2,0,1)),
+    np.uint8,
+)
 FALLBACK_MARKER = "falling back to 3-pass (Markesteijn)"
 COMPLETION_RE = re.compile(
     r"MLRI X-Trans completed: method=(\S+) passes=2 sigma=2,1 epsilon=0\.01 "
@@ -116,13 +125,8 @@ def method_delta(
     )
     left_crop = np.asarray(images[left][y:y + height, x:x + width], np.float64) / 65535.0
     right_crop = np.asarray(images[right][y:y + height, x:x + width], np.float64) / 65535.0
-    canonical = np.asarray(
-        ((1,2,1,1,0,1),(0,1,0,2,1,2),(1,2,1,1,0,1),
-         (1,0,1,1,2,1),(2,1,2,0,1,0),(1,0,1,1,2,1)),
-        np.uint8,
-    )
     rows, columns = np.indices((height, width))
-    channels = canonical[(rows + y) % 6, (columns + x) % 6]
+    channels = DSCF0771_CFA[(rows + y) % 6, (columns + x) % 6]
     observed = np.take_along_axis(
         left_crop - right_crop, channels[..., None], axis=2
     )[..., 0]

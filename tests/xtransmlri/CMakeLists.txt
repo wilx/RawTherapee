@@ -28,6 +28,13 @@ set_tests_properties(
     PROPERTIES LABELS "rtengine;xtrans-mlri" TIMEOUT 300)
 
 add_test(
+    NAME rtengine.xtrans_mlri.corrected_final_only_variant
+    COMMAND rawtherapee-xtrans-mlri-tests corrected-final-only)
+set_tests_properties(
+    rtengine.xtrans_mlri.corrected_final_only_variant
+    PROPERTIES LABELS "rtengine;xtrans-mlri" TIMEOUT 300)
+
+add_test(
     NAME rtengine.xtrans_mlri.paper_core_variants
     COMMAND rawtherapee-xtrans-mlri-tests paper-core)
 set_tests_properties(

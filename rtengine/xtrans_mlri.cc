@@ -78,6 +78,11 @@ bool isPaperCore(MlriXTransVariant variant)
            variant == MlriXTransVariant::PAPER_CORE_2016;
 }
 
+bool usesFinalOnly(MlriXTransVariant variant)
+{
+    return variant == MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY;
+}
+
 // MATLAB's phase numbering, converted to zero-based indices.  The cell is a
 // three-row translation of CANONICAL_XTRANS_CFA.
 constexpr int MLRI_PHASE[6][6] = {
@@ -1630,6 +1635,14 @@ RgbPlanes runMlri(
 
     previous.green = clip(previous.green);
     const RedBluePair final = finalRedBlue(previous.green, mosaic, masks, variant);
+    if (usesFinalOnly(variant)) {
+        // Controlled overshoot experiment: retain the corrected two-pass green
+        // reconstruction unchanged, but use the separately reconstructed,
+        // green-guided chroma directly.  At low luminance the source's
+        // sqrt(G/255) weight otherwise selects almost entirely the provisional
+        // chroma planes, including their isolated blue overshoots.
+        return {clip(final.red), std::move(previous.green), clip(final.blue)};
+    }
     const Plane uG = squareRoot(previous.green * (1.f / SOURCE_MAX));
     previous.red = clip(oneMinus(uG) * previous.red + uG * final.red);
     previous.blue = clip(oneMinus(uG) * previous.blue + uG * final.blue);

@@ -72,6 +72,20 @@ CcSteps=0
 It changes only four source expressions from red to blue diagonal guides.  It
 does not replace the faithful method or its Octave golden corpus.
 
+The direct-final control keeps the corrected method's two passes and changes
+only its last chroma-selection operation:
+
+```ini
+[RAW X-Trans]
+Method=mlri-xtrans-2pass-corrected-final-only
+CcSteps=0
+```
+
+It returns the separately reconstructed green-guided red and blue planes
+instead of applying the source's luminance-dependent blend with provisional
+chroma. Include `--mlri-corrected-final-only` in the analytical benchmark to
+compare it with the corrected blend.
+
 The controlled paper-core methods are also hidden:
 
 ```ini
@@ -111,3 +125,8 @@ manifest.  It therefore leaves the original comparison manifest unchanged.
 `compare_paper_core_outputs.py` authenticates the corrected and Markesteijn
 baselines, measures both one-pass methods on the same crop, and creates their
 matching one-third full-frame and 500% earring assets in a separate manifest.
+
+`compare_final_only_outputs.py` authenticates the same corrected and
+Markesteijn baselines, measures the corrected two-pass direct-final export, and
+creates matching `DSCF0771-mlri-corrected-final-only-*` assets without changing
+any earlier manifest.

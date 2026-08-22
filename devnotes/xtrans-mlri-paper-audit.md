@@ -91,8 +91,10 @@ later blend, and do not apply the square-root blend. Both use the corrected
 blue diagonal guides so the apparent red-guide/blue-sample source inconsistency
 does not become a third experimental variable.
 
-The existing `mlri-xtrans-2pass` and
-`mlri-xtrans-2pass-corrected` methods are unchanged. In particular, the
+The existing `mlri-xtrans-2pass` and `mlri-xtrans-2pass-corrected` methods are
+unchanged. The separate `mlri-xtrans-2pass-corrected-final-only` control keeps
+both corrected green passes and changes only the final chroma selection. In
+particular, the
 authenticated Octave golden corpus continues to test only the faithful 2025
 source-compatible method.
 

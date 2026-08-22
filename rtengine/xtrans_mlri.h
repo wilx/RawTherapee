@@ -20,6 +20,8 @@ namespace rtengine
 constexpr const char *MLRI_XTRANS_TWO_PASS_METHOD = "mlri-xtrans-2pass";
 constexpr const char *MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD =
     "mlri-xtrans-2pass-corrected";
+constexpr const char *MLRI_XTRANS_TWO_PASS_CORRECTED_FINAL_ONLY_METHOD =
+    "mlri-xtrans-2pass-corrected-final-only";
 constexpr const char *MLRI_XTRANS_PAPER_CORE_2014_METHOD =
     "mlri-xtrans-paper-core-2014";
 constexpr const char *MLRI_XTRANS_PAPER_CORE_2016_METHOD =
@@ -31,6 +33,7 @@ constexpr const char *MLRI_XTRANS_PAPER_CORE_2016_METHOD =
 enum class MlriXTransVariant {
     MATLAB_REFERENCE,
     CORRECTED_BLUE_DIAGONAL_GUIDES,
+    CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY,
     PAPER_CORE_2014,
     PAPER_CORE_2016
 };

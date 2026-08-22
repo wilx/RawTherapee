@@ -92,6 +92,9 @@ int contract()
     require(std::strcmp(rtengine::MLRI_XTRANS_TWO_PASS_CORRECTED_METHOD,
                         "mlri-xtrans-2pass-corrected") == 0,
             "corrected method identifier changed");
+    require(std::strcmp(rtengine::MLRI_XTRANS_TWO_PASS_CORRECTED_FINAL_ONLY_METHOD,
+                        "mlri-xtrans-2pass-corrected-final-only") == 0,
+            "corrected final-only method identifier changed");
     require(std::strcmp(rtengine::MLRI_XTRANS_PAPER_CORE_2014_METHOD,
                         "mlri-xtrans-paper-core-2014") == 0,
             "2014 paper-core method identifier changed");
@@ -225,6 +228,63 @@ int correctedVariant()
     return 0;
 }
 
+int correctedFinalOnlyVariant()
+{
+    constexpr int width = 48;
+    constexpr int height = 48;
+    constexpr int cfa[6][6] = {
+        {1,0,1,1,2,1}, {2,1,2,0,1,0}, {1,0,1,1,2,1},
+        {1,2,1,1,0,1}, {0,1,0,2,1,2}, {1,2,1,1,0,1}
+    };
+    const std::size_t pixels = static_cast<std::size_t>(width) * height;
+    std::vector<float> input(pixels);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            input[static_cast<std::size_t>(y) * width + x] = static_cast<float>(
+                300 + ((x * 3571 + y * 15401 + x * y * 101) % 12000));
+        }
+    }
+
+    const std::vector<float> blended = run(
+        input, width, height, 0, 0,
+        rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES);
+    const std::vector<float> finalOnly = run(
+        input, width, height, 0, 0,
+        rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
+    const std::vector<float> repeated = run(
+        input, width, height, 0, 0,
+        rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
+    require(finalOnly == repeated, "corrected final-only MLRI is not deterministic");
+
+    double redMaximum = 0.0;
+    double blueMaximum = 0.0;
+    for (std::size_t pixel = 0; pixel < pixels; ++pixel) {
+        require(finalOnly[pixels + pixel] == blended[pixels + pixel],
+                "final-only selection changed the corrected two-pass green plane");
+        redMaximum = std::max(redMaximum, std::fabs(static_cast<double>(
+            finalOnly[pixel] - blended[pixel])));
+        blueMaximum = std::max(blueMaximum, std::fabs(static_cast<double>(
+            finalOnly[pixels * 2 + pixel] - blended[pixels * 2 + pixel])));
+    }
+    require(redMaximum > 0.0 && blueMaximum > 0.0,
+            "final-only selection did not change both reconstructed chroma planes");
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const std::size_t pixel = static_cast<std::size_t>(y) * width + x;
+            const int observedChannel = cfa[y % 6][x % 6];
+            require(std::fabs(static_cast<double>(
+                        finalOnly[static_cast<std::size_t>(observedChannel) * pixels + pixel]
+                        - input[pixel])) <= 0.02,
+                    "final-only reconstruction changed an observed CFA sample");
+        }
+    }
+
+    std::cout << "final_only_vs_blended_max_abs="
+              << redMaximum << ",0," << blueMaximum << '\n';
+    return 0;
+}
+
 int paperCoreVariants()
 {
     constexpr int width = 48;
@@ -353,9 +413,10 @@ int tiledSeam()
             raw[y][x] = value;
         }
     }
-    const std::array<rtengine::MlriXTransVariant, 4> algorithms {{
+    const std::array<rtengine::MlriXTransVariant, 5> algorithms {{
         rtengine::MlriXTransVariant::MATLAB_REFERENCE,
         rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES,
+        rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY,
         rtengine::MlriXTransVariant::PAPER_CORE_2014,
         rtengine::MlriXTransVariant::PAPER_CORE_2016
     }};
@@ -545,6 +606,10 @@ int main(int argc, char **argv)
         if (mode == "corrected") {
             require(argc == 2, "corrected takes no arguments");
             return correctedVariant();
+        }
+        if (mode == "corrected-final-only") {
+            require(argc == 2, "corrected-final-only takes no arguments");
+            return correctedFinalOnlyVariant();
         }
         if (mode == "paper-core") {
             require(argc == 2, "paper-core takes no arguments");

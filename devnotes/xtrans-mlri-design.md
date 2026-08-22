@@ -46,6 +46,14 @@ expressions.  It changes no filter, pass, regularizer, clipping point, CFA
 mapping, or final blend.  The faithful method and Octave golden corpus remain
 the authority for reproducing the published implementation.
 
+`mlri-xtrans-2pass-corrected-final-only` is a further one-operation control.
+It retains the corrected guides, both green passes, every tentative estimate,
+and every fixed constant, but returns the separately reconstructed green-guided
+red and blue planes directly. It therefore removes only the final
+`sqrt(green/255)` blend with the provisional chroma planes. This tests the
+observed low-luminance blue overshoot without conflating it with the second pass
+or the source's four cross-guide expressions.
+
 Two further hidden identifiers isolate the original paper-core distinction:
 `mlri-xtrans-paper-core-2014` uses uniform overlap averaging of local affine
 coefficients, while `mlri-xtrans-paper-core-2016` uses inverse-residual-error
@@ -138,7 +146,7 @@ deliberately favors traceability over allocation reuse and SIMD optimization.
 
 ## Developer interface and validation
 
-The engine recognizes only the four literal hidden PP3 values documented
+The engine recognizes only the five literal hidden PP3 values documented
 above. They are absent from the method enum, GUI, translations, history labels,
 defaults, and fast-export controls. Successful CLI processing prints the
 selected identifier, fixed parameters, tile geometry, worker count, workspace
@@ -161,8 +169,9 @@ non-finite results cause the caller to discard the partial result and run
 Markesteijn three-pass.  A successful experiment is a faithful, stable, and
 measured alternative; it is not required to beat Markesteijn.
 
-Parameters will not be tuned against `DSCF0771.RAF`.  The corrected-blue-guide
-variant is an explicit source-code hypothesis test, not parameter tuning.  If
-neither controlled form is sufficient, the next research step is ARI or an
-analytically justified candidate fusion.  The results and complementary
-failure modes remain documented without GUI exposure.
+Parameters will not be tuned against `DSCF0771.RAF`. The corrected-blue-guide
+and final-only variants are explicit source-code and reconstruction-selection
+hypothesis tests, not parameter tuning. If neither controlled form is
+sufficient, the next research step is ARI or an analytically justified
+candidate fusion. The results and complementary failure modes remain documented
+without GUI exposure.

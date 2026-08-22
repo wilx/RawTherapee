@@ -436,6 +436,8 @@ def main() -> int:
                         help="enable the hidden two-pass algorithmic MLRI method")
     parser.add_argument("--mlri-corrected", action="store_true",
                         help="enable MLRI with corrected blue diagonal guides")
+    parser.add_argument("--mlri-corrected-final-only", action="store_true",
+                        help="enable corrected two-pass MLRI with direct final chroma")
     parser.add_argument("--mlri-paper-core-2014", action="store_true",
                         help="enable one-pass MLRI with uniform 2014 coefficient averaging")
     parser.add_argument("--mlri-paper-core-2016", action="store_true",
@@ -476,6 +478,10 @@ def main() -> int:
         methods["mlri"] = "mlri-xtrans-2pass"
     if args.mlri_corrected:
         methods["mlri-corrected"] = "mlri-xtrans-2pass-corrected"
+    if args.mlri_corrected_final_only:
+        methods["mlri-corrected-final-only"] = (
+            "mlri-xtrans-2pass-corrected-final-only"
+        )
     if args.mlri_paper_core_2014:
         methods["mlri-paper-2014"] = "mlri-xtrans-paper-core-2014"
     if args.mlri_paper_core_2016:
@@ -629,6 +635,15 @@ def main() -> int:
             report["gate"]["mlri_corrected_upstream_mean_cpsnr_db"] = means["mlri-corrected"]
             report["gate"]["mlri_corrected_upstream_wins"] = sum(
                 rows["mlri-corrected"]["cpsnr_db"] > rows["markesteijn"]["cpsnr_db"]
+                for rows in by_scene.values()
+            )
+        if "mlri-corrected-final-only" in methods:
+            report["gate"]["mlri_corrected_final_only_upstream_mean_cpsnr_db"] = (
+                means["mlri-corrected-final-only"]
+            )
+            report["gate"]["mlri_corrected_final_only_upstream_wins"] = sum(
+                rows["mlri-corrected-final-only"]["cpsnr_db"]
+                > rows["markesteijn"]["cpsnr_db"]
                 for rows in by_scene.values()
             )
     for filename in {row["file"] for row in report["real_raf"]}:

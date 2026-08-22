@@ -279,12 +279,98 @@ The tracked corrected assets are:
 - `mlri-corrected-manifest.json`, SHA-256
   `186fdc198c5a51bc028f61b11dec794e5ffae00fc1a9de33e92e151137541ec7`.
 
+### Controlled final-reconstruction test
+
+The hidden `mlri-xtrans-2pass-corrected-final-only` method holds the corrected
+two-pass green reconstruction, masks, filters, parameters, boundary handling,
+and tiling fixed. It changes only the final output selection: red and blue come
+directly from the final green-guided reconstruction instead of blending its
+chroma differences with the provisional reconstruction using
+`sqrt(green / 255)`. Green is bit-identical to corrected two-pass MLRI in the
+native controlled test, and observed CFA samples remain unchanged.
+
+All nineteen analytical scenes completed without fallback. CPSNR is shown
+below; `Delta` is direct-final minus corrected blended MLRI.
+
+| Scene | Corrected blend | Direct final | Delta |
+| --- | ---: | ---: | ---: |
+| Constant | 88.34 | 88.34 | +0.00 |
+| Gradient | 70.78 | 70.54 | -0.24 |
+| Impulses | 48.63 | 48.63 | +0.00 |
+| Frequency sweep | 9.48 | 9.29 | -0.19 |
+| Saturated edges | 42.93 | 44.06 | +1.13 |
+| Black | undefined | undefined | n/a |
+| Asymmetric orientation | 23.15 | 39.69 | +16.54 |
+| One-pixel lines | 29.90 | 28.93 | -0.97 |
+| Diagonal lines | 28.59 | 28.48 | -0.11 |
+| Concentric circles | 29.86 | 29.43 | -0.43 |
+| Zone plate | 39.30 | 38.91 | -0.39 |
+| Sinusoidal grating | 35.90 | 36.38 | +0.47 |
+| Fine checkerboard | 25.69 | 49.40 | +23.71 |
+| Red/green transition | 67.93 | 68.28 | +0.35 |
+| Blue/green transition | 63.41 | undefined | n/a |
+| Near-Nyquist achromatic | 48.69 | 49.08 | +0.39 |
+| Near-Nyquist chromatic | 16.63 | 14.79 | -1.83 |
+| Black/white text-like | 30.16 | 28.39 | -1.77 |
+| Colored text-like | 12.44 | 11.90 | -0.55 |
+
+Among scenes with finite CPSNR for both methods, direct final improves seven,
+regresses nine, and ties one. Its +2.12 dB arithmetic mean delta is not a useful
+general ranking because it is dominated by the asymmetric-orientation and
+fine-checkerboard gains. The mixed result supports keeping the experiment
+separate rather than silently replacing the corrected blend.
+
+The full-resolution controlled export completed without fallback:
+
+| Method | Elapsed | Peak RSS | Crop phase RMS R/G/B |
+| --- | ---: | ---: | --- |
+| Direct final | 4,566.36 s | 2,119,628 KiB | 0.0003382 / 0.0003286 / 0.0004941 |
+| Corrected blend | 3,754.49 s | 1,902,432 KiB | 0.0003154 / 0.0003419 / 0.0004827 |
+| Markesteijn three-pass | 4.20 s | 1,803,616 KiB | 0.0005539 / 0.0004460 / 0.0007821 |
+
+The direct-final crop mean differs from the corrected blend by only
+`-0.0000085`, `+0.0000360`, and `-0.0001096` normalized RGB. It slightly
+improves green phase RMS and slightly regresses red and blue. The measured
+76.1-minute runtime is not an added mathematical cost of selecting direct
+output: this deliberately controlled implementation still computes the entire
+provisional and final paths before choosing one. It remains an unoptimized
+correctness implementation. The two single-run timings do not establish why
+this export was slower; the direct selection itself adds no expensive stage.
+
+The canonical red-object probe selects the ten greatest corrected-MLRI local
+blue excursions in rectangle `(3510,1990,26,41)`. Local excess is the pixel's
+normalized B-G value minus the median B-G of the other 24 pixels in its 5x5
+neighborhood. Mean excess falls from `0.019592` for the corrected blend to
+`0.006625` for direct final; Markesteijn measures `0.005577` at the same
+coordinates. At the originally identified pixel `(3516,2009)`, the value falls
+from `0.023362` to `0.005188` (`0.019821` for Markesteijn).
+
+The tighter pixel view confirms that the blue/purple checker excursions in the
+red object are reduced, while the established 500% earring view changes only
+subtly. The corrected MLRI earring/hair character remains, not every colored
+pixel disappears, and no seam, orientation error, or global cast is visible.
+This passes the specific controlled overshoot hypothesis but does not make the
+method production-ready. It shows that the square-root provisional/final blend
+materially amplifies these outliers; it does not show that the blend is their
+only cause.
+
+The external direct-final TIFF is 7752x5178 uint16 RGB with SHA-256
+`577a3385728504f4dbcdda5dca34b07d419fae7191ffb644bb9aae6f89ff6a37`.
+The tracked full-third and earring PNG hashes are
+`c91ddb15de4f299fbccb4ced5bb92f34118a338918fdbfbbc023c03505789371`
+and
+`8e12d4c56103187b633534d5199ca726d6a0ca1b1c6885f351c749e77ef82286`.
+The canonical comparison manifest is
+`mlri-corrected-final-only-manifest.json`, SHA-256
+`917864bd0699cd45d8769290c654eafe34418e92df2e7764affd7b38739435ae`.
+
 ## Verification
 
-- The six native MLRI CTests pass in the normal build: error contract,
-  Octave golden comparison, faithful/corrected behavior, controlled paper-core
-  variants, tiled/untiled seam parity, and all-orientation output parity.
-- The complete 29-test native suite passes; external neural artifacts are the
+- The seven native MLRI CTests pass in the normal build: error contract,
+  Octave golden comparison, faithful/corrected behavior, controlled
+  direct-final and paper-core variants, tiled/untiled seam parity, and
+  all-orientation output parity.
+- The complete 30-test native suite passes; external neural artifacts are the
   only skipped cases.
 - The MLRI tests pass under Clang 18 ASan/UBSan. LeakSanitizer cannot operate
   under the test host's tracing mechanism and was disabled; address and
@@ -292,7 +378,7 @@ The tracked corrected assets are:
 - GCC 13 strict compilation succeeds for `xtrans_mlri.cc` and the modified
   dispatch source. The complete strict target remains blocked by the existing
   unrelated `dcraw.cc` Foveon `-Wstringop-overflow` diagnostic.
-- The Python development suite passes with 199 tests and 23 optional-artifact
+- The Python development suite passes with 204 tests and 23 optional-artifact
   skips.
 - `BUILD_TESTING=OFF` creates neither the MLRI test target nor the existing
   neural development targets.
@@ -314,5 +400,7 @@ None of the MLRI methods is ready for GUI exposure. Corrected MLRI remains about
 suppression for visibly softer fine detail. Markesteijn three-pass therefore
 remains the default. The source-compatible method remains the audit baseline;
 future correctness experiments should state explicitly which variant they use.
-The paper-core result also shows that neither the second pass nor the final
-square-root blend is the source of the isolated purple point in this image.
+The paper-core comparison could not isolate the second pass from the final
+blend. The controlled two-pass direct-final result now shows that the final
+square-root blend materially amplifies the measured blue overshoot, although
+residual colored pixels and MLRI's severe performance cost remain.
