@@ -51,6 +51,7 @@
 #include "xtrans_demosaicnet.h"
 #include "xtrans_mlri.h"
 #include "xtrans_packed.h"
+#include "xtrans_triangulation.h"
 #include "xtrans_xveon.h"
 
 //#define BENCHMARK
@@ -2053,6 +2054,41 @@ bool RawImageSource::mlri_xtrans_interpolate(MlriXTransVariant variant)
     return true;
 }
 
+bool RawImageSource::triangulated_xtrans_interpolate(TriangulatedXTransVariant variant)
+{
+    const auto started = std::chrono::steady_clock::now();
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const char *const method =
+        variant == TriangulatedXTransVariant::INDEPENDENT_RGB
+            ? XTRANS_TRIANGULATED_RGB_METHOD
+            : XTRANS_TRIANGULATED_CHROMA_METHOD;
+    const TriangulatedXTransRunResult run = demosaicTriangulatedXTrans(
+        rawData, red, green, blue, W, H, xtrans, variant);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "Triangulated X-Trans error [%s]: method=%s: %s; "
+            "falling back to 3-pass (Markesteijn)\n",
+            triangulatedXTransErrorCodeName(run.code),
+            method,
+            run.message.c_str());
+        return false;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - started).count();
+    std::fprintf(
+        stderr,
+        "Triangulated X-Trans completed: method=%s geometry=periodic-delaunay "
+        "period=6x6 sample=pixel-center boundary=nearest-same-color "
+        "clipping=none workers=%u elapsed_us=%lld\n",
+        method,
+        run.workerCount,
+        static_cast<long long>(elapsed));
+    return true;
+}
+
 void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache)
 {
     assert(checkRawDataDimensions(rawData, *ri, W, H));
@@ -2138,6 +2174,15 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
                     ? MlriXTransVariant::PAPER_CORE_2014
                     : MlriXTransVariant::PAPER_CORE_2016;
             if (!mlri_xtrans_interpolate(variant)) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method == XTRANS_TRIANGULATED_RGB_METHOD ||
+                   raw.xtranssensor.method == XTRANS_TRIANGULATED_CHROMA_METHOD) {
+            const TriangulatedXTransVariant variant =
+                raw.xtranssensor.method == XTRANS_TRIANGULATED_RGB_METHOD
+                    ? TriangulatedXTransVariant::INDEPENDENT_RGB
+                    : TriangulatedXTransVariant::GREEN_CHROMA_DIFFERENCE;
+            if (!triangulated_xtrans_interpolate(variant)) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == RAWParams::XTransSensor::getMethodString(RAWParams::XTransSensor::Method::RAFINAZARI)) {

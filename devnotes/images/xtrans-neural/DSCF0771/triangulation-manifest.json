@@ -1,0 +1,457 @@
+{
+  "aligned_block_count": 9628,
+  "assets": [
+    {
+      "bytes": 6482020,
+      "filename": "DSCF0771-triangulation-independent-full-third.png",
+      "method": "xtrans-triangulated-rgb",
+      "role": "full-third",
+      "sha256": "0fa2a0573c55c15944802ce894f5f8b7c472caaf988a20ba471d2f8938f07c98",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 54483,
+      "filename": "DSCF0771-triangulation-independent-earring-500.png",
+      "method": "xtrans-triangulated-rgb",
+      "role": "earring-500",
+      "sha256": "98bd2d971cc952d1cadfb265eb6142c8f1a53b275a9c6a4daceae6b24b0bb880",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 6613970,
+      "filename": "DSCF0771-triangulation-chroma-full-third.png",
+      "method": "xtrans-triangulated-chroma",
+      "role": "full-third",
+      "sha256": "9a0ec2d31d03d708f31668d460229e34006de505626f844813c5280dfa08f8a2",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 54854,
+      "filename": "DSCF0771-triangulation-chroma-earring-500.png",
+      "method": "xtrans-triangulated-chroma",
+      "role": "earring-500",
+      "sha256": "54e10f83a67273c6b996cd75095a098f5b16fcacad8e4dd23a0b8eada72ff7a9",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 6438883,
+      "filename": "DSCF0771-triangulation-markesteijn-full-third.png",
+      "method": "3-pass (Markesteijn)",
+      "role": "full-third",
+      "sha256": "f803dae39903db8cbfe90e05837b688214322fa37a40698d9919123abe780a2e",
+      "shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    {
+      "bytes": 53349,
+      "filename": "DSCF0771-triangulation-markesteijn-earring-500.png",
+      "method": "3-pass (Markesteijn)",
+      "role": "earring-500",
+      "sha256": "2743d2d420ce948879741763be0ed421bdf41dcf1c272c68c6c1819923e53005",
+      "shape": [
+        800,
+        700,
+        3
+      ]
+    },
+    {
+      "bytes": 19518898,
+      "filename": "DSCF0771-triangulation-comparison-full-third.png",
+      "method": "independent | chroma | Markesteijn",
+      "role": "comparison-full-third",
+      "sha256": "41bee9e9638049d2f2dd14f7b1df76270442d555022008cc45bb2caf756a231d",
+      "shape": [
+        1726,
+        7752,
+        3
+      ]
+    },
+    {
+      "bytes": 153622,
+      "filename": "DSCF0771-triangulation-comparison-earring-500.png",
+      "method": "independent | chroma | Markesteijn",
+      "role": "comparison-earring-500",
+      "sha256": "fe2d42cf13d2f917d488c1bb832de3a09d27ea6ab741561d11dd7f0c07c1f8a7",
+      "shape": [
+        800,
+        2100,
+        3
+      ]
+    }
+  ],
+  "chroma_minus_independent": {
+    "common_luminance_delta": -0.00011998213967818565,
+    "crop_mean_rgb_delta": [
+      -0.00025164381083173093,
+      0.00020853197310050087,
+      -0.00031683458130332687
+    ],
+    "maximum_absolute_pixel_delta": 0.401007095445182,
+    "observed_sample_delta_rms": 0.003088807456529599,
+    "rgb_delta_range": 0.0005253665544038277,
+    "rms_pixel_delta": 0.006508908058809423
+  },
+  "chroma_minus_markesteijn": {
+    "common_luminance_delta": 2.240614429946386e-05,
+    "crop_mean_rgb_delta": [
+      7.765974561027567e-05,
+      -0.0002333237419481493,
+      0.00022288242923626522
+    ],
+    "maximum_absolute_pixel_delta": 0.21603723201342795,
+    "observed_sample_delta_rms": 0.001999562726977856,
+    "rgb_delta_range": 0.00045620617118441453,
+    "rms_pixel_delta": 0.005648647686612328
+  },
+  "comparison_order": [
+    "xtrans-triangulated-rgb",
+    "xtrans-triangulated-chroma",
+    "3-pass (Markesteijn)"
+  ],
+  "crop": {
+    "height": 500,
+    "width": 700,
+    "x": 3450,
+    "y": 1750
+  },
+  "execution": {
+    "chroma": {
+      "elapsed_seconds": 3.81,
+      "engine_elapsed_us": 399336,
+      "max_rss_kb": 1981556,
+      "workers": 16
+    },
+    "independent": {
+      "elapsed_seconds": 3.82,
+      "engine_elapsed_us": 339021,
+      "max_rss_kb": 1981600,
+      "workers": 16
+    },
+    "markesteijn": {
+      "elapsed_seconds": 4.06,
+      "max_rss_kb": 2002248,
+      "workers": 16
+    }
+  },
+  "format": "rawtherapee-xtrans-triangulation-comparison-v1",
+  "generation": {
+    "earring": {
+      "filter": "nearest-neighbour",
+      "scale": 5,
+      "source_rectangle": {
+        "height": 160,
+        "width": 140,
+        "x": 3510,
+        "y": 1930
+      }
+    },
+    "full_frame": {
+      "filter": "Lanczos",
+      "output_shape": [
+        1726,
+        2584,
+        3
+      ]
+    },
+    "output_depth_bits": 8,
+    "png_compression_level": 9
+  },
+  "identity": {
+    "raw_filename": "DSCF0771.RAF",
+    "raw_sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0"
+  },
+  "independent_minus_markesteijn": {
+    "common_luminance_delta": 0.0001423882839776495,
+    "crop_mean_rgb_delta": [
+      0.0003293035564420066,
+      -0.0004418557150486502,
+      0.0005397170105395921
+    ],
+    "maximum_absolute_pixel_delta": 0.4521400778210117,
+    "observed_sample_delta_rms": 0.0031304212141000554,
+    "rgb_delta_range": 0.0009815727255882423,
+    "rms_pixel_delta": 0.007334625048911984
+  },
+  "low_detail_block_count": 4814,
+  "metadata": {
+    "bits_per_sample": 16,
+    "dtype": "uint16",
+    "icc_profile_bytes": 748,
+    "icc_profile_sha256": "17aebbdf8a88c39b07eb881dcd824eb1cf9828914d5e74a7324d7a31045e8871",
+    "photometric": 2,
+    "shape": [
+      5178,
+      7752,
+      3
+    ]
+  },
+  "methods": {
+    "chroma": {
+      "crop_mean_rgb": [
+        0.22655795725294006,
+        0.19254547519863977,
+        0.1832641737784608
+      ],
+      "full_mean_rgb": [
+        0.20381330361180697,
+        0.1988251096676673,
+        0.20505625154944196
+      ],
+      "phase": {
+        "bias_matrix_rgb": [
+          [
+            [
+              -0.00022604323612834658,
+              -0.0003245700424729798,
+              -0.0002085474499776898
+            ],
+            [
+              -0.00019321367556757198,
+              -0.0002549606604376964,
+              -8.068499265833758e-05
+            ],
+            [
+              0.000280041053199831,
+              -0.0001473503231128326,
+              -0.0010885871310419546
+            ]
+          ],
+          [
+            [
+              -4.209816784644149e-05,
+              -0.00014239129948230247,
+              2.3019459803168834e-05
+            ],
+            [
+              -3.374596122039314e-05,
+              -8.757261352625322e-05,
+              0.00016217403708658002
+            ],
+            [
+              0.00047058071954074834,
+              4.046497070560469e-06,
+              -0.0008088555655744043
+            ]
+          ],
+          [
+            [
+              -0.0004654322172190458,
+              2.114712505823783e-05,
+              0.0005649025429205674
+            ],
+            [
+              -0.000516936963126691,
+              5.448542533949582e-05,
+              0.0006403196405499881
+            ],
+            [
+              0.000726848448367189,
+              0.0008771658915631537,
+              0.0007962594588915447
+            ]
+          ]
+        ],
+        "rms_rgb": [
+          0.0003948793007302715,
+          0.00033214107633558536,
+          0.0006036237735124191
+        ],
+        "spread_rgb": [
+          0.00124378541149388,
+          0.0012017359340361334,
+          0.0018848465899334993
+        ]
+      }
+    },
+    "independent": {
+      "crop_mean_rgb": [
+        0.2268096010637718,
+        0.19233694322553926,
+        0.18358100835976413
+      ],
+      "full_mean_rgb": [
+        0.2042958387320589,
+        0.19846996538437364,
+        0.2055675118050551
+      ],
+      "phase": {
+        "bias_matrix_rgb": [
+          [
+            [
+              -7.941886645888426e-05,
+              -0.0004166442717293915,
+              -7.847974948781149e-05
+            ],
+            [
+              -0.00013671468694178443,
+              -0.0002920965468879201,
+              -6.662421216975669e-05
+            ],
+            [
+              6.579224927261868e-05,
+              -0.00020497051139259685,
+              -0.0006805264553442276
+            ]
+          ],
+          [
+            [
+              0.00014124342136931584,
+              -0.00024227492117701605,
+              0.00018976713565419483
+            ],
+            [
+              3.968249062730096e-05,
+              -0.0001221125010289486,
+              0.00016078244288750154
+            ],
+            [
+              0.00028837300885050683,
+              -5.574732524859854e-05,
+              -0.00040877465465126146
+            ]
+          ],
+          [
+            [
+              -0.00014847830244118173,
+              2.239889947951751e-05,
+              0.0005153581794768582
+            ],
+            [
+              -0.0002314234800466525,
+              8.54810399608434e-05,
+              0.0005021880016661433
+            ],
+            [
+              6.0944165768049655e-05,
+              0.0012259661380234935,
+              -0.00013369068803208728
+            ]
+          ]
+        ],
+        "rms_rgb": [
+          0.00015395782365073123,
+          0.00045806887006352514,
+          0.0003709347701548446
+        ],
+        "spread_rgb": [
+          0.0005197964888971593,
+          0.001642610409752885,
+          0.0011958846348210858
+        ]
+      }
+    },
+    "markesteijn": {
+      "crop_mean_rgb": [
+        0.2264802975073298,
+        0.19277879894058791,
+        0.18304129134922453
+      ],
+      "full_mean_rgb": [
+        0.2039555382378858,
+        0.19886402858317864,
+        0.20498978930949327
+      ],
+      "phase": {
+        "bias_matrix_rgb": [
+          [
+            [
+              -0.0002194613169408729,
+              -0.0005615156993609247,
+              -0.00020671623351755343
+            ],
+            [
+              -0.00021006865041918658,
+              -0.0004874560334155868,
+              -0.00010411325802096206
+            ],
+            [
+              0.0007080005133955915,
+              0.000178237815135094,
+              -0.001320294388886936
+            ]
+          ],
+          [
+            [
+              -1.2221199495218468e-05,
+              -0.0003894348851212561,
+              1.9079412424831586e-05
+            ],
+            [
+              -3.3634228672993963e-07,
+              -0.0003236672011621654,
+              0.0001609116088913005
+            ],
+            [
+              0.0009242901754019202,
+              0.0003055812311508397,
+              -0.001024986037304746
+            ]
+          ],
+          [
+            [
+              -0.0007402063439150244,
+              0.00019497630285444378,
+              0.0011141796973856218
+            ],
+            [
+              -0.0008013327684615266,
+              0.00020162716340590771,
+              0.0011621636791528962
+            ],
+            [
+              0.0003513359327202781,
+              0.000881651306513084,
+              0.0001997755198749722
+            ]
+          ]
+        ],
+        "rms_rgb": [
+          0.0005539249055283396,
+          0.00044602692464189064,
+          0.0007821290363201463
+        ],
+        "spread_rgb": [
+          0.0017256229438634468,
+          0.0014431670058740087,
+          0.0024824580680398323
+        ]
+      }
+    }
+  },
+  "source_tiffs": [
+    {
+      "bytes": 240862232,
+      "method": "xtrans-triangulated-rgb",
+      "sha256": "28b1251fad5fe3c12779405494041a7cb44ad9152562bcf195b6179f7f257019"
+    },
+    {
+      "bytes": 240862232,
+      "method": "xtrans-triangulated-chroma",
+      "sha256": "5cf8b14031912cbad5ebc8353e2d17e642c8d8a27b128f5496eca9a6f25c0cee"
+    },
+    {
+      "bytes": 240862232,
+      "method": "3-pass (Markesteijn)",
+      "sha256": "bd801f51b116eec35ac13a98bc6a13940a7ea01b9f0d58a57c7a27ee934cfa16"
+    }
+  ]
+}

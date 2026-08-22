@@ -35,6 +35,7 @@
 namespace rtengine
 {
 enum class MlriXTransVariant;
+enum class TriangulatedXTransVariant;
 
 class PixelsMap;
 class RawImage;
@@ -308,6 +309,7 @@ protected:
     bool xveon_xtrans_interpolate ();
     bool packed_xtrans_interpolate ();
     bool mlri_xtrans_interpolate (MlriXTransVariant variant);
+    bool triangulated_xtrans_interpolate (TriangulatedXTransVariant variant);
     bool rafinazari_xtrans_interpolate (const procparams::RAWParams::XTransSensor& params);
     void fast_xtrans_interpolate (const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue);
     void fast_xtrans_interpolate_blend (const float* const * blend, const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue);
