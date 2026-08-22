@@ -1015,8 +1015,15 @@ def blind_image_recovery(
     max_atoms: int = 12,
     mode: str = "replica",
     residual_threshold: float = 1e-10,
+    channel_means: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, object]]:
-    """Crude global Fourier reconstruction using blind family-wise OMP."""
+    """Crude global Fourier reconstruction using blind family-wise OMP.
+
+    The original diagnostic defaults to exact RGB means because its purpose
+    was frequency-support recovery after DC removal.  Image-space comparison
+    callers can instead provide three means estimated from the physically
+    sampled CFA values, avoiding ground-truth DC information.
+    """
 
     checked = np.asarray(rgb, dtype=np.float64)
     if checked.ndim != 3 or checked.shape[0] != 3:
@@ -1024,7 +1031,13 @@ def blind_image_recovery(
     if checked.shape[1] != checked.shape[2] or checked.shape[1] % 6:
         raise ValueError("blind image must be square and divisible by six")
     size = checked.shape[1]
-    means = np.mean(checked, axis=(1, 2), keepdims=True)
+    if channel_means is None:
+        means = np.mean(checked, axis=(1, 2), keepdims=True)
+    else:
+        means = np.asarray(channel_means, dtype=np.float64)
+        if means.size != 3 or not np.isfinite(means).all():
+            raise ValueError("channel_means must contain three finite values")
+        means = means.reshape(3, 1, 1)
     centered = checked - means
     tiled_cfa = np.tile(CANONICAL_XTRANS, (size // 6, size // 6))
     sampled = np.take_along_axis(
@@ -1074,7 +1087,7 @@ def blind_image_recovery(
     error = reconstructed - checked
     mse = float(np.mean(error * error))
     psnr = math.inf if mse == 0.0 else float(10.0 * math.log10(1.0 / mse))
-    return reconstructed, {
+    metrics = {
         "active_family_count": active_families,
         "average_selected_atoms": selected_total / active_families if active_families else 0.0,
         "competing_gap_median_first_64_families": (
@@ -1089,6 +1102,9 @@ def blind_image_recovery(
         "psnr_db": "infinite" if not math.isfinite(psnr) else psnr,
         "score_mode": mode,
     }
+    if channel_means is not None:
+        metrics["channel_means_source"] = "caller supplied"
+    return reconstructed, metrics
 
 
 def synthetic_oracle_study(size: int = 96) -> tuple[dict[str, object], dict[str, np.ndarray]]:

@@ -27,6 +27,7 @@ from tools.xtrans_sparse_alias.analysis import (
     oracle_image_recovery,
     orthogonal_matching_pursuit,
     support_metrics,
+    blind_image_recovery,
 )
 from tools.xtrans_sparse_alias.generate import generate
 
@@ -115,6 +116,21 @@ def test_oracle_image_separates_observable_and_deficient_edges():
     assert sweep_metrics["deficient_energy_fraction"] == 1.0
     assert np.max(np.abs(diagonal - scenes["diagonal_red_green"])) > 0.1
     assert np.max(np.abs(sweep - scenes["abc_frequency_sweep"])) > 0.3
+
+
+def test_blind_image_recovery_accepts_measured_channel_means():
+    from tools.xtrans_alias.analysis import CANONICAL_XTRANS
+
+    y, x = np.mgrid[:24, :24]
+    rgb = np.stack((0.2 + x / 100, 0.3 + y / 120, 0.4 + (x + y) / 180))
+    tiled = np.tile(CANONICAL_XTRANS, (4, 4))
+    means = np.asarray([rgb[color][tiled == color].mean() for color in range(3)])
+    reconstructed, metrics = blind_image_recovery(
+        rgb, max_atoms=2, channel_means=means
+    )
+    assert reconstructed.shape == rgb.shape
+    assert np.isfinite(reconstructed).all()
+    assert metrics["channel_means_source"] == "caller supplied"
 
 
 def test_natural_sparsity_contract_on_small_rgb_input():
