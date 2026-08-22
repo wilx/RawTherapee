@@ -4029,6 +4029,10 @@ void CLASS foveon_interpolate()
   char str[128];
   const char* cp;
 
+  const unsigned foveon_height = height;
+  if (foveon_height < 22)
+    return;
+
   if (verbose)
     fprintf (stderr,_("Foveon interpolation...\n"));
 
@@ -4104,7 +4108,7 @@ void CLASS foveon_interpolate()
   sgrow = (float (*)[3]) calloc (dim[1], sizeof *sgrow);
   sgx = (width + dim[1]-2) / (dim[1]-1);
 
-  black = (float (*)[3]) calloc (height, sizeof *black);
+  black = (float (*)[3]) calloc (foveon_height, sizeof *black);
   for (row=0; row < height; row++) {
     for (i=0; i < 6; i++)
       ((float *)ddft[0])[i] = ((float *)ddft[1])[i] +
@@ -4115,7 +4119,7 @@ void CLASS foveon_interpolate()
 	  - ddft[0][c][0] ) / 4 - ddft[0][c][1];
   }
   memmove (black, black+8, sizeof *black*8);
-  memmove (black+height-11, black+height-22, 11*sizeof *black);
+  memmove (black+foveon_height-11, black+foveon_height-22, 11*sizeof *black);
   memcpy (last, black, sizeof last);
 
   for (row=1; row < height-1; row++) {

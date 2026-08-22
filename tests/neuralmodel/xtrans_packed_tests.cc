@@ -120,10 +120,12 @@ rtengine::PackedXTransRunResult runCase(
     return result;
 }
 
+#if defined(RT_TEST_WITH_ONNXRUNTIME) || defined(RT_TEST_WITH_MIGRAPHX) || defined(RT_TEST_WITH_TVM_VULKAN)
 std::string temporaryPath(const char *suffix)
 {
     return std::string(g_get_tmp_dir()) + "/rt-packed-test-" + std::to_string(g_random_int()) + suffix;
 }
+#endif
 
 struct EnvironmentGuard final {
     explicit EnvironmentGuard(const char *name) : name(name)
