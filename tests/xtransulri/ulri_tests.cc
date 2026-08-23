@@ -206,10 +206,10 @@ int contract()
     return 0;
 }
 
-int runFiles(int argc, char **argv)
+int runFiles(int argc, char **argv, bool selectedOnly)
 {
-    require(argc == 8,
-            "usage: ulri_tests run INPUT OUTPUT WIDTH HEIGHT ORIGIN_X ORIGIN_Y");
+    require(argc == (selectedOnly ? 9 : 8),
+            "usage: ulri_tests run[-selected] INPUT OUTPUT WIDTH HEIGHT ORIGIN_X ORIGIN_Y [METHODS]");
     const std::string inputPath = argv[2];
     const std::string outputDirectory = argv[3];
     const int width = std::stoi(argv[4]);
@@ -224,52 +224,88 @@ int runFiles(int argc, char **argv)
         input[i] = normalized[i] * 65535.f;
     }
 
+    const std::string requested = selectedOnly ? argv[8] : std::string();
+    const auto wants = [&requested, selectedOnly](const std::string &method) {
+        if (!selectedOnly) {
+            return true;
+        }
+        const std::string bounded = "," + requested + ",";
+        return bounded.find("," + method + ",") != std::string::npos;
+    };
+    if (selectedOnly) {
+        std::set<std::string> allowed {
+            "ulri-slow0", "ulri-slow1", "ulri-slow2", "ulri-slow3",
+            "corrected-final", "markesteijn"
+        };
+        require(!requested.empty(), "selected method list must not be empty");
+        require(requested.front() != ',' && requested.back() != ',' &&
+                    requested.find(",,") == std::string::npos,
+                "selected method list contains an empty entry");
+        std::size_t start = 0;
+        while (start < requested.size()) {
+            const std::size_t end = requested.find(',', start);
+            const std::string method = requested.substr(
+                start, end == std::string::npos ? end : end - start);
+            require(allowed.erase(method) == 1,
+                    "unknown or duplicate selected method: " + method);
+            start = end == std::string::npos ? requested.size() : end + 1;
+        }
+    }
+
     for (int slow = 0; slow <= 3; ++slow) {
+        const std::string method = "ulri-slow" + std::to_string(slow);
+        if (!wants(method)) {
+            continue;
+        }
         const auto start = std::chrono::steady_clock::now();
         const Planes output = runUlri(input, width, height, originX, originY, slow);
         writeNormalizedRgb(
-            outputDirectory + "/ulri-slow" + std::to_string(slow) + ".f32le",
+            outputDirectory + "/" + method + ".f32le",
             output.red, output.green, output.blue);
-        std::cout << std::setprecision(17) << "ulri-slow" << slow << '\t'
+        std::cout << std::setprecision(17) << method << '\t'
                   << std::chrono::duration<double>(
                          std::chrono::steady_clock::now() - start).count() << '\n';
     }
 
-    Planes corrected {
-        std::vector<float>(pixels), std::vector<float>(pixels), std::vector<float>(pixels)
-    };
-    const auto correctedStart = std::chrono::steady_clock::now();
-    const auto correctedResult = rtengine::demosaicMlriXTransReference(
-        input.data(), corrected.red.data(), corrected.green.data(), corrected.blue.data(),
-        width, height, originX, originY,
-        rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
-    require(static_cast<bool>(correctedResult), "corrected-final MLRI failed");
-    writeNormalizedRgb(
-        outputDirectory + "/corrected-final.f32le",
-        corrected.red, corrected.green, corrected.blue);
-    std::cout << std::setprecision(17) << "corrected-final\t"
-              << std::chrono::duration<double>(
-                     std::chrono::steady_clock::now() - correctedStart).count() << '\n';
-
-    int cfa[6][6];
-    for (int y = 0; y < 6; ++y) {
-        for (int x = 0; x < 6; ++x) {
-            cfa[y][x] = CFA[(y + originY) % 6][(x + originX) % 6];
-        }
+    if (wants("corrected-final")) {
+        Planes corrected {
+            std::vector<float>(pixels), std::vector<float>(pixels), std::vector<float>(pixels)
+        };
+        const auto correctedStart = std::chrono::steady_clock::now();
+        const auto correctedResult = rtengine::demosaicMlriXTransReference(
+            input.data(), corrected.red.data(), corrected.green.data(), corrected.blue.data(),
+            width, height, originX, originY,
+            rtengine::MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
+        require(static_cast<bool>(correctedResult), "corrected-final MLRI failed");
+        writeNormalizedRgb(
+            outputDirectory + "/corrected-final.f32le",
+            corrected.red, corrected.green, corrected.blue);
+        std::cout << std::setprecision(17) << "corrected-final\t"
+                  << std::chrono::duration<double>(
+                         std::chrono::steady_clock::now() - correctedStart).count() << '\n';
     }
-    Planes mark {
-        std::vector<float>(pixels), std::vector<float>(pixels), std::vector<float>(pixels)
-    };
-    const auto markStart = std::chrono::steady_clock::now();
-    const auto markResult = rtengine::demosaicMarkesteijnXTransReference(
-        input.data(), mark.red.data(), mark.green.data(), mark.blue.data(),
-        width, height, cfa);
-    require(static_cast<bool>(markResult), "Markesteijn failed");
-    writeNormalizedRgb(
-        outputDirectory + "/markesteijn.f32le", mark.red, mark.green, mark.blue);
-    std::cout << std::setprecision(17) << "markesteijn\t"
-              << std::chrono::duration<double>(
-                     std::chrono::steady_clock::now() - markStart).count() << '\n';
+
+    if (wants("markesteijn")) {
+        int cfa[6][6];
+        for (int y = 0; y < 6; ++y) {
+            for (int x = 0; x < 6; ++x) {
+                cfa[y][x] = CFA[(y + originY) % 6][(x + originX) % 6];
+            }
+        }
+        Planes mark {
+            std::vector<float>(pixels), std::vector<float>(pixels), std::vector<float>(pixels)
+        };
+        const auto markStart = std::chrono::steady_clock::now();
+        const auto markResult = rtengine::demosaicMarkesteijnXTransReference(
+            input.data(), mark.red.data(), mark.green.data(), mark.blue.data(),
+            width, height, cfa);
+        require(static_cast<bool>(markResult), "Markesteijn failed");
+        writeNormalizedRgb(
+            outputDirectory + "/markesteijn.f32le", mark.red, mark.green, mark.blue);
+        std::cout << std::setprecision(17) << "markesteijn\t"
+                  << std::chrono::duration<double>(
+                         std::chrono::steady_clock::now() - markStart).count() << '\n';
+    }
     return 0;
 }
 
@@ -284,7 +320,10 @@ int main(int argc, char **argv)
             return contract();
         }
         if (command == "run") {
-            return runFiles(argc, argv);
+            return runFiles(argc, argv, false);
+        }
+        if (command == "run-selected") {
+            return runFiles(argc, argv, true);
         }
         throw std::runtime_error("unknown command: " + command);
     } catch (const std::exception &error) {
