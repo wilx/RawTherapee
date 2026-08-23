@@ -2016,7 +2016,8 @@ RgbPlanes runMlri(
     int originX,
     int originY,
     MlriXTransVariant variant,
-    MlriXTransInternalTrace *trace = nullptr)
+    MlriXTransInternalTrace *trace = nullptr,
+    int sourceSlow = -1)
 {
     MlriMasks masks(mosaic.width, mosaic.height, originX, originY);
     const Plane greenRaw = mosaic * masks.green;
@@ -2032,7 +2033,9 @@ RgbPlanes runMlri(
     // refinement passes at sigma 2 and 1.  The controlled paper-core methods
     // stop after the first green pass so the later two-pass heuristic cannot
     // influence the 2014-versus-2016 coefficient comparison.
-    const int passCount = isPaperCore(variant) ? 1 : 2;
+    const int passCount = sourceSlow >= 0
+        ? (sourceSlow == 0 ? 1 : 1 + sourceSlow)
+        : (isPaperCore(variant) ? 1 : 2);
     for (int pass = 0; pass < passCount; ++pass) {
         const float sigma = pass == 0 ? 2.f : 1.f;
         const auto guideStart = std::chrono::steady_clock::now();
@@ -2086,7 +2089,7 @@ RgbPlanes runMlri(
         trace->finalRedBlueSeconds = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - finalStart).count();
     }
-    if (usesFinalOnly(variant)) {
+    if (usesFinalOnly(variant) || sourceSlow == 0) {
         // Controlled overshoot experiment: retain the corrected two-pass green
         // reconstruction unchanged, but use the separately reconstructed,
         // green-guided chroma directly.  At low luminance the source's
@@ -2209,6 +2212,78 @@ MlriXTransRunResult demosaicMlriXTransReference(
     } catch (...) {
         result.code = MlriXTransErrorCode::INTERNAL;
         result.message = "unknown MLRI failure";
+    }
+    return result;
+}
+
+MlriXTransRunResult demosaicUlriXTransSlowReference(
+    const float *mosaic,
+    float *red,
+    float *green,
+    float *blue,
+    int width,
+    int height,
+    int originX,
+    int originY,
+    int slow)
+{
+    MlriXTransRunResult result;
+    result.tileCount = 1;
+    result.workerCount = 1;
+    result.coreSize = width;
+    result.halo = 0;
+    if (!mosaic || !red || !green || !blue || width < 32 || height < 32) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "ULRI reference requires non-null planes at least 32x32";
+        return result;
+    }
+    if (slow < 0 || slow > 8) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "ULRI reference slow value must be in 0..8";
+        return result;
+    }
+    if (static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height)
+            > std::numeric_limits<std::size_t>::max() / sizeof(float)) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "ULRI reference image size overflows addressable memory";
+        return result;
+    }
+
+    try {
+        Plane source(width, height);
+        for (std::size_t i = 0; i < source.values.size(); ++i) {
+            if (!std::isfinite(mosaic[i])) {
+                result.code = MlriXTransErrorCode::NONFINITE;
+                result.message = "ULRI reference input contains a non-finite sample";
+                return result;
+            }
+            source.values[i] = std::max(0.f, std::min(65535.f, mosaic[i])) / SOURCE_SCALE;
+        }
+        const RgbPlanes output = runMlri(
+            source, originX, originY, MlriXTransVariant::MATLAB_REFERENCE,
+            nullptr, slow);
+        if (!finite(output.red) || !finite(output.green) || !finite(output.blue)) {
+            result.code = MlriXTransErrorCode::NONFINITE;
+            result.message = "ULRI reference reconstruction produced a non-finite sample";
+            return result;
+        }
+        for (std::size_t i = 0; i < source.values.size(); ++i) {
+            red[i] = output.red.values[i] * SOURCE_SCALE;
+            green[i] = output.green.values[i] * SOURCE_SCALE;
+            blue[i] = output.blue.values[i] * SOURCE_SCALE;
+        }
+        result.workspaceBytesPerWorker =
+            static_cast<std::uint64_t>(source.values.size()) * sizeof(float) * 180u;
+        return result;
+    } catch (const std::bad_alloc &) {
+        result.code = MlriXTransErrorCode::ALLOCATION;
+        result.message = "ULRI reference workspace allocation failed";
+    } catch (const std::exception &error) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = error.what();
+    } catch (...) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = "unknown ULRI reference failure";
     }
     return result;
 }

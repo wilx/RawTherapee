@@ -1,0 +1,575 @@
+{
+  "archive": {
+    "bytes": 8214511,
+    "sha256": "0dab03107479153a68fe6feeef738e3fb9c058031634dc006e251f2fd7a81347",
+    "version": "1.0.0"
+  },
+  "arithmetic": {
+    "boundary": "zero extension through conv2(..., same)",
+    "epsilon": 0.01,
+    "input": "normalized little-endian row-major float32 scalar mosaic",
+    "internal_domain": "uint16 input converted to single precision 0..255",
+    "output": "normalized little-endian channel-major float32 RGB",
+    "sigma": 2.0,
+    "slow_contract": "slow=0 is one pass/direct final; slow=N is N+1 passes plus sqrt(G/255) blend"
+  },
+  "cases": [
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "constant-gray-mosaic.f32le",
+        "sha256": "ad4c35543521d884f6c3cfec3f75d020611ffb794e94dfd6bfae88785872d2cf"
+      },
+      "name": "constant-gray",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "constant-gray-slow0.f32le",
+          "passes": 1,
+          "sha256": "ba90a03213d65a9bd5f9232a0efc41fcf19f25070fe7d06695750bc7ae993f5f",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-gray-slow1.f32le",
+          "passes": 2,
+          "sha256": "14a2b2a896689a0761939e97835276f81f8442dc50ec76f9da414073a3e2f071",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-gray-slow2.f32le",
+          "passes": 3,
+          "sha256": "89c1719e0a9c45e324be44ee5b6a03073eda9a852dad5c577a3f0fa2c81bd16b",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-gray-slow3.f32le",
+          "passes": 4,
+          "sha256": "49315b3da52b7e088b37db606ccd3318e0783846a7d0b3dab33e1f3af909ca74",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "constant-gray-truth.f32le",
+        "sha256": "d0c85b46544d2bf1d86a9d5c0d5086352958fc55a0c1136326345608d4ae2d72"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "constant-red-mosaic.f32le",
+        "sha256": "aab5b50b0754831bba586e0b4be5a6c6e1b37d7adb9331006e09be0d23581f9d"
+      },
+      "name": "constant-red",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "constant-red-slow0.f32le",
+          "passes": 1,
+          "sha256": "93fcdf5a6e4e984cc65cbf252d970a0e09d9ffbd60fc54e462c895dfb7846929",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-red-slow1.f32le",
+          "passes": 2,
+          "sha256": "9fbe090a717e52f7b7d29e1010193021436812591cdfd6d43d4d836bb177cdb1",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-red-slow2.f32le",
+          "passes": 3,
+          "sha256": "73daffeba90c6497a3d0e3d52447aae77112376ee74e9856700e96c9ad369af8",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-red-slow3.f32le",
+          "passes": 4,
+          "sha256": "8a09d39e00d5a79677d5ce765d62b0b74e29dd72f70fecf046fc16b224d6cd00",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "constant-red-truth.f32le",
+        "sha256": "930a8632c3e940e54b50d9d9905dbc324c5d0fbd894546bea890029999c4ca3b"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "constant-green-mosaic.f32le",
+        "sha256": "16383c7e3b771fd931cc94454038382c6d698bb48ee048427258764e0638ad27"
+      },
+      "name": "constant-green",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "constant-green-slow0.f32le",
+          "passes": 1,
+          "sha256": "22a29074ee002412e2136bb7edef70d8b83654c4a813549dec33076b1f9edc36",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-green-slow1.f32le",
+          "passes": 2,
+          "sha256": "c95c34407d6d9a00d3d009141a4b027d88df96447d1e659e63aaa6b43eb7dec6",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-green-slow2.f32le",
+          "passes": 3,
+          "sha256": "a8f39978bbcc1f706ce26f2bc3d367bf9def92a994ed66686e73439f2e01ae6c",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-green-slow3.f32le",
+          "passes": 4,
+          "sha256": "8fcfb201d9f32c4bde467633bab28b0cc6bd0d4921f948916b23c24ef44f1bad",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "constant-green-truth.f32le",
+        "sha256": "aebde2ec095678b7c1529437e263e9214d28ac03d327cdb0a662a2f1aa0c20ec"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "constant-blue-mosaic.f32le",
+        "sha256": "8e534a73d0356925daeda238a8e0425e5cc0c1a1a1fec84f8a5fbd4d5529ac5b"
+      },
+      "name": "constant-blue",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "constant-blue-slow0.f32le",
+          "passes": 1,
+          "sha256": "f5df25c6dabc8ed79ceccd0885e793b936fe6f07f726503f0214de743632ff07",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-blue-slow1.f32le",
+          "passes": 2,
+          "sha256": "ed97104222f060e094dad03ef59eb2e5d47c31bf814357cd730a759883144a2c",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-blue-slow2.f32le",
+          "passes": 3,
+          "sha256": "edd618a171b05e8226797e6c07986bd1b65d5ff874e599ae908cd81753f911e4",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "constant-blue-slow3.f32le",
+          "passes": 4,
+          "sha256": "e476018a03dd1a435241a633750c4893e71fbc528d00150c1a1c5fedb1053ecc",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "constant-blue-truth.f32le",
+        "sha256": "6b43e7c337883c05fb908c649c5651f0e2ce060d7f8159dd1ab898aa18a00f7a"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "horizontal-gradient-mosaic.f32le",
+        "sha256": "f42362fc5a6b52d96b1329e68b7aa2c31143fb2aa9a8ed2663ca39dd9c997bb6"
+      },
+      "name": "horizontal-gradient",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "horizontal-gradient-slow0.f32le",
+          "passes": 1,
+          "sha256": "7b1ac7272e327630edfb8f27dc421d5ed019e377afb36dfc89053452edba6d1f",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "horizontal-gradient-slow1.f32le",
+          "passes": 2,
+          "sha256": "9b973127862e68adf7ea728528223d7de649b2d05673f6ac3c1dc7cd0a57f776",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "horizontal-gradient-slow2.f32le",
+          "passes": 3,
+          "sha256": "e1ed6fb474947eae1fb1084cf2c96c52f08edebba7bc66ae828d9927999802b9",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "horizontal-gradient-slow3.f32le",
+          "passes": 4,
+          "sha256": "20081e928d183d6b361deb5a050dc2de8f6dc45b21ac3f686ebff7b5a31f505d",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "horizontal-gradient-truth.f32le",
+        "sha256": "9ef597869b84dceca880514e8b57911c2a43ac6c04c6f1ea34574240ea2ade6f"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "vertical-gradient-mosaic.f32le",
+        "sha256": "8b7ff9336b2e43c7d0f5b576e4aaee2c4a3435d8e0a76260f2cb8a6528d87941"
+      },
+      "name": "vertical-gradient",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "vertical-gradient-slow0.f32le",
+          "passes": 1,
+          "sha256": "d2d2cfe93cfd2306efea057be014c4f93050d3557cc08c6145ceb5491dfdb09a",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-gradient-slow1.f32le",
+          "passes": 2,
+          "sha256": "0ab4461e41897528823c289c9d53f079de53378765443486c82c4b90fe89f288",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-gradient-slow2.f32le",
+          "passes": 3,
+          "sha256": "8fbc07f439b2f012541650f6c3a716a12c9a21e3a864954d6b947fda4f7c6ab8",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-gradient-slow3.f32le",
+          "passes": 4,
+          "sha256": "b7741ca008a5bdc9622465a39e42e30a2be3e7697b9a39a13151a19a6b46a1af",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "vertical-gradient-truth.f32le",
+        "sha256": "2c8e9dbc30943965aa8928a139b34f8e721d67aba9181a844f893f3400eca63f"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "diagonal-gradient-mosaic.f32le",
+        "sha256": "260fc17345b3a44c21e5ba52635ad1023304b9fcfcfda44b80995e0304b3d76e"
+      },
+      "name": "diagonal-gradient",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "diagonal-gradient-slow0.f32le",
+          "passes": 1,
+          "sha256": "63d718bc3cf5db707d130936240322c284910b900e0329e6c6708242256fa77e",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "diagonal-gradient-slow1.f32le",
+          "passes": 2,
+          "sha256": "4aba7c4968c7e9274ba58f77088256e58455b387850b67880f53681fefacb262",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "diagonal-gradient-slow2.f32le",
+          "passes": 3,
+          "sha256": "b3a1593af53eae2ea52c6b1589767ef6389980ccc8eb28486f356467204fc0b6",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "diagonal-gradient-slow3.f32le",
+          "passes": 4,
+          "sha256": "7a33f3c4c6f54f6f5d003acc8127cc59ca3ce47ca75fb7a0c5d22f3a013ca11c",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "diagonal-gradient-truth.f32le",
+        "sha256": "9cdfa1a84fe757d668809acf5e0796179e491b302bbddf122116979c2432cc18"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "low-frequency-sinusoid-mosaic.f32le",
+        "sha256": "b581e8f57b92ee9254a1a7ac1fa751397008265ae6c64e312104fb4ac2cbb14f"
+      },
+      "name": "low-frequency-sinusoid",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "low-frequency-sinusoid-slow0.f32le",
+          "passes": 1,
+          "sha256": "d151e84f588d858c5ad39779dfcf31b99c97dae7ab5454d8c348896fa3a80238",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "low-frequency-sinusoid-slow1.f32le",
+          "passes": 2,
+          "sha256": "bf3e292a3d9d8cacf2764aaabed4de48a10ec020597612fa36881d7e54f9b8b7",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "low-frequency-sinusoid-slow2.f32le",
+          "passes": 3,
+          "sha256": "e10b5f111c435d6fb8b9cbc25bf866d9f93cd8efe646a2d467b1d04dfc455957",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "low-frequency-sinusoid-slow3.f32le",
+          "passes": 4,
+          "sha256": "f4f09d5fa5c02df14a592ffc394046d73c472685a4f04cc5454b5483624ea6cf",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "low-frequency-sinusoid-truth.f32le",
+        "sha256": "0f951fb241bfc4f937684ffc1e0bb572d68b22adce94e51424f1afe8e0a0ae46"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "white-impulse-mosaic.f32le",
+        "sha256": "cfe5f3a7359f414190146262271653eaeb715e18c3315344e7233ce2958a3b96"
+      },
+      "name": "white-impulse",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "white-impulse-slow0.f32le",
+          "passes": 1,
+          "sha256": "8539f5a5660695fa001a8883cfcbfa5ecc03208cf14869f4d8bf5b9c9c19d928",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "white-impulse-slow1.f32le",
+          "passes": 2,
+          "sha256": "5bea32144c61ff5e7bd271d8ef48a15167108d8f20845c165f59109209c5db35",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "white-impulse-slow2.f32le",
+          "passes": 3,
+          "sha256": "8769b7ab2ae2b8daeefe155fb0fc9b38cebcfaa161c164687c37b6de5f3f7317",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "white-impulse-slow3.f32le",
+          "passes": 4,
+          "sha256": "bdf9115133dff76420b86b71d39e3821d43777f66d714d1ab1385dfb35a45b67",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "white-impulse-truth.f32le",
+        "sha256": "00cb1ac3dd3004e99c509ad7f2033fa8d26b8d7e5eaa06d780d8ce2287e85ba3"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "isolated-red-point-mosaic.f32le",
+        "sha256": "8862ef868167e40c612f04db6092e4756b820c5a6a83c4c70ef6f4c46a8b6a88"
+      },
+      "name": "isolated-red-point",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "isolated-red-point-slow0.f32le",
+          "passes": 1,
+          "sha256": "70eb791f3c8adc496d62dcce65c238ff0f63f6f49ca97f440f54147f91b429c6",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "isolated-red-point-slow1.f32le",
+          "passes": 2,
+          "sha256": "e980e4b61b65e491d1b4a2b0b1d3ab7cc5493595340a17bae0d74ff9db76649f",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "isolated-red-point-slow2.f32le",
+          "passes": 3,
+          "sha256": "1a141220b188cf1916c7ea7b4604cfcfdb0b6ed406ce49aeab712e97d8fdb985",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "isolated-red-point-slow3.f32le",
+          "passes": 4,
+          "sha256": "8b80032559d9f6bd0f44b99eb06ab52372edda7c79f128156c5311eb336368f7",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "isolated-red-point-truth.f32le",
+        "sha256": "4b30759e9d26c396c4ca0eacf45f5a26e49e1716e79bc6bee0d3901a68c69e5e"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "mosaic": {
+        "bytes": 9216,
+        "file": "vertical-chromatic-edge-mosaic.f32le",
+        "sha256": "40a0c391dd66617fab6d439d5e928511c916a63571536adfc464353fb068ee29"
+      },
+      "name": "vertical-chromatic-edge",
+      "outputs": [
+        {
+          "bytes": 27648,
+          "file": "vertical-chromatic-edge-slow0.f32le",
+          "passes": 1,
+          "sha256": "d3d5eb6f0ab7dfaa385b5b9d95e6f32a31d8ff3cd537215f07cf59de70ca6ed1",
+          "slow": 0
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-chromatic-edge-slow1.f32le",
+          "passes": 2,
+          "sha256": "20978d6144b07dee6cc6d2134e8c6e0b59808981c7c2115f17ca27901b5b4544",
+          "slow": 1
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-chromatic-edge-slow2.f32le",
+          "passes": 3,
+          "sha256": "4b8c0341a39ae0dc94edafcd5eeda7f9cdbc69e5c4ce57cf52ef4a2bdec519f1",
+          "slow": 2
+        },
+        {
+          "bytes": 27648,
+          "file": "vertical-chromatic-edge-slow3.f32le",
+          "passes": 4,
+          "sha256": "69de1cb292d3cecd486ef74c712f7e16f5188790dfaba1c0586699ff2f446663",
+          "slow": 3
+        }
+      ],
+      "truth": {
+        "bytes": 27648,
+        "file": "vertical-chromatic-edge-truth.f32le",
+        "sha256": "fd524d92fac2f16d874476bd88c43653d3f724f68a26e32d36d00bac58cbe98f"
+      },
+      "width": 48
+    }
+  ],
+  "cfa": [
+    [
+      1,
+      0,
+      1,
+      1,
+      2,
+      1
+    ],
+    [
+      2,
+      1,
+      2,
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      1,
+      1,
+      2,
+      1
+    ],
+    [
+      1,
+      2,
+      1,
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      1,
+      0,
+      2,
+      1,
+      2
+    ],
+    [
+      1,
+      2,
+      1,
+      1,
+      0,
+      1
+    ]
+  ],
+  "format": "rawtherapee-xtrans-ulri-reference-v1",
+  "license": "BSD-3-Clause",
+  "octave_packages": [
+    "image"
+  ],
+  "reference_files": {
+    "clip.m": "f66bed703a4d95336832815d83f2d15fbc33004043920ad08847753fd2488022",
+    "function_demosaic_x_trans.m": "bc8a2a557a326af2ea72f7b77b17d55d6785570fa36197f732288a2d54024b69",
+    "guidedfilter_MLRI_wei.m": "c26f06bef57e6ce99fca8369d8dc0ad414674978175623d4a0e5a9b0db59d0fd",
+    "imgconv2.m": "dd7b68011c2fc7e9a20c5688bbc92e4d51b8ab387575b6d73826043bba95e388",
+    "license.txt": "8da7c29a607b5d6450bb2dbf7b5c0a7a93cbe5bb69a8d35d0fb4de5d3940a7c4"
+  }
+}

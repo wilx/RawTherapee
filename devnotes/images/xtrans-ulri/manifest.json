@@ -1,0 +1,42 @@
+{
+  "dataset": {
+    "file": "dataset.json",
+    "sha256": "8ff6523c86ed6e875483ff81792e3e5eeb69d35dd1612805dc77b5c3ee1ed1c3"
+  },
+  "format": "rawtherapee-xtrans-ulri-artifacts-v1",
+  "images": [
+    {
+      "file": "map-brick.png",
+      "sha256": "ed438492bd14a1f8103e4d906ac524d0ca4e39c9cfb854b29d074a575d84a32e"
+    },
+    {
+      "file": "map-continuous-line.png",
+      "sha256": "28d8a4d542216e552f3ab0f406d077e09c5e64694c4df6699b0dd045d1d8c625"
+    },
+    {
+      "file": "map-hubble.png",
+      "sha256": "435dd447f73dd898371028acb2185522661c98c778dfba8843bd8dad54873ccd"
+    },
+    {
+      "file": "map-hydra.png",
+      "sha256": "80d70773eaa0d689961513666fe5e9bb5a4cb65d9ef6a6f70307b539375b2eb5"
+    },
+    {
+      "file": "map-impulse.png",
+      "sha256": "e6f67da7c8ccf910989bc9422674ca481a206cc8a71fc6ab37bac3da99ebcc57"
+    },
+    {
+      "file": "map-page.png",
+      "sha256": "962d67e22eeb7a41a867cd572cd457e111a1e8a259422bdd12c7baacb85578d2"
+    },
+    {
+      "file": "map-saturated-edge.png",
+      "sha256": "05d6bd513a322313d2fae7c52d89ed5f81674dea2a0c2ea168b7dec32945f137"
+    }
+  ],
+  "reference_manifest_sha256": "2441cb88637a5c50375093d11e97b6cb46912d68201b338c3f8d4a5c4e7114c3",
+  "results": {
+    "file": "results.json",
+    "sha256": "e2d3e696013391ef775d8db338cff1ab12ef5f7faba4a8a2e14510499cdcbda8"
+  }
+}

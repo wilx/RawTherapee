@@ -171,6 +171,22 @@ MlriXTransRunResult demosaicMlriXTransReference(
     int originY = 0,
     MlriXTransVariant variant = MlriXTransVariant::MATLAB_REFERENCE);
 
+// Development-only execution of the authenticated ULRI X-Trans source's
+// `slow` contract.  slow=0 runs one green pass and returns the separate final
+// green-guided R/B reconstruction; slow=N runs N+1 green passes and applies
+// the source's sqrt(G/255) blend.  This is intentionally absent from engine
+// dispatch and exists only for reference reproduction and pass-count studies.
+MlriXTransRunResult demosaicUlriXTransSlowReference(
+    const float *mosaic,
+    float *red,
+    float *green,
+    float *blue,
+    int width,
+    int height,
+    int originX,
+    int originY,
+    int slow);
+
 // Untiled, canonical-coordinate research entry point.  It traces the exact
 // corrected-final algorithm and is intentionally not used by GUI/CLI dispatch.
 MlriXTransRunResult demosaicMlriXTransInternalTraceReference(
