@@ -1,0 +1,15 @@
+{
+  "artifact": {
+    "file": "stage-a.json",
+    "sha256": "e4d61004279d1678a0feb1cdf4dafcee6770e07c70ac363ff79304b22affb76d",
+    "size": 1518581
+  },
+  "format": "rawtherapee-xtrans-bayesian-color-line-artifacts-v1",
+  "reference": {
+    "doi": "10.1007/11744023_40",
+    "local_pdf_sha256": "604f54015c22d362444dbe3063a62610c7878ee4bd84adc0f2de8b5238cfdeef",
+    "local_pdf_size": 1037995,
+    "microsoft_pdf_sha256": "7706f6bdcc16025966dd7f3bf9451810916efdc0f59812ef217e968adda45489",
+    "microsoft_pdf_size": 1144774
+  }
+}
