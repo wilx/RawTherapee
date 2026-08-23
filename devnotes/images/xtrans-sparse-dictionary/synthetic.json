@@ -1,0 +1,69 @@
+{
+  "cases": [
+    {
+      "blind_psnr_max_db": 23.26707008135972,
+      "blind_psnr_min_db": 19.602727033218336,
+      "blind_psnr_phase_range_db": 3.664343048141383,
+      "case": "gray-gradient",
+      "distinct_supports": 13,
+      "maximum_abs": 0.33555050986268753
+    },
+    {
+      "blind_psnr_max_db": 17.79397881341183,
+      "blind_psnr_min_db": 11.837599254282749,
+      "blind_psnr_phase_range_db": 5.956379559129081,
+      "case": "chromatic-gradient",
+      "distinct_supports": 18,
+      "maximum_abs": 0.9204205615470228
+    },
+    {
+      "blind_psnr_max_db": 18.67843766941672,
+      "blind_psnr_min_db": 10.721553259873154,
+      "blind_psnr_phase_range_db": 7.956884409543566,
+      "case": "red-gray-edge",
+      "distinct_supports": 18,
+      "maximum_abs": 0.8746211431695081
+    },
+    {
+      "blind_psnr_max_db": 13.473265666917818,
+      "blind_psnr_min_db": 8.977474062951178,
+      "blind_psnr_phase_range_db": 4.495791603966641,
+      "case": "blue-gray-diagonal",
+      "distinct_supports": 18,
+      "maximum_abs": 1.1755776159680191
+    },
+    {
+      "blind_psnr_max_db": 16.451718051180933,
+      "blind_psnr_min_db": 11.51841191550208,
+      "blind_psnr_phase_range_db": 4.933306135678853,
+      "case": "saturated-point",
+      "distinct_supports": 18,
+      "maximum_abs": 1.4886802894418156
+    },
+    {
+      "blind_psnr_max_db": 9.405398138914512,
+      "blind_psnr_min_db": 5.191502428056108,
+      "blind_psnr_phase_range_db": 4.213895710858404,
+      "case": "periodic-chromatic",
+      "distinct_supports": 18,
+      "maximum_abs": 1.7438820630127874
+    },
+    {
+      "blind_psnr_max_db": 13.486829037454708,
+      "blind_psnr_min_db": 9.353608478726628,
+      "blind_psnr_phase_range_db": 4.13322055872808,
+      "case": "points-spacing-4",
+      "distinct_supports": 18,
+      "maximum_abs": 1.4077920864980986
+    },
+    {
+      "blind_psnr_max_db": 9.363671924646,
+      "blind_psnr_min_db": 6.049035271503202,
+      "blind_psnr_phase_range_db": 3.3146366531427987,
+      "case": "points-spacing-2",
+      "distinct_supports": 18,
+      "maximum_abs": 1.4716719630095185
+    }
+  ],
+  "phase_count": 18
+}
