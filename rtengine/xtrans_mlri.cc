@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -458,6 +459,48 @@ Plane phaseMask(int width, int height, int originX, int originY,
     return output;
 }
 
+constexpr std::size_t regressionIndex(MlriXTransRegressionStatistic statistic)
+{
+    return static_cast<std::size_t>(statistic);
+}
+
+struct GuidedMlriDiagnostics final {
+    std::array<Plane, MLRI_XTRANS_REGRESSION_STATISTIC_COUNT> plane;
+
+    GuidedMlriDiagnostics() = default;
+
+    GuidedMlriDiagnostics(int width, int height)
+    {
+        for (Plane &value : plane) {
+            value = Plane(width, height);
+        }
+    }
+};
+
+float weightedQuantile(
+    std::vector<std::pair<float, float>> values,
+    double totalWeight,
+    double fraction)
+{
+    if (values.empty() || totalWeight <= 0.0) {
+        return 0.f;
+    }
+    std::sort(values.begin(), values.end(),
+              [](const std::pair<float, float> &a,
+                 const std::pair<float, float> &b) {
+                  return a.first < b.first;
+              });
+    const double target = totalWeight * fraction;
+    double accumulated = 0.0;
+    for (const auto &value : values) {
+        accumulated += value.second;
+        if (accumulated >= target) {
+            return value.first;
+        }
+    }
+    return values.back().first;
+}
+
 Plane guidedMlri(
     const Plane &guide,
     const Plane &observed,
@@ -467,7 +510,8 @@ Plane guidedMlri(
     const Plane &laplacianMask,
     int horizontalRadius,
     int verticalRadius,
-    MlriXTransVariant variant = MlriXTransVariant::MATLAB_REFERENCE)
+    MlriXTransVariant variant = MlriXTransVariant::MATLAB_REFERENCE,
+    GuidedMlriDiagnostics *diagnostics = nullptr)
 {
     // SPIE 2014 equations (1)-(3), expanded as TIP 2016 equations (5)-(7).
     // The gain is fitted
@@ -521,13 +565,198 @@ Plane guidedMlri(
                + boxSum(guide * guide * sampleMask, horizontalRadius, verticalRadius) * (a * a)
                + boxSum(observed * observed * sampleMask, horizontalRadius, verticalRadius);
     cost = cost / sampleCount;
+    Plane residualMse;
+    if (diagnostics) {
+        residualMse = cost;
+    }
     for (float &value : cost.values) {
         value = 1.f / std::max(value, 0.01f);
     }
     Plane weightSum = minimum(boxSum(cost, horizontalRadius, verticalRadius), 0.01f);
     Plane meanA = boxSum(a * cost, horizontalRadius, verticalRadius) / weightSum;
     Plane meanB = boxSum(b * cost, horizontalRadius, verticalRadius) / weightSum;
-    return meanA * guide + meanB;
+    const Plane result = meanA * guide + meanB;
+
+    if (diagnostics) {
+        *diagnostics = GuidedMlriDiagnostics(guide.width, guide.height);
+        const auto set = [&](MlriXTransRegressionStatistic statistic,
+                             int x, int y, float value) {
+            diagnostics->plane[regressionIndex(statistic)](x, y) = value;
+        };
+        for (int y = 0; y < guide.height; ++y) {
+            for (int x = 0; x < guide.width; ++x) {
+                std::vector<std::pair<float, float>> predictions;
+                std::vector<std::pair<float, float>> gains;
+                predictions.reserve(static_cast<std::size_t>(
+                    (2 * horizontalRadius + 1) * (2 * verticalRadius + 1)));
+                gains.reserve(predictions.capacity());
+                double totalWeight = 0.0;
+                double totalWeightSquared = 0.0;
+                double weightedFitMse = 0.0;
+                double weightedGain = 0.0;
+                double weightedOffset = 0.0;
+                double weightedNumerator = 0.0;
+                double weightedDenominator = 0.0;
+                double weightedGuideEnergy = 0.0;
+                double weightedLaplacianCount = 0.0;
+                double weightedSampleCount = 0.0;
+                double weightedPrediction = 0.0;
+                double maximumWeight = 0.0;
+                float minimumFitMse = std::numeric_limits<float>::infinity();
+                float minimumGain = std::numeric_limits<float>::infinity();
+                float maximumGain = -std::numeric_limits<float>::infinity();
+                for (int dy = -verticalRadius; dy <= verticalRadius; ++dy) {
+                    const int modelY = y + dy;
+                    if (modelY < 0 || modelY >= guide.height) {
+                        continue;
+                    }
+                    for (int dx = -horizontalRadius; dx <= horizontalRadius; ++dx) {
+                        const int modelX = x + dx;
+                        if (modelX < 0 || modelX >= guide.width) {
+                            continue;
+                        }
+                        const float modelWeight = cost(modelX, modelY);
+                        const float modelGain = a(modelX, modelY);
+                        const float modelOffset = b(modelX, modelY);
+                        const float prediction = modelGain * guide(x, y) + modelOffset;
+                        const float fitMse = residualMse(modelX, modelY);
+                        const double weight = modelWeight;
+                        predictions.emplace_back(prediction, modelWeight);
+                        gains.emplace_back(modelGain, modelWeight);
+                        totalWeight += weight;
+                        totalWeightSquared += weight * weight;
+                        weightedFitMse += weight * fitMse;
+                        weightedGain += weight * modelGain;
+                        weightedOffset += weight * modelOffset;
+                        weightedNumerator += weight * meanIp(modelX, modelY);
+                        weightedDenominator += weight *
+                            (meanII(modelX, modelY) + EPSILON);
+                        weightedGuideEnergy += weight * meanII(modelX, modelY);
+                        weightedLaplacianCount += weight * count(modelX, modelY);
+                        weightedSampleCount += weight * sampleCount(modelX, modelY);
+                        weightedPrediction += weight * prediction;
+                        maximumWeight = std::max(maximumWeight, weight);
+                        minimumFitMse = std::min(minimumFitMse, fitMse);
+                        minimumGain = std::min(minimumGain, modelGain);
+                        maximumGain = std::max(maximumGain, modelGain);
+                    }
+                }
+                const double inverseWeight = totalWeight > 0.0 ? 1.0 / totalWeight : 0.0;
+                const double meanPrediction = weightedPrediction * inverseWeight;
+                const double meanGain = weightedGain * inverseWeight;
+                double predictionVariance = 0.0;
+                double gainVariance = 0.0;
+                double entropy = 0.0;
+                float minimumPrediction = std::numeric_limits<float>::infinity();
+                float maximumPrediction = -std::numeric_limits<float>::infinity();
+                for (std::size_t i = 0; i < predictions.size(); ++i) {
+                    const double normalizedWeight = predictions[i].second * inverseWeight;
+                    const double predictionDelta = predictions[i].first - meanPrediction;
+                    const double gainDelta = gains[i].first - meanGain;
+                    predictionVariance += normalizedWeight * predictionDelta * predictionDelta;
+                    gainVariance += normalizedWeight * gainDelta * gainDelta;
+                    if (normalizedWeight > 0.0) {
+                        entropy -= normalizedWeight * std::log(normalizedWeight);
+                    }
+                    minimumPrediction = std::min(minimumPrediction, predictions[i].first);
+                    maximumPrediction = std::max(maximumPrediction, predictions[i].first);
+                }
+                const float predictionMedian = weightedQuantile(
+                    predictions, totalWeight, 0.5);
+                std::vector<std::pair<float, float>> deviations;
+                deviations.reserve(predictions.size());
+                for (const auto &prediction : predictions) {
+                    deviations.emplace_back(
+                        std::fabs(prediction.first - predictionMedian),
+                        prediction.second);
+                }
+                const float predictionMad = weightedQuantile(
+                    deviations, totalWeight, 0.5);
+                const float predictionIqr = weightedQuantile(
+                    predictions, totalWeight, 0.75) -
+                    weightedQuantile(predictions, totalWeight, 0.25);
+
+                double looMean = 0.0;
+                std::vector<double> looPredictions;
+                looPredictions.reserve(predictions.size());
+                double maximumInfluence = 0.0;
+                for (const auto &prediction : predictions) {
+                    const double remainingWeight = totalWeight - prediction.second;
+                    const double loo = remainingWeight > 0.0
+                        ? (weightedPrediction - prediction.second * prediction.first) /
+                          remainingWeight
+                        : meanPrediction;
+                    looPredictions.push_back(loo);
+                    looMean += loo;
+                    maximumInfluence = std::max(
+                        maximumInfluence, std::fabs(loo - meanPrediction));
+                }
+                if (!looPredictions.empty()) {
+                    looMean /= looPredictions.size();
+                }
+                double looVariance = 0.0;
+                for (double loo : looPredictions) {
+                    const double delta = loo - looMean;
+                    looVariance += delta * delta;
+                }
+                if (!looPredictions.empty()) {
+                    looVariance /= looPredictions.size();
+                }
+                const double normalizedEntropy = predictions.size() > 1
+                    ? entropy / std::log(static_cast<double>(predictions.size()))
+                    : 0.0;
+                const double effectiveCount = totalWeightSquared > 0.0
+                    ? totalWeight * totalWeight / totalWeightSquared
+                    : 0.0;
+
+                set(MlriXTransRegressionStatistic::FIT_MSE, x, y,
+                    static_cast<float>(weightedFitMse * inverseWeight));
+                set(MlriXTransRegressionStatistic::MIN_FIT_MSE, x, y,
+                    minimumFitMse);
+                set(MlriXTransRegressionStatistic::GAIN, x, y,
+                    static_cast<float>(meanGain));
+                set(MlriXTransRegressionStatistic::GAIN_VARIANCE, x, y,
+                    static_cast<float>(gainVariance));
+                set(MlriXTransRegressionStatistic::GAIN_MIN, x, y,
+                    minimumGain);
+                set(MlriXTransRegressionStatistic::GAIN_MAX, x, y,
+                    maximumGain);
+                set(MlriXTransRegressionStatistic::OFFSET, x, y,
+                    static_cast<float>(weightedOffset * inverseWeight));
+                set(MlriXTransRegressionStatistic::GAIN_NUMERATOR, x, y,
+                    static_cast<float>(weightedNumerator * inverseWeight));
+                set(MlriXTransRegressionStatistic::GAIN_DENOMINATOR, x, y,
+                    static_cast<float>(weightedDenominator * inverseWeight));
+                set(MlriXTransRegressionStatistic::GUIDE_ENERGY, x, y,
+                    static_cast<float>(weightedGuideEnergy * inverseWeight));
+                set(MlriXTransRegressionStatistic::LAPLACIAN_COUNT, x, y,
+                    static_cast<float>(weightedLaplacianCount * inverseWeight));
+                set(MlriXTransRegressionStatistic::SAMPLE_COUNT, x, y,
+                    static_cast<float>(weightedSampleCount * inverseWeight));
+                set(MlriXTransRegressionStatistic::PREDICTION_VARIANCE, x, y,
+                    static_cast<float>(predictionVariance));
+                set(MlriXTransRegressionStatistic::PREDICTION_RANGE, x, y,
+                    maximumPrediction - minimumPrediction);
+                set(MlriXTransRegressionStatistic::PREDICTION_MAD, x, y,
+                    predictionMad);
+                set(MlriXTransRegressionStatistic::PREDICTION_IQR, x, y,
+                    predictionIqr);
+                set(MlriXTransRegressionStatistic::MODEL_WEIGHT_ENTROPY, x, y,
+                    static_cast<float>(normalizedEntropy));
+                set(MlriXTransRegressionStatistic::EFFECTIVE_MODEL_COUNT, x, y,
+                    static_cast<float>(effectiveCount));
+                set(MlriXTransRegressionStatistic::MAX_MODEL_WEIGHT, x, y,
+                    static_cast<float>(maximumWeight * inverseWeight));
+                set(MlriXTransRegressionStatistic::TOTAL_MODEL_WEIGHT, x, y,
+                    static_cast<float>(totalWeight));
+                set(MlriXTransRegressionStatistic::LOO_PREDICTION_VARIANCE, x, y,
+                    static_cast<float>(looVariance));
+                set(MlriXTransRegressionStatistic::MAX_MODEL_INFLUENCE, x, y,
+                    static_cast<float>(maximumInfluence));
+            }
+        }
+    }
+    return result;
 }
 
 Plane inverseSquaredEnergy(const Plane &gradient, const Kernel &support)
@@ -615,6 +844,19 @@ struct RgbPlanes final {
     Plane green;
     Plane blue;
 };
+
+void storeTracePlane(const Plane &plane, std::vector<float> &target)
+{
+    target.resize(plane.values.size());
+    for (std::size_t i = 0; i < plane.values.size(); ++i) {
+        target[i] = plane.values[i] * SOURCE_SCALE;
+    }
+}
+
+void storeTraceUnitPlane(const Plane &plane, std::vector<float> &target)
+{
+    target = plane.values;
+}
 
 struct DirectionalGuides final {
     Plane gh, gv, gd, gp;
@@ -781,7 +1023,9 @@ Plane interpolateGreen(
     const MlriMasks &m,
     const DirectionalGuides &g,
     float sigma,
-    MlriXTransVariant variant)
+    MlriXTransVariant variant,
+    MlriXTransInternalTrace *trace = nullptr,
+    int pass = -1)
 {
     // ORIGINAL_MLRI supplies each guided tentative estimate below.  Residual
     // interpolation reconstructs the candidate; the eight-direction
@@ -811,33 +1055,51 @@ Plane interpolateGreen(
     const Kernel lap7p = diagonal({-1,0,0,2,0,0,-1}, true);
     const Kernel lap5p = diagonal({-1,0,2,0,-1}, true);
 
+    // These diagnostics are populated only for the development trace.  Each
+    // pair describes the two guided regressions that form one directional
+    // G-C residual: green predicted at a chromatic site and that chromatic
+    // channel predicted at green sites.  Their predictions are not changed.
+    GuidedMlriDiagnostics dRh, dBh, dGrh, dGbh;
+    GuidedMlriDiagnostics dRv, dBv, dGrv, dGbv;
+    GuidedMlriDiagnostics dRd, dBd, dGrd, dGbd;
+    GuidedMlriDiagnostics dRp, dBp, dGrp, dGbp;
+
     Plane difR = correlate(m11_12 * g.rh, lap13h) + correlate(m.any({2,12,13}) * g.rh, lap5h);
     Plane difG = correlate(m11_12 * g.gh, lap13h) + correlate(m.any({2,12,13}) * g.gh, lap5h);
-    Plane tRh = clip(guidedMlri(g.gh, g.rh * m.red, m.red, difG, difR, m.red, 3, 3, variant));
+    Plane tRh = clip(guidedMlri(g.gh, g.rh * m.red, m.red, difG, difR, m.red,
+                                3, 3, variant, trace ? &dRh : nullptr));
     Plane difB = correlate(m15_16 * g.bh, lap13h) + correlate(m.any({7,16,17}) * g.bh, lap5h);
     Plane difGb = correlate(m15_16 * g.gh, lap13h) + correlate(m.any({7,16,17}) * g.gh, lap5h);
-    Plane tBh = clip(guidedMlri(g.gh, g.bh * m.blue, m.blue, difGb, difB, m.blue, 3, 3, variant));
+    Plane tBh = clip(guidedMlri(g.gh, g.bh * m.blue, m.blue, difGb, difB, m.blue,
+                                3, 3, variant, trace ? &dBh : nullptr));
     difG = correlate(maskGC * g.gh, lap7h) + correlate((maskGnC + m11_12 + m15_16) * g.gh, lap5h);
     difR = correlate(maskGC * g.rh, lap7h) + correlate((maskGnC + m11_12 + m15_16) * g.rh, lap5h);
     difB = correlate(maskGC * g.bh, lap7h) + correlate((maskGnC + m11_12 + m15_16) * g.bh, lap5h);
-    Plane tGrh = clip(guidedMlri(g.rh, g.gh * m.green, m.green, difR, difG, m.green, 3, 3, variant));
-    Plane tGbh = clip(guidedMlri(g.bh, g.gh * m.green, m.green, difB, difG, m.green, 3, 3, variant));
+    Plane tGrh = clip(guidedMlri(g.rh, g.gh * m.green, m.green, difR, difG, m.green,
+                                 3, 3, variant, trace ? &dGrh : nullptr));
+    Plane tGbh = clip(guidedMlri(g.bh, g.gh * m.green, m.green, difB, difG, m.green,
+                                 3, 3, variant, trace ? &dGbh : nullptr));
 
     difR = correlate(m13_14 * g.rv, lap13v) + correlate(m.any({7,10,11}) * g.rv, lap5v);
     difG = correlate(m13_14 * g.gv, lap13v) + correlate(m.any({7,10,11}) * g.gv, lap5v);
-    Plane tRv = clip(guidedMlri(g.gv, g.rv * m.red, m.red, difG, difR, m.red, 3, 3, variant));
+    Plane tRv = clip(guidedMlri(g.gv, g.rv * m.red, m.red, difG, difR, m.red,
+                                3, 3, variant, trace ? &dRv : nullptr));
     difB = correlate(m17_18 * g.bv, lap13v) + correlate(m.any({2,14,15}) * g.bv, lap5v);
     difGb = correlate(m17_18 * g.gv, lap13v) + correlate(m.any({2,14,15}) * g.gv, lap5v);
-    Plane tBv = clip(guidedMlri(g.gv, g.bv * m.blue, m.blue, difGb, difB, m.blue, 3, 3, variant));
+    Plane tBv = clip(guidedMlri(g.gv, g.bv * m.blue, m.blue, difGb, difB, m.blue,
+                                3, 3, variant, trace ? &dBv : nullptr));
     difG = correlate(maskGC * g.gv, lap7v) + correlate((maskGnC + m13_14 + m17_18) * g.gv, lap5v);
     difR = correlate(maskGC * g.rv, lap7v) + correlate((maskGnC + m13_14 + m17_18) * g.rv, lap5v);
     difB = correlate(maskGC * g.bv, lap7v) + correlate((maskGnC + m13_14 + m17_18) * g.bv, lap5v);
-    Plane tGrv = clip(guidedMlri(g.rv, g.gv * m.green, m.green, difR, difG, m.green, 3, 3, variant));
-    Plane tGbv = clip(guidedMlri(g.bv, g.gv * m.green, m.green, difB, difG, m.green, 3, 3, variant));
+    Plane tGrv = clip(guidedMlri(g.rv, g.gv * m.green, m.green, difR, difG, m.green,
+                                 3, 3, variant, trace ? &dGrv : nullptr));
+    Plane tGbv = clip(guidedMlri(g.bv, g.gv * m.green, m.green, difB, difG, m.green,
+                                 3, 3, variant, trace ? &dGbv : nullptr));
 
     difR = correlate(m.red * g.rd, lap7d);
     difG = correlate(m.red * g.gd, lap7d);
-    Plane tRd = clip(guidedMlri(g.gd, g.rd * m.red, m.red, difG, difR, m.red, 3, 3, variant));
+    Plane tRd = clip(guidedMlri(g.gd, g.rd * m.red, m.red, difG, difR, m.red,
+                                3, 3, variant, trace ? &dRd : nullptr));
     // The reviewed v1.0.0 reference forms the blue Laplacian from the red
     // directional guide here (and in the anti-diagonal branch), while the
     // guided samples remain blue.  The corrected experimental variant uses
@@ -845,24 +1107,31 @@ Plane interpolateGreen(
     const bool correctedBlueDiagonals = usesCorrectedBlueDiagonalGuides(variant);
     difB = correlate(m.blue * (correctedBlueDiagonals ? g.bd : g.rd), lap7d);
     difGb = correlate(m.blue * g.gd, lap7d);
-    Plane tBd = clip(guidedMlri(g.gd, g.bd * m.blue, m.blue, difGb, difB, m.blue, 3, 3, variant));
+    Plane tBd = clip(guidedMlri(g.gd, g.bd * m.blue, m.blue, difGb, difB, m.blue,
+                                3, 3, variant, trace ? &dBd : nullptr));
     difG = correlate(m.any({1,3,6,8}) * g.gd, lap7d) + correlate(greenA * g.gd, lap5d);
     difR = correlate(m.any({1,3,6,8}) * g.rd, lap7d) + correlate(greenA * g.rd, lap5d);
     difB = correlate(m.any({1,3,6,8}) * g.bd, lap7d) + correlate(greenA * g.bd, lap5d);
-    Plane tGrd = clip(guidedMlri(g.rd, g.gd * m.green, m.green, difR, difG, m.green, 3, 3, variant));
-    Plane tGbd = clip(guidedMlri(g.bd, g.gd * m.green, m.green, difB, difG, m.green, 3, 3, variant));
+    Plane tGrd = clip(guidedMlri(g.rd, g.gd * m.green, m.green, difR, difG, m.green,
+                                 3, 3, variant, trace ? &dGrd : nullptr));
+    Plane tGbd = clip(guidedMlri(g.bd, g.gd * m.green, m.green, difB, difG, m.green,
+                                 3, 3, variant, trace ? &dGbd : nullptr));
 
     difR = correlate(m.red * g.rp, lap7p);
     difG = correlate(m.red * g.gp, lap7p);
-    Plane tRp = clip(guidedMlri(g.gp, g.rp * m.red, m.red, difG, difR, m.red, 3, 3, variant));
+    Plane tRp = clip(guidedMlri(g.gp, g.rp * m.red, m.red, difG, difR, m.red,
+                                3, 3, variant, trace ? &dRp : nullptr));
     difB = correlate(m.blue * (correctedBlueDiagonals ? g.bp : g.rp), lap7p);
     difGb = correlate(m.blue * g.gp, lap7p);
-    Plane tBp = clip(guidedMlri(g.gp, g.bp * m.blue, m.blue, difGb, difB, m.blue, 3, 3, variant));
+    Plane tBp = clip(guidedMlri(g.gp, g.bp * m.blue, m.blue, difGb, difB, m.blue,
+                                3, 3, variant, trace ? &dBp : nullptr));
     difG = correlate(m.any({0,4,5,9}) * g.gp, lap7p) + correlate(greenB * g.gp, lap5p);
     difR = correlate(m.any({0,4,5,9}) * g.rp, lap7p) + correlate(greenB * g.rp, lap5p);
     difB = correlate(m.any({0,4,5,9}) * g.bp, lap7p) + correlate(greenB * g.bp, lap5p);
-    Plane tGrp = clip(guidedMlri(g.rp, g.gp * m.green, m.green, difR, difG, m.green, 3, 3, variant));
-    Plane tGbp = clip(guidedMlri(g.bp, g.gp * m.green, m.green, difB, difG, m.green, 3, 3, variant));
+    Plane tGrp = clip(guidedMlri(g.rp, g.gp * m.green, m.green, difR, difG, m.green,
+                                 3, 3, variant, trace ? &dGrp : nullptr));
+    Plane tGbp = clip(guidedMlri(g.bp, g.gp * m.green, m.green, difB, difG, m.green,
+                                 3, 3, variant, trace ? &dGbp : nullptr));
 
     const Plane m11121516 = m.any({10,11,14,15});
     const Plane m1317 = m.any({12,16});
@@ -1018,6 +1287,141 @@ Plane interpolateGreen(
     }};
     const Plane differenceR = weightedEight(wr, cr);
     const Plane differenceB = weightedEight(wb, cb);
+    if (trace && (pass == 0 || pass == 1)) {
+        auto &directional = pass == 0
+            ? trace->pass0GreenDirectional
+            : trace->pass1GreenDirectional;
+        auto &directionalEnergy = pass == 0
+            ? trace->pass0GreenDirectionalEnergy
+            : trace->pass1GreenDirectionalEnergy;
+        auto &directionalWeight = pass == 0
+            ? trace->pass0GreenDirectionalWeight
+            : trace->pass1GreenDirectionalWeight;
+        const Plane missingGreen = m.red + m.blue;
+        Plane weightSum(mosaic.width, mosaic.height);
+        std::array<Plane, 8> selectedWeights;
+        for (std::size_t i = 0; i < selectedWeights.size(); ++i) {
+            selectedWeights[i] = m.red * wr[i] + m.blue * wb[i];
+            weightSum += selectedWeights[i];
+        }
+        for (std::size_t i = 0; i < directional.size(); ++i) {
+            storeTracePlane(
+                mosaic + m.red * cr[i] + m.blue * cb[i],
+                directional[i]);
+            Plane energy(mosaic.width, mosaic.height);
+            Plane normalizedWeight(mosaic.width, mosaic.height);
+            for (std::size_t p = 0; p < energy.values.size(); ++p) {
+                if (missingGreen.values[p] != 0.f) {
+                    const float inverseWeight = 1.f / selectedWeights[i].values[p];
+                    energy.values[p] = std::sqrt(std::max(0.f, inverseWeight - 0.01f));
+                    normalizedWeight.values[p] = selectedWeights[i].values[p] / weightSum.values[p];
+                }
+            }
+            storeTraceUnitPlane(energy, directionalEnergy[i]);
+            storeTraceUnitPlane(normalizedWeight, directionalWeight[i]);
+        }
+
+        auto &regression = pass == 0
+            ? trace->pass0GreenRegression
+            : trace->pass1GreenRegression;
+        const Kernel pairDiag = scaled(diagonal({1,0,1}), 0.5f);
+        const Kernel pairAnti = scaled(diagonal({1,0,1}, true), 0.5f);
+        const auto completedDiagnostic = [&](const Plane &greenAtColor,
+                                             const Plane &colorAtGreen,
+                                             const Plane &colorMask,
+                                             const Plane &oppositeColorMask,
+                                             const Kernel &completion) {
+            Plane value = colorMask * greenAtColor + m.green * colorAtGreen;
+            value += oppositeColorMask * correlate(value, completion);
+            return value;
+        };
+        const auto halfAggregate = [&](const Plane &horizontalDiagnostic,
+                                       const Plane &verticalDiagnostic,
+                                       const Plane &diagonalDiagnostic,
+                                       const Plane &antiDiagnostic,
+                                       bool redChannel) {
+            std::array<Plane, 8> result;
+            if (redChannel) {
+                result = {{
+                    oneMinus(m11 + m13_14) * correlate(verticalDiagnostic, kn1)
+                        + m11 * correlate(verticalDiagnostic, kn2)
+                        + m13_14 * correlate(verticalDiagnostic, kn3),
+                    oneMinus(m12 + m13_14) * correlate(verticalDiagnostic, ks1)
+                        + m12 * correlate(verticalDiagnostic, ks2)
+                        + m13_14 * correlate(verticalDiagnostic, ks3),
+                    oneMinus(m13 + m11_12) * correlate(horizontalDiagnostic, kw1)
+                        + m13 * correlate(horizontalDiagnostic, kw2)
+                        + m11_12 * correlate(horizontalDiagnostic, kw3),
+                    oneMinus(m14 + m11_12) * correlate(horizontalDiagnostic, ke1)
+                        + m14 * correlate(horizontalDiagnostic, ke2)
+                        + m11_12 * correlate(horizontalDiagnostic, ke3),
+                    correlate(diagonalDiagnostic, ka15),
+                    correlate(diagonalDiagnostic, kr15),
+                    correlate(antiDiagnostic, kj15),
+                    correlate(antiDiagnostic, kk15)
+                }};
+            } else {
+                result = {{
+                    oneMinus(m15 + m17_18) * correlate(verticalDiagnostic, kn1)
+                        + m15 * correlate(verticalDiagnostic, kn2)
+                        + m17_18 * correlate(verticalDiagnostic, kn3),
+                    oneMinus(m16 + m17_18) * correlate(verticalDiagnostic, ks1)
+                        + m16 * correlate(verticalDiagnostic, ks2)
+                        + m17_18 * correlate(verticalDiagnostic, ks3),
+                    oneMinus(m17 + m15_16) * correlate(horizontalDiagnostic, kw1)
+                        + m17 * correlate(horizontalDiagnostic, kw2)
+                        + m15_16 * correlate(horizontalDiagnostic, kw3),
+                    oneMinus(m18 + m15_16) * correlate(horizontalDiagnostic, ke1)
+                        + m18 * correlate(horizontalDiagnostic, ke2)
+                        + m15_16 * correlate(horizontalDiagnostic, ke3),
+                    correlate(diagonalDiagnostic, ka15),
+                    correlate(diagonalDiagnostic, kr15),
+                    correlate(antiDiagnostic, kj15),
+                    correlate(antiDiagnostic, kk15)
+                }};
+            }
+            return result;
+        };
+
+        for (std::size_t statistic = 0;
+             statistic < MLRI_XTRANS_REGRESSION_STATISTIC_COUNT;
+             ++statistic) {
+            const Plane redHorizontal = completedDiagnostic(
+                dGrh.plane[statistic], dRh.plane[statistic],
+                m.red, m.blue, h101);
+            const Plane redVertical = completedDiagnostic(
+                dGrv.plane[statistic], dRv.plane[statistic],
+                m.red, m.blue, transpose(h101));
+            const Plane redDiagonal = completedDiagnostic(
+                dGrd.plane[statistic], dRd.plane[statistic],
+                m.red, m.blue, pairDiag);
+            const Plane redAnti = completedDiagnostic(
+                dGrp.plane[statistic], dRp.plane[statistic],
+                m.red, m.blue, pairAnti);
+            const Plane blueHorizontal = completedDiagnostic(
+                dGbh.plane[statistic], dBh.plane[statistic],
+                m.blue, m.red, h101);
+            const Plane blueVertical = completedDiagnostic(
+                dGbv.plane[statistic], dBv.plane[statistic],
+                m.blue, m.red, transpose(h101));
+            const Plane blueDiagonal = completedDiagnostic(
+                dGbd.plane[statistic], dBd.plane[statistic],
+                m.blue, m.red, pairDiag);
+            const Plane blueAnti = completedDiagnostic(
+                dGbp.plane[statistic], dBp.plane[statistic],
+                m.blue, m.red, pairAnti);
+            const std::array<Plane, 8> redRegression = halfAggregate(
+                redHorizontal, redVertical, redDiagonal, redAnti, true);
+            const std::array<Plane, 8> blueRegression = halfAggregate(
+                blueHorizontal, blueVertical, blueDiagonal, blueAnti, false);
+            for (std::size_t direction = 0; direction < regression.size(); ++direction) {
+                storeTraceUnitPlane(
+                    m.red * redRegression[direction]
+                        + m.blue * blueRegression[direction],
+                    regression[direction][statistic]);
+            }
+        }
+    }
     return mosaic + m.red * differenceR + m.blue * differenceB;
 }
 
@@ -1503,7 +1907,8 @@ RedBluePair finalRedBlue(
     const Plane &green,
     const Plane &mosaic,
     const MlriMasks &m,
-    MlriXTransVariant variant)
+    MlriXTransVariant variant,
+    MlriXTransInternalTrace *trace = nullptr)
 {
     // MATLAB_AUTHOR_HEURISTIC: after the two MLRI/RI green passes, the source
     // performs a separate green-guided R/B reconstruction.  The faithful
@@ -1546,6 +1951,12 @@ RedBluePair finalRedBlue(
                                        lapGreenB, lapBlue, m.blue, 5, 5, variant));
     Plane residualR = m.red * (redRaw - tentativeR);
     Plane residualB = m.blue * (blueRaw - tentativeB);
+    if (trace) {
+        storeTracePlane(tentativeR, trace->finalTentativeRed);
+        storeTracePlane(tentativeB, trace->finalTentativeBlue);
+        storeTracePlane(residualR, trace->finalRawResidualRed);
+        storeTracePlane(residualB, trace->finalRawResidualBlue);
+    }
 
     const Kernel h1(5,5,{
         0,0,1,0,0, 0,0,2,0,0, 1,2,0,2,1,
@@ -1587,14 +1998,25 @@ RedBluePair finalRedBlue(
                + maskG2 * correlate(residualB, scaled(h32, 1.f / 13.f))
                + maskG3 * correlate(residualB, scaled(h33, 1.f / 13.f))
                + maskG4 * correlate(residualB, scaled(h34, 1.f / 13.f));
-    return {residualR + tentativeR, residualB + tentativeB};
+    RedBluePair result {residualR + tentativeR, residualB + tentativeB};
+    if (trace) {
+        storeTracePlane(residualR, trace->finalCorrectionRed);
+        storeTracePlane(residualB, trace->finalCorrectionBlue);
+        storeTracePlane(result.red, trace->finalUnclippedRed);
+        storeTracePlane(result.blue, trace->finalUnclippedBlue);
+        storeTracePlane(clip(result.red), trace->finalRed);
+        storeTracePlane(green, trace->finalGreen);
+        storeTracePlane(clip(result.blue), trace->finalBlue);
+    }
+    return result;
 }
 
 RgbPlanes runMlri(
     const Plane &mosaic,
     int originX,
     int originY,
-    MlriXTransVariant variant)
+    MlriXTransVariant variant,
+    MlriXTransInternalTrace *trace = nullptr)
 {
     MlriMasks masks(mosaic.width, mosaic.height, originX, originY);
     const Plane greenRaw = mosaic * masks.green;
@@ -1613,9 +2035,12 @@ RgbPlanes runMlri(
     const int passCount = isPaperCore(variant) ? 1 : 2;
     for (int pass = 0; pass < passCount; ++pass) {
         const float sigma = pass == 0 ? 2.f : 1.f;
+        const auto guideStart = std::chrono::steady_clock::now();
         const DirectionalGuides guides = makeGreenGuides(
             greenRaw, redRaw, blueRaw, masks, pass, previous);
-        Plane green = interpolateGreen(mosaic, masks, guides, sigma, variant);
+        const auto guideEnd = std::chrono::steady_clock::now();
+        Plane green = interpolateGreen(mosaic, masks, guides, sigma, variant, trace, pass);
+        const auto greenEnd = std::chrono::steady_clock::now();
         if (isPaperCore(variant)) {
             // The direct final reconstruction is green-guided RI/MLRI.  It is
             // deliberately returned without the X-Trans source's provisional
@@ -1630,11 +2055,37 @@ RgbPlanes runMlri(
             mosaic, masks, green, chroma, previous, pass, sigma);
         chroma = interpolateRemainingGreenSites(
             mosaic, masks, green, chroma, previous, pass, sigma);
+        const auto chromaEnd = std::chrono::steady_clock::now();
+        if (trace) {
+            const double guideSeconds = std::chrono::duration<double>(guideEnd - guideStart).count();
+            const double greenSeconds = std::chrono::duration<double>(greenEnd - guideEnd).count();
+            const double chromaSeconds = std::chrono::duration<double>(chromaEnd - greenEnd).count();
+            if (pass == 0) {
+                storeTracePlane(green, trace->pass0Green);
+                storeTracePlane(chroma.red, trace->pass0ProvisionalRed);
+                storeTracePlane(chroma.blue, trace->pass0ProvisionalBlue);
+                trace->pass0GuideSeconds = guideSeconds;
+                trace->pass0GreenSeconds = greenSeconds;
+                trace->pass0ChromaSeconds = chromaSeconds;
+            } else {
+                storeTracePlane(green, trace->pass1Green);
+                storeTracePlane(chroma.red, trace->pass1ProvisionalRed);
+                storeTracePlane(chroma.blue, trace->pass1ProvisionalBlue);
+                trace->pass1GuideSeconds = guideSeconds;
+                trace->pass1GreenSeconds = greenSeconds;
+                trace->pass1ChromaSeconds = chromaSeconds;
+            }
+        }
         previous = {std::move(chroma.red), std::move(green), std::move(chroma.blue)};
     }
 
     previous.green = clip(previous.green);
-    const RedBluePair final = finalRedBlue(previous.green, mosaic, masks, variant);
+    const auto finalStart = std::chrono::steady_clock::now();
+    const RedBluePair final = finalRedBlue(previous.green, mosaic, masks, variant, trace);
+    if (trace) {
+        trace->finalRedBlueSeconds = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - finalStart).count();
+    }
     if (usesFinalOnly(variant)) {
         // Controlled overshoot experiment: retain the corrected two-pass green
         // reconstruction unchanged, but use the separately reconstructed,
@@ -1662,6 +2113,37 @@ const char *mlriXTransErrorCodeName(MlriXTransErrorCode code)
         case MlriXTransErrorCode::INTERNAL: return "INTERNAL";
     }
     return "INTERNAL";
+}
+
+const char *mlriXTransRegressionStatisticName(
+    MlriXTransRegressionStatistic statistic)
+{
+    switch (statistic) {
+        case MlriXTransRegressionStatistic::FIT_MSE: return "fit-mse";
+        case MlriXTransRegressionStatistic::MIN_FIT_MSE: return "min-fit-mse";
+        case MlriXTransRegressionStatistic::GAIN: return "gain";
+        case MlriXTransRegressionStatistic::GAIN_VARIANCE: return "gain-variance";
+        case MlriXTransRegressionStatistic::GAIN_MIN: return "gain-min";
+        case MlriXTransRegressionStatistic::GAIN_MAX: return "gain-max";
+        case MlriXTransRegressionStatistic::OFFSET: return "offset";
+        case MlriXTransRegressionStatistic::GAIN_NUMERATOR: return "gain-numerator";
+        case MlriXTransRegressionStatistic::GAIN_DENOMINATOR: return "gain-denominator";
+        case MlriXTransRegressionStatistic::GUIDE_ENERGY: return "guide-energy";
+        case MlriXTransRegressionStatistic::LAPLACIAN_COUNT: return "laplacian-count";
+        case MlriXTransRegressionStatistic::SAMPLE_COUNT: return "sample-count";
+        case MlriXTransRegressionStatistic::PREDICTION_VARIANCE: return "prediction-variance";
+        case MlriXTransRegressionStatistic::PREDICTION_RANGE: return "prediction-range";
+        case MlriXTransRegressionStatistic::PREDICTION_MAD: return "prediction-mad";
+        case MlriXTransRegressionStatistic::PREDICTION_IQR: return "prediction-iqr";
+        case MlriXTransRegressionStatistic::MODEL_WEIGHT_ENTROPY: return "model-weight-entropy";
+        case MlriXTransRegressionStatistic::EFFECTIVE_MODEL_COUNT: return "effective-model-count";
+        case MlriXTransRegressionStatistic::MAX_MODEL_WEIGHT: return "max-model-weight";
+        case MlriXTransRegressionStatistic::TOTAL_MODEL_WEIGHT: return "total-model-weight";
+        case MlriXTransRegressionStatistic::LOO_PREDICTION_VARIANCE: return "loo-prediction-variance";
+        case MlriXTransRegressionStatistic::MAX_MODEL_INFLUENCE: return "max-model-influence";
+        case MlriXTransRegressionStatistic::COUNT: break;
+    }
+    return "unknown";
 }
 
 MlriXTransRunResult demosaicMlriXTransReference(
@@ -1727,6 +2209,130 @@ MlriXTransRunResult demosaicMlriXTransReference(
     } catch (...) {
         result.code = MlriXTransErrorCode::INTERNAL;
         result.message = "unknown MLRI failure";
+    }
+    return result;
+}
+
+MlriXTransRunResult demosaicMlriXTransInternalTraceReference(
+    const float *mosaic,
+    int width,
+    int height,
+    MlriXTransInternalTrace &trace,
+    int originX,
+    int originY)
+{
+    MlriXTransRunResult result;
+    result.tileCount = 1;
+    result.workerCount = 1;
+    result.coreSize = width;
+    if (!mosaic || width < 32 || height < 32) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "MLRI trace requires a non-null image at least 32x32";
+        return result;
+    }
+    if (static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(height)
+            > std::numeric_limits<std::size_t>::max() / sizeof(float)) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "MLRI trace image size overflows addressable memory";
+        return result;
+    }
+    try {
+        Plane source(width, height);
+        for (std::size_t i = 0; i < source.values.size(); ++i) {
+            if (!std::isfinite(mosaic[i])) {
+                result.code = MlriXTransErrorCode::NONFINITE;
+                result.message = "MLRI trace input contains a non-finite sample";
+                return result;
+            }
+            source.values[i] = std::max(0.f, std::min(65535.f, mosaic[i])) / SOURCE_SCALE;
+        }
+        MlriXTransInternalTrace captured;
+        captured.width = width;
+        captured.height = height;
+        const RgbPlanes output = runMlri(
+            source, originX, originY,
+            MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY,
+            &captured);
+        if (!finite(output.red) || !finite(output.green) || !finite(output.blue)) {
+            result.code = MlriXTransErrorCode::NONFINITE;
+            result.message = "MLRI trace reconstruction produced a non-finite sample";
+            return result;
+        }
+        trace = std::move(captured);
+        result.workspaceBytesPerWorker =
+            static_cast<std::uint64_t>(source.values.size()) * sizeof(float) * 195u;
+        return result;
+    } catch (const std::bad_alloc &) {
+        result.code = MlriXTransErrorCode::ALLOCATION;
+        result.message = "MLRI trace workspace allocation failed";
+    } catch (const std::exception &error) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = error.what();
+    } catch (...) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = "unknown MLRI trace failure";
+    }
+    return result;
+}
+
+MlriXTransRunResult demosaicMlriXTransFinalRedBlueReference(
+    const float *mosaic,
+    const float *greenGuide,
+    float *red,
+    float *blue,
+    int width,
+    int height,
+    int originX,
+    int originY)
+{
+    MlriXTransRunResult result;
+    result.tileCount = 1;
+    result.workerCount = 1;
+    result.coreSize = width;
+    if (!mosaic || !greenGuide || !red || !blue || width < 32 || height < 32) {
+        result.code = MlriXTransErrorCode::SIZE;
+        result.message = "MLRI final R/B reference requires non-null planes at least 32x32";
+        return result;
+    }
+    try {
+        Plane source(width, height);
+        Plane guide(width, height);
+        for (std::size_t i = 0; i < source.values.size(); ++i) {
+            if (!std::isfinite(mosaic[i]) || !std::isfinite(greenGuide[i])) {
+                result.code = MlriXTransErrorCode::NONFINITE;
+                result.message = "MLRI final R/B reference input contains a non-finite sample";
+                return result;
+            }
+            source.values[i] = std::max(0.f, std::min(65535.f, mosaic[i])) / SOURCE_SCALE;
+            guide.values[i] = std::max(0.f, std::min(65535.f, greenGuide[i])) / SOURCE_SCALE;
+        }
+        const MlriMasks masks(width, height, originX, originY);
+        const RedBluePair output = finalRedBlue(
+            guide, source, masks,
+            MlriXTransVariant::CORRECTED_BLUE_DIAGONAL_GUIDES_FINAL_ONLY);
+        if (!finite(output.red) || !finite(output.blue)) {
+            result.code = MlriXTransErrorCode::NONFINITE;
+            result.message = "MLRI final R/B reference produced a non-finite sample";
+            return result;
+        }
+        const Plane clippedRed = clip(output.red);
+        const Plane clippedBlue = clip(output.blue);
+        for (std::size_t i = 0; i < source.values.size(); ++i) {
+            red[i] = clippedRed.values[i] * SOURCE_SCALE;
+            blue[i] = clippedBlue.values[i] * SOURCE_SCALE;
+        }
+        result.workspaceBytesPerWorker =
+            static_cast<std::uint64_t>(source.values.size()) * sizeof(float) * 48u;
+        return result;
+    } catch (const std::bad_alloc &) {
+        result.code = MlriXTransErrorCode::ALLOCATION;
+        result.message = "MLRI final R/B reference allocation failed";
+    } catch (const std::exception &error) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = error.what();
+    } catch (...) {
+        result.code = MlriXTransErrorCode::INTERNAL;
+        result.message = "unknown MLRI final R/B reference failure";
     }
     return result;
 }

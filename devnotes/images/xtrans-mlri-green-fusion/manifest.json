@@ -1,0 +1,42 @@
+{
+  "dataset_sha256": "6a2ff9c6a6c63b663603d2eee562664d2dc48627f2c0ede6dcd6c795eca97937",
+  "files": [
+    {
+      "bytes": 437021,
+      "name": "map-brick-0.png",
+      "sha256": "607d246d99a244cfa23b0ec11eca6cc681730aa43ba16816a2c65a18a816c3b1"
+    },
+    {
+      "bytes": 64414,
+      "name": "map-control-saturated_red_gray.png",
+      "sha256": "7220ff18a0f44bd87fe620a721cd78ebc7bd96f402ca3a5aeb5ca1130ee5c7c8"
+    },
+    {
+      "bytes": 561681,
+      "name": "map-grass-0.png",
+      "sha256": "1184d7149f2c55fdf958adca349ed609cfaf9c3bcf5cdd54263200db59b59ab4"
+    },
+    {
+      "bytes": 360854,
+      "name": "map-hubble-0.png",
+      "sha256": "53ed0a7ef887499b36390e6529f919840b5b8431682ea4308708c155f1def10b"
+    },
+    {
+      "bytes": 386955,
+      "name": "map-nasa-hydra-starfield-0.png",
+      "sha256": "de63de94e9ea1c149c6b046de49ad25e1e7ab4c2d244c43adca5eecc75809c46"
+    },
+    {
+      "bytes": 509275,
+      "name": "map-page-0.png",
+      "sha256": "6506bf2c2c5e3ec4a5fd6b7e6f4501c1a57dc016bcd878bd06a30f9e845d14ef"
+    },
+    {
+      "bytes": 57383,
+      "name": "map-white-impulse.png",
+      "sha256": "8496e7da0c9b3a1cc4113be3f1091a4628481d7a853fa4e442d8722dfc607005"
+    }
+  ],
+  "format": "rawtherapee-xtrans-mlri-green-fusion-manifest-v1",
+  "results_sha256": "849a9f28e3e08280090e701a85f69093a039eeac8761e0659f1707923bb168bc"
+}

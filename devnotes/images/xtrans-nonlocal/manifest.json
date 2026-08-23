@@ -1,0 +1,36 @@
+{
+  "dataset_sha256": "0a767b88db4ca0c9e7be8b6b58c27efc30fde85a24db02d05e8817531e333a27",
+  "decision": "NO-GO",
+  "files": {
+    "dataset.json": {
+      "bytes": 7198,
+      "sha256": "0a767b88db4ca0c9e7be8b6b58c27efc30fde85a24db02d05e8817531e333a27"
+    },
+    "diagnostic-brick.png": {
+      "bytes": 3804,
+      "sha256": "262726d85241eab2a0910d1344c286a368d4aec4d79fc95134ff9dc94b6c64af"
+    },
+    "diagnostic-frequency-sweep.png": {
+      "bytes": 4699,
+      "sha256": "cdf6eede4507fae12078a202b2522c251979ce517b478b5a444e3363744b6515"
+    },
+    "diagnostic-hubble.png": {
+      "bytes": 4481,
+      "sha256": "1b4d94201a872c83d4f60a9b4d499f2eee9c361ae7475bbefe2e42750f8c7807"
+    },
+    "diagnostic-nasa-hydra-starfield.png": {
+      "bytes": 3610,
+      "sha256": "40022353d50e02416ed4e25b1eb6cffda724eb5c786cb31cd0db76fa50c7e5b6"
+    },
+    "neighbor-purity.png": {
+      "bytes": 14516,
+      "sha256": "80dcd0a9d22ac2210de0611667fa18cec46629ea335c8996d24f6823a73a985b"
+    },
+    "results.json": {
+      "bytes": 880840,
+      "sha256": "93c63c2760d3206fe22214a6c47ccce6c12170879b1f6bc48b83f01e516ae41f"
+    }
+  },
+  "format": "rawtherapee-xtrans-nonlocal-manifest-v1",
+  "results_sha256": "93c63c2760d3206fe22214a6c47ccce6c12170879b1f6bc48b83f01e516ae41f"
+}

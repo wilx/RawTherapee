@@ -1,0 +1,284 @@
+{
+  "cases": [
+    {
+      "context_global_origin": [
+        94,
+        94
+      ],
+      "id": "astronaut",
+      "kind": "natural",
+      "scene_class": "mixed natural detail",
+      "source": {
+        "category": "portrait, fabric, saturated edges",
+        "filename": "astronaut.png",
+        "height": 512,
+        "id": "astronaut",
+        "license": "public domain; no known copyright restrictions",
+        "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+        "width": 512
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        94,
+        94
+      ],
+      "id": "brick",
+      "kind": "natural",
+      "scene_class": "repeated texture",
+      "source": {
+        "category": "architecture-like periodic texture",
+        "filename": "brick.png",
+        "height": 512,
+        "id": "brick",
+        "license": "CC0",
+        "sha256": "7966caf324f6ba843118d98f7a07746d22f6a343430add0233eca5f6eaaa8fcf",
+        "width": 512
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        63,
+        -12
+      ],
+      "id": "chelsea",
+      "kind": "natural",
+      "scene_class": "foliage-like natural texture",
+      "source": {
+        "category": "fur, portrait, diagonal edges",
+        "filename": "chelsea.png",
+        "height": 300,
+        "id": "chelsea",
+        "license": "CC0; photographer Stefan van der Walt",
+        "sha256": "596aa1e7cb875eb79f437e310381d26b338a81c2da23439704a73c4651e8c4bb",
+        "width": 451
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        94,
+        94
+      ],
+      "id": "grass",
+      "kind": "natural",
+      "scene_class": "foliage-like natural texture",
+      "source": {
+        "category": "foliage-like irregular texture",
+        "filename": "grass.png",
+        "height": 512,
+        "id": "grass",
+        "license": "CC0",
+        "sha256": "b6b6022426b38936c43a4ac09635cd78af074e90f42ffa8227ac8b7452d39f89",
+        "width": 512
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        94,
+        94
+      ],
+      "id": "gravel",
+      "kind": "natural",
+      "scene_class": "irregular natural texture",
+      "source": {
+        "category": "irregular high-frequency texture",
+        "filename": "gravel.png",
+        "height": 512,
+        "id": "gravel",
+        "license": "CC0",
+        "sha256": "c48615b451bf1e606fbd72c0aa9f8cc0f068ab7111ef7d93bb9b0f2586440c12",
+        "width": 512
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        338,
+        274
+      ],
+      "id": "hubble",
+      "kind": "natural",
+      "scene_class": "sparse colored point field",
+      "source": {
+        "category": "night-like field and fine colored detail",
+        "filename": "hubble_deep_field.jpg",
+        "height": 872,
+        "id": "hubble",
+        "license": "NASA public domain",
+        "sha256": "3a19c5dd8a927a9334bb1229a6d63711b1c0c767fb27e2286e7c84a3e2c2f5f4",
+        "width": 1000
+      },
+      "split": "safety",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        30,
+        -67
+      ],
+      "id": "page",
+      "kind": "natural",
+      "scene_class": "repeated text and edges",
+      "source": {
+        "category": "fine text and uneven illumination",
+        "filename": "page.png",
+        "height": 191,
+        "id": "page",
+        "license": "not stated in scikit-image 0.26.0 data docstring",
+        "sha256": "341a6f0a61557662b02734a9b6e56ec33a915b2c41886b97509dedf2a43b47a3",
+        "width": 384
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        158,
+        51
+      ],
+      "id": "rocket",
+      "kind": "natural",
+      "scene_class": "mixed natural detail",
+      "source": {
+        "category": "smooth sky, architecture, fine detail",
+        "filename": "rocket.jpg",
+        "height": 427,
+        "id": "rocket",
+        "license": "SpaceX public domain",
+        "sha256": "c2dd0de7c538df8d111e479619b129464d0269d0ae5fd18ca91d33a7fdfea95c",
+        "width": 640
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        1338,
+        1338
+      ],
+      "id": "nasa-hydra-starfield",
+      "kind": "natural",
+      "scene_class": "sparse colored point field",
+      "source": {
+        "credit": "NASA's Goddard Space Flight Center Scientific Visualization Studio",
+        "filename": "grail_free_air_stars1.tif",
+        "height": 3000,
+        "id": "nasa-hydra-starfield",
+        "landing_page": "https://svs.gsfc.nasa.gov/4041/",
+        "license": "NASA media; use subject to NASA reproduction guidelines",
+        "sha256": "bc5ae5f68fc1977545c0d16c1c60c20dafb4fdbeb045f55774e7a5d03498f6d0",
+        "width": 3000
+      },
+      "split": "safety",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        0,
+        0
+      ],
+      "id": "saturated-edge",
+      "kind": "synthetic",
+      "scene_class": "saturated repeated edge",
+      "source": {
+        "height": 324,
+        "id": "saturated-edge",
+        "license": "generated deterministically by this experiment",
+        "width": 324
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    },
+    {
+      "context_global_origin": [
+        0,
+        0
+      ],
+      "id": "frequency-sweep",
+      "kind": "synthetic",
+      "scene_class": "frequency sweep",
+      "source": {
+        "height": 324,
+        "id": "frequency-sweep",
+        "license": "generated deterministically by this experiment",
+        "width": 324
+      },
+      "split": "analysis",
+      "target_origin": [
+        78,
+        78
+      ]
+    }
+  ],
+  "context_halo": 78,
+  "context_shape_chw": [
+    3,
+    324,
+    324
+  ],
+  "format": "rawtherapee-xtrans-nonlocal-dataset-v1",
+  "hubble_and_hydra_are_untuned_safety_sources": true,
+  "linearization": "IEC 61966-2-1 sRGB inverse EOTF",
+  "search_is_within_same_source_context": true,
+  "starfield_binding": {
+    "credit": "NASA's Goddard Space Flight Center Scientific Visualization Studio",
+    "filename": "grail_free_air_stars1.tif",
+    "height": 3000,
+    "id": "nasa-hydra-starfield",
+    "landing_page": "https://svs.gsfc.nasa.gov/4041/",
+    "license": "NASA media; use subject to NASA reproduction guidelines",
+    "linear_context": [
+      1338,
+      1338,
+      324,
+      324
+    ],
+    "sha256": "bc5ae5f68fc1977545c0d16c1c60c20dafb4fdbeb045f55774e7a5d03498f6d0",
+    "source_url": "https://svs.gsfc.nasa.gov/vis/a000000/a004000/a004041/grail_free_air_stars1.tif",
+    "width": 3000
+  },
+  "target_shape_chw": [
+    3,
+    168,
+    168
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "bytes": 25465,
+      "name": "dataset.json",
+      "sha256": "5298fa8c5c6b39bf0aca96e2a718c1dad18910c46989774b2753edd8bbc27483"
+    },
+    {
+      "bytes": 1248913,
+      "name": "results.json",
+      "sha256": "fd7969c4638d371d9bb6b2f58d2b17488d58001996a0688f164cefbdb43eb623"
+    },
+    {
+      "bytes": 223127,
+      "name": "map-hubble-0.png",
+      "sha256": "526cf00c8797031739dfa3e6c5632375bead1f6d1fb8227299a6e578e1bcf5e2"
+    },
+    {
+      "bytes": 286410,
+      "name": "map-nasa-hydra-starfield-0.png",
+      "sha256": "ec239df0a96c27a2dc5332ef515e753efa3469ba055ba13a2ac36718bcd576a3"
+    },
+    {
+      "bytes": 297355,
+      "name": "map-brick-0.png",
+      "sha256": "78c916714532ddec1d0c9619fee3c647af8fe36773ddb6fdf4c5afa5e42e76b5"
+    },
+    {
+      "bytes": 344028,
+      "name": "map-page-0.png",
+      "sha256": "22f5028851acc2065800dbe56bb9a92d3d74bdb685e23354fce995aa1f82039a"
+    },
+    {
+      "bytes": 36061,
+      "name": "map-transition-coherence-isolated-points.png",
+      "sha256": "78cdea35751b86613451d7d3427c33fdcf0d944eee756aaad614e6daeae551bf"
+    },
+    {
+      "bytes": 38953,
+      "name": "map-transition-coherence-continuous-line.png",
+      "sha256": "aa5762454fb800e58285b03441c0b706b90a652b49c1ead6313628b4178d1723"
+    }
+  ],
+  "format": "rawtherapee-xtrans-mlri-regression-evidence-manifest-v1"
+}

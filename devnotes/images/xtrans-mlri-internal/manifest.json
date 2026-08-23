@@ -1,0 +1,38 @@
+{
+  "dataset": {
+    "file": "dataset.json",
+    "sha256": "56b67f6055e11d11587318122b93f1a65329f66f62a9ca7907ba407bd28d7ab1"
+  },
+  "format": "rawtherapee-xtrans-mlri-internal-manifest-v1",
+  "images": [
+    {
+      "file": "map-hubble-0.png",
+      "sha256": "b2521f8ff4d512b63340895d3e15e3b7c3e7a268fe71b6bfac2aa83e6d0dcb9e"
+    },
+    {
+      "file": "map-nasa-hydra-starfield-0.png",
+      "sha256": "2ddfed37672d54812132a9ffabfb1b9ab6afb25a3c9d98f8aaa33a0c721482c4"
+    },
+    {
+      "file": "map-white-impulse.png",
+      "sha256": "e2427140a1f18645d64e7cc200fad1b58b6dc29ea34e15a12a4aa8dfc3ea7576"
+    },
+    {
+      "file": "map-brick-0.png",
+      "sha256": "07787c5569759144f5583394797ecf01cab8fb1fcf6ddbc0554ab3d4058db69a"
+    },
+    {
+      "file": "map-page-0.png",
+      "sha256": "6bfce63e0a401c69df1021e781cdabd9bbf408eb438e1279194419747fd8e110"
+    },
+    {
+      "file": "map-control-saturated_red_gray.png",
+      "sha256": "faa755ab98fccf6369657612c59b29fb279212a48dd94f462e5186bd1fb1f754"
+    }
+  ],
+  "results": {
+    "file": "results.json",
+    "sha256": "e2c6cae732a67897569edf7264d749ffffadd95203eae5faebb964bbfdbbd79d"
+  },
+  "runner": "rawtherapee-xtrans-mlri-internal-tests"
+}

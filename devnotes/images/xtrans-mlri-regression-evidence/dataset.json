@@ -1,0 +1,1321 @@
+{
+  "added_untouched_coherence_transition": [
+    "isolated-points",
+    "aligned-sparse-points",
+    "dotted-line",
+    "continuous-line",
+    "repeated-texture"
+  ],
+  "case_count": 81,
+  "cases": [
+    {
+      "family": "portrait, fabric, saturated edges",
+      "id": "astronaut-0",
+      "kind": "natural",
+      "origin": [
+        4,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "astronaut",
+      "split": "train"
+    },
+    {
+      "family": "portrait, fabric, saturated edges",
+      "id": "astronaut-1",
+      "kind": "natural",
+      "origin": [
+        1,
+        3
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "astronaut",
+      "split": "train"
+    },
+    {
+      "family": "portrait, fabric, saturated edges",
+      "id": "astronaut-2",
+      "kind": "natural",
+      "origin": [
+        4,
+        2
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "astronaut",
+      "split": "train"
+    },
+    {
+      "family": "foliage-like irregular texture",
+      "id": "grass-0",
+      "kind": "natural",
+      "origin": [
+        4,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "grass",
+      "split": "train"
+    },
+    {
+      "family": "foliage-like irregular texture",
+      "id": "grass-1",
+      "kind": "natural",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "grass",
+      "split": "train"
+    },
+    {
+      "family": "foliage-like irregular texture",
+      "id": "grass-2",
+      "kind": "natural",
+      "origin": [
+        2,
+        2
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "grass",
+      "split": "train"
+    },
+    {
+      "family": "irregular high-frequency texture",
+      "id": "gravel-0",
+      "kind": "natural",
+      "origin": [
+        4,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "gravel",
+      "split": "train"
+    },
+    {
+      "family": "irregular high-frequency texture",
+      "id": "gravel-1",
+      "kind": "natural",
+      "origin": [
+        4,
+        1
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "gravel",
+      "split": "train"
+    },
+    {
+      "family": "irregular high-frequency texture",
+      "id": "gravel-2",
+      "kind": "natural",
+      "origin": [
+        3,
+        5
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "gravel",
+      "split": "train"
+    },
+    {
+      "family": "architecture-like periodic texture",
+      "id": "brick-0",
+      "kind": "natural",
+      "origin": [
+        4,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "brick",
+      "split": "validation"
+    },
+    {
+      "family": "architecture-like periodic texture",
+      "id": "brick-1",
+      "kind": "natural",
+      "origin": [
+        1,
+        3
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "brick",
+      "split": "validation"
+    },
+    {
+      "family": "architecture-like periodic texture",
+      "id": "brick-2",
+      "kind": "natural",
+      "origin": [
+        0,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "brick",
+      "split": "validation"
+    },
+    {
+      "family": "night-like field and fine colored detail",
+      "id": "hubble-0",
+      "kind": "natural",
+      "origin": [
+        2,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "hubble",
+      "split": "validation"
+    },
+    {
+      "family": "night-like field and fine colored detail",
+      "id": "hubble-1",
+      "kind": "natural",
+      "origin": [
+        1,
+        1
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "hubble",
+      "split": "validation"
+    },
+    {
+      "family": "night-like field and fine colored detail",
+      "id": "hubble-2",
+      "kind": "natural",
+      "origin": [
+        4,
+        5
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "hubble",
+      "split": "validation"
+    },
+    {
+      "family": "fine text and uneven illumination",
+      "id": "page-0",
+      "kind": "natural",
+      "origin": [
+        0,
+        5
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "page",
+      "split": "test"
+    },
+    {
+      "family": "fine text and uneven illumination",
+      "id": "page-1",
+      "kind": "natural",
+      "origin": [
+        4,
+        3
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "page",
+      "split": "test"
+    },
+    {
+      "family": "fine text and uneven illumination",
+      "id": "page-2",
+      "kind": "natural",
+      "origin": [
+        1,
+        4
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "page",
+      "split": "test"
+    },
+    {
+      "family": "independent catalog-derived sparse star field",
+      "id": "nasa-hydra-starfield-0",
+      "kind": "natural",
+      "origin": [
+        0,
+        0
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "nasa-hydra-starfield",
+      "split": "test"
+    },
+    {
+      "family": "independent catalog-derived sparse star field",
+      "id": "nasa-hydra-starfield-1",
+      "kind": "natural",
+      "origin": [
+        5,
+        1
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "nasa-hydra-starfield",
+      "split": "test"
+    },
+    {
+      "family": "independent catalog-derived sparse star field",
+      "id": "nasa-hydra-starfield-2",
+      "kind": "natural",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        168,
+        168
+      ],
+      "source_id": "nasa-hydra-starfield",
+      "split": "test"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-00",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-00",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-01",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-01",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-02",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-02",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-03",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-03",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-04",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-04",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-05",
+      "kind": "synthetic-failure",
+      "origin": [
+        5,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-05",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-06",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-06",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-07",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-07",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-08",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-08",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-09",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-09",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-10",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-10",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-11",
+      "kind": "synthetic-failure",
+      "origin": [
+        5,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-11",
+      "split": "train"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-12",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-12",
+      "split": "validation"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-13",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-13",
+      "split": "validation"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-14",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-14",
+      "split": "validation"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-15",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-15",
+      "split": "test"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-16",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-16",
+      "split": "test"
+    },
+    {
+      "family": "isolated colored point across CFA variants",
+      "id": "cfa-impulse-17",
+      "kind": "synthetic-failure",
+      "origin": [
+        5,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "cfa-impulse-17",
+      "split": "test"
+    },
+    {
+      "family": "isolated white impulse",
+      "id": "white-impulse",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "white-impulse",
+      "split": "train"
+    },
+    {
+      "family": "two-pixel saturated red dot",
+      "id": "red-dot-2",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "red-dot-2",
+      "split": "train"
+    },
+    {
+      "family": "three-pixel saturated green dot",
+      "id": "green-dot-3",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "green-dot-3",
+      "split": "train"
+    },
+    {
+      "family": "colored point on dark background",
+      "id": "blue-dark-point",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "blue-dark-point",
+      "split": "train"
+    },
+    {
+      "family": "tiny saturated specular highlight",
+      "id": "tiny-specular",
+      "kind": "synthetic-failure",
+      "origin": [
+        5,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "tiny-specular",
+      "split": "train"
+    },
+    {
+      "family": "thin colored line",
+      "id": "thin-red-line",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "thin-red-line",
+      "split": "train"
+    },
+    {
+      "family": "intersection of thin lines",
+      "id": "line-intersection",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "line-intersection",
+      "split": "train"
+    },
+    {
+      "family": "sparse bright microtexture",
+      "id": "sparse-microtexture",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "sparse-microtexture",
+      "split": "train"
+    },
+    {
+      "family": "progressively denser point pattern",
+      "id": "medium-points",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "medium-points",
+      "split": "train"
+    },
+    {
+      "family": "tiny colored structure adjacent to edge",
+      "id": "point-next-edge",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "point-next-edge",
+      "split": "train"
+    },
+    {
+      "family": "sparse star field",
+      "id": "star-field-a",
+      "kind": "synthetic-failure",
+      "origin": [
+        5,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "star-field-a",
+      "split": "train"
+    },
+    {
+      "family": "sparse star field",
+      "id": "star-field-b",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "star-field-b",
+      "split": "validation"
+    },
+    {
+      "family": "low-intensity colored point",
+      "id": "dim-blue-dot",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "dim-blue-dot",
+      "split": "validation"
+    },
+    {
+      "family": "tiny saturated structure adjacent to edge",
+      "id": "bright-edge-point",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "bright-edge-point",
+      "split": "validation"
+    },
+    {
+      "family": "dense bright microtexture",
+      "id": "dense-microtexture",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "dense-microtexture",
+      "split": "validation"
+    },
+    {
+      "family": "point-density transition",
+      "id": "transition-points-01",
+      "kind": "synthetic-failure",
+      "origin": [
+        1,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-points-01",
+      "split": "test"
+    },
+    {
+      "family": "point-density transition",
+      "id": "transition-points-03",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-points-03",
+      "split": "test"
+    },
+    {
+      "family": "point-density transition",
+      "id": "transition-points-08",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-points-08",
+      "split": "test"
+    },
+    {
+      "family": "point-density transition",
+      "id": "transition-points-24",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-points-24",
+      "split": "test"
+    },
+    {
+      "family": "point-density transition",
+      "id": "transition-points-72",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-points-72",
+      "split": "test"
+    },
+    {
+      "family": "line-thickness transition",
+      "id": "transition-line-1",
+      "kind": "synthetic-failure",
+      "origin": [
+        2,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-line-1",
+      "split": "test"
+    },
+    {
+      "family": "line-thickness transition",
+      "id": "transition-line-2",
+      "kind": "synthetic-failure",
+      "origin": [
+        3,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-line-2",
+      "split": "test"
+    },
+    {
+      "family": "line-thickness transition",
+      "id": "transition-line-3",
+      "kind": "synthetic-failure",
+      "origin": [
+        4,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-line-3",
+      "split": "test"
+    },
+    {
+      "family": "line-thickness transition",
+      "id": "transition-line-5",
+      "kind": "synthetic-failure",
+      "origin": [
+        0,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-line-5",
+      "split": "test"
+    },
+    {
+      "family": "low-frequency gradient",
+      "id": "control-smooth_gradient",
+      "kind": "synthetic-success",
+      "origin": [
+        3,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-smooth_gradient",
+      "split": "train"
+    },
+    {
+      "family": "smooth chroma",
+      "id": "control-correlated_field",
+      "kind": "synthetic-success",
+      "origin": [
+        2,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-correlated_field",
+      "split": "train"
+    },
+    {
+      "family": "axis-aligned chromatic edge",
+      "id": "control-vertical_red_green",
+      "kind": "synthetic-success",
+      "origin": [
+        1,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-vertical_red_green",
+      "split": "train"
+    },
+    {
+      "family": "axis-aligned chromatic edge",
+      "id": "control-horizontal_red_green",
+      "kind": "synthetic-success",
+      "origin": [
+        0,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-horizontal_red_green",
+      "split": "train"
+    },
+    {
+      "family": "diagonal chromatic edge",
+      "id": "control-diagonal_red_green",
+      "kind": "synthetic-success",
+      "origin": [
+        5,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-diagonal_red_green",
+      "split": "train"
+    },
+    {
+      "family": "saturated chromatic edge",
+      "id": "control-saturated_red_gray",
+      "kind": "synthetic-success",
+      "origin": [
+        4,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-saturated_red_gray",
+      "split": "validation"
+    },
+    {
+      "family": "saturated chromatic edge",
+      "id": "control-saturated_blue_gray",
+      "kind": "synthetic-success",
+      "origin": [
+        3,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-saturated_blue_gray",
+      "split": "validation"
+    },
+    {
+      "family": "corner/intersection",
+      "id": "control-saturated_quadrants",
+      "kind": "synthetic-success",
+      "origin": [
+        2,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-saturated_quadrants",
+      "split": "train"
+    },
+    {
+      "family": "isolated point/impulse",
+      "id": "control-isolated_impulse",
+      "kind": "synthetic-success",
+      "origin": [
+        1,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-isolated_impulse",
+      "split": "train"
+    },
+    {
+      "family": "near-Nyquist texture",
+      "id": "control-frequency_sweep",
+      "kind": "synthetic-success",
+      "origin": [
+        0,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-frequency_sweep",
+      "split": "test"
+    },
+    {
+      "family": "near-Nyquist monochrome",
+      "id": "control-high_frequency_monochrome",
+      "kind": "synthetic-success",
+      "origin": [
+        5,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-high_frequency_monochrome",
+      "split": "train"
+    },
+    {
+      "family": "periodic chromatic texture",
+      "id": "control-periodic_chromatic_texture",
+      "kind": "synthetic-success",
+      "origin": [
+        4,
+        0
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-periodic_chromatic_texture",
+      "split": "test"
+    },
+    {
+      "family": "mixed structure",
+      "id": "control-support_transition",
+      "kind": "synthetic-success",
+      "origin": [
+        3,
+        1
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "control-support_transition",
+      "split": "train"
+    },
+    {
+      "family": "coherence-transition",
+      "id": "transition-coherence-isolated-points",
+      "kind": "synthetic-transition",
+      "origin": [
+        1,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-coherence-isolated-points",
+      "split": "test"
+    },
+    {
+      "family": "coherence-transition",
+      "id": "transition-coherence-aligned-sparse-points",
+      "kind": "synthetic-transition",
+      "origin": [
+        2,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-coherence-aligned-sparse-points",
+      "split": "test"
+    },
+    {
+      "family": "coherence-transition",
+      "id": "transition-coherence-dotted-line",
+      "kind": "synthetic-transition",
+      "origin": [
+        3,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-coherence-dotted-line",
+      "split": "test"
+    },
+    {
+      "family": "coherence-transition",
+      "id": "transition-coherence-continuous-line",
+      "kind": "synthetic-transition",
+      "origin": [
+        4,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-coherence-continuous-line",
+      "split": "test"
+    },
+    {
+      "family": "coherence-transition",
+      "id": "transition-coherence-repeated-texture",
+      "kind": "synthetic-transition",
+      "origin": [
+        5,
+        2
+      ],
+      "shape_chw": [
+        3,
+        72,
+        72
+      ],
+      "source_id": "transition-coherence-repeated-texture",
+      "split": "test"
+    }
+  ],
+  "format": "rawtherapee-xtrans-mlri-regression-evidence-dataset-v1",
+  "held_out_sources": [
+    "nasa-hydra-starfield",
+    "page",
+    "transition-coherence-isolated-points",
+    "transition-coherence-aligned-sparse-points",
+    "transition-coherence-dotted-line",
+    "transition-coherence-continuous-line",
+    "transition-coherence-repeated-texture"
+  ],
+  "phase_cell_count": 18,
+  "phase_policy": "the internal canonicalized MLRI domain is exercised at all 18 distinct X-Trans translation cells",
+  "truth_domain": "normalized linear-light RGB"
+}
