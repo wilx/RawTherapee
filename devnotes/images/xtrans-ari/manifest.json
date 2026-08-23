@@ -1,0 +1,37 @@
+{
+  "files": {
+    "dataset.json": {
+      "bytes": 25561,
+      "sha256": "a0b56e18a0247e70ca10f592fce76143e730c13d71301003b1d3473e48c45097"
+    },
+    "map-brick.png": {
+      "bytes": 138881,
+      "sha256": "c6b761869e7bd9af46ed958068083882feb08b820ed113d2ae65aeee7b20bba7"
+    },
+    "map-hubble.png": {
+      "bytes": 143924,
+      "sha256": "f61d07bd71fe094ceed771c28bc8fea546a9f11255c068e1f032eff6c8959022"
+    },
+    "map-nasa-hydra-starfield.png": {
+      "bytes": 149111,
+      "sha256": "7d238064c3847b04757470fd17e58662895b6ba92fe624bb371acdf9fa3f7689"
+    },
+    "map-page.png": {
+      "bytes": 129697,
+      "sha256": "ff014fc2105e5536130d0280e9f1aa1f11436468aa2c60ceb22bd0c6698b8a61"
+    },
+    "map-transition-coherence-continuous-line.png": {
+      "bytes": 16744,
+      "sha256": "22387c03515f1faa79e1b44be30a0a52d8060477e7c6313d1df967c7efa056b6"
+    },
+    "map-white-impulse.png": {
+      "bytes": 15101,
+      "sha256": "9a9b90fea233993dbfc32f0d662be7a26d0a35a70390918f3369c1d98a7fab69"
+    },
+    "results.json": {
+      "bytes": 2062748,
+      "sha256": "d71a2a51111aca28eb5cd8f631b01c1945262e2f7539ddce9ff5198bf76ad089"
+    }
+  },
+  "format": "rawtherapee-xtrans-ari-feasibility-artifacts-v1"
+}

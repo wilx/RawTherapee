@@ -1,0 +1,652 @@
+{
+  "archive": {
+    "bytes": 720117,
+    "sha256": "eecb94b92a2f1f4fb1bbdf41de93982697fbba09baa80cf8227104203dbd9272",
+    "version": "1.0"
+  },
+  "arithmetic": {
+    "green_iterations": 11,
+    "input": "normalized little-endian channel-major float32 linear RGB",
+    "official_internal_domain": "double 0..255",
+    "output": "normalized little-endian channel-major float32 RGB",
+    "red_blue_iterations_per_stage": 2
+  },
+  "cases": [
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-gray-independent-green.f32le",
+        "sha256": "0a08964291a45a594357be2159fd471bd836f989accc43789eb4f6c9e18c008c"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-constant-gray-mosaic.f32le",
+        "sha256": "0a8773522d08aa5837104f8b1599d0dba70f43c890c739ff661a21e3470a4b66"
+      },
+      "name": "constant-gray",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-gray-official-green.f32le",
+        "sha256": "0a08964291a45a594357be2159fd471bd836f989accc43789eb4f6c9e18c008c"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-constant-gray-official.f32le",
+        "sha256": "640de19a5383e390ded9aa93fa4a1f6f3938046abb8363a69f744f3f961295ee"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-constant-gray-truth.f32le",
+        "sha256": "2de3e551c8a1c9adaba40e6e82513bd63266fe7a971a8575df3b35712d6d2ce6"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-red-independent-green.f32le",
+        "sha256": "bcfb9533f2de70130e9f0d2f513b75c6f2efb52301ab99bf1c8e47e556f5d3ae"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-constant-red-mosaic.f32le",
+        "sha256": "c157fe8eee04a55aade8dabba732e7b2cd2d3c6bd825604f90ec92ede8ff74c5"
+      },
+      "name": "constant-red",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-red-official-green.f32le",
+        "sha256": "f56762a09829aa7251916c6e40cbe6cdb025d352ac9c77f295517e721b0648d5"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-constant-red-official.f32le",
+        "sha256": "80c5795a2b1e809c42ec54665f1c01786cff877d4370d7fa0f3341e239d46ded"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-constant-red-truth.f32le",
+        "sha256": "930a8632c3e940e54b50d9d9905dbc324c5d0fbd894546bea890029999c4ca3b"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-green-independent-green.f32le",
+        "sha256": "f6d2245563c2e39ae44bcc87c0d7d91c13aa1af9de1c7da8d222db1907ac2fe3"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-constant-green-mosaic.f32le",
+        "sha256": "e7777a0da2c06823155e668893fe7a43cce702be7ccba1b85c1ff22c75b62b7f"
+      },
+      "name": "constant-green",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-green-official-green.f32le",
+        "sha256": "f6d2245563c2e39ae44bcc87c0d7d91c13aa1af9de1c7da8d222db1907ac2fe3"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-constant-green-official.f32le",
+        "sha256": "aebde2ec095678b7c1529437e263e9214d28ac03d327cdb0a662a2f1aa0c20ec"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-constant-green-truth.f32le",
+        "sha256": "aebde2ec095678b7c1529437e263e9214d28ac03d327cdb0a662a2f1aa0c20ec"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-blue-independent-green.f32le",
+        "sha256": "1405fd34f6b4ab4b80fdb5649e939727936d4009eeb4beaa4393d9be447bc886"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-constant-blue-mosaic.f32le",
+        "sha256": "2550fa12797bb8a0982ead9a25dfe6123416f9f7e77f62c47e0ca4b8d0b8069f"
+      },
+      "name": "constant-blue",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-constant-blue-official-green.f32le",
+        "sha256": "078f7afafcfdc23f7afbdf4b552de3ffd76b8a311b316b8abc5a255bb6b173ca"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-constant-blue-official.f32le",
+        "sha256": "abac464b611fd317936608e05f1e803e7fd38006739838cd3ed0260640cb47bf"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-constant-blue-truth.f32le",
+        "sha256": "6b43e7c337883c05fb908c649c5651f0e2ce060d7f8159dd1ab898aa18a00f7a"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-horizontal-gradient-independent-green.f32le",
+        "sha256": "68ba7b47fcca6ad31e9f38211bd004d87ee18f8d4ef735a5c1cb5c439de6a4fe"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-gradient-mosaic.f32le",
+        "sha256": "b374c24da139fb63d438d9db8e862ce7d73e608dd758fa3fd65749eb80655f4f"
+      },
+      "name": "horizontal-gradient",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-horizontal-gradient-official-green.f32le",
+        "sha256": "81a6d97972efe66af06c99259d43294afd4bdfae4d1c6b804062c0dc4835262c"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-gradient-official.f32le",
+        "sha256": "c9a92edb929539b37e6a9c5bcbe8e8ad27857f3b8bbdf25b819b42c6bb236953"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-gradient-truth.f32le",
+        "sha256": "16eb3b9957297fa3c3f566a48669688208af987f4fd43a0d2d81dae8245c01ce"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-vertical-gradient-independent-green.f32le",
+        "sha256": "7576c4e23f97d1a045191e9c5827d225b466ec982da30458c15ca5a21308e06c"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-vertical-gradient-mosaic.f32le",
+        "sha256": "cc531020c5393cf7b9bc20393abd84d9d45c780096fef16cc4b1379d5b0a8906"
+      },
+      "name": "vertical-gradient",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-vertical-gradient-official-green.f32le",
+        "sha256": "b0e70d1bbe3b81562dcb603e0471f055e39ed1ae002eb74768257ef285f77a98"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-vertical-gradient-official.f32le",
+        "sha256": "ceaaa02e3f90d3fd5024ddc7dae3f090ae60e8602e9f4c822f5c5ca7585e077d"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-vertical-gradient-truth.f32le",
+        "sha256": "2c8e9dbc30943965aa8928a139b34f8e721d67aba9181a844f893f3400eca63f"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-horizontal-edge-independent-green.f32le",
+        "sha256": "47b4cf7d7f278bf1f8f5bd4abe5ad45a498faec3e2c121ba3847f55fc976b569"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-edge-mosaic.f32le",
+        "sha256": "ade822495d690ab1579e54af2885d492b6bf31fe4aa25a595110d9ccad7fffe3"
+      },
+      "name": "horizontal-edge",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-horizontal-edge-official-green.f32le",
+        "sha256": "47b4cf7d7f278bf1f8f5bd4abe5ad45a498faec3e2c121ba3847f55fc976b569"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-edge-official.f32le",
+        "sha256": "c31f081146c74e07f4027c8100d42b3e2b22cc5c61955da11965e99f6203db05"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-horizontal-edge-truth.f32le",
+        "sha256": "dc33be70d12e2aebce69b5859e0a7c86d0d3757ef326c15c6e967891ec369811"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-vertical-edge-independent-green.f32le",
+        "sha256": "fbe701e1dd87486cd41ee85a6465dee49bf3b5a4bb771700d1e93fe358442675"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-vertical-edge-mosaic.f32le",
+        "sha256": "c2ade90141e800b8b54f1c0684f5651de5212838e8c89b2469731c07e5bed7a9"
+      },
+      "name": "vertical-edge",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-vertical-edge-official-green.f32le",
+        "sha256": "fbe701e1dd87486cd41ee85a6465dee49bf3b5a4bb771700d1e93fe358442675"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-vertical-edge-official.f32le",
+        "sha256": "86a5024344a2aa355977bcc48ac660d02be4cc9dae7d29c3e10294579688b2d2"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-vertical-edge-truth.f32le",
+        "sha256": "d388bafe51aa56b83c030fb974715a202fbf4cdc588d21e4a72deea2bcd985b0"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-diagonal-edge-independent-green.f32le",
+        "sha256": "d765ca3135602f940d715fe890dbcff35700128ca450a18315bcaf8d7ff31b8b"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-diagonal-edge-mosaic.f32le",
+        "sha256": "2dbdf5b1775358ed20a9bc9bf563fc6f5db3bf1c6f37ae7f465bb9a90d218367"
+      },
+      "name": "diagonal-edge",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-diagonal-edge-official-green.f32le",
+        "sha256": "0a4fa4966cf273394ef14bafa82e2dfe13e34fd0736875dd8fdc37e38ff8df11"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-diagonal-edge-official.f32le",
+        "sha256": "c4b55d0c510262d35b38ca5852b5eccc5e9f4c79fbcdadd39dd8cbbb29e9e1ce"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-diagonal-edge-truth.f32le",
+        "sha256": "83543b6dd02bc19dd55bf760bfbef8247ab358f60051867d63c197b94276464c"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-isolated-impulse-independent-green.f32le",
+        "sha256": "1c43fa1138a67de170529781e85ad000979f004540254f177b67973652144aa7"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-isolated-impulse-mosaic.f32le",
+        "sha256": "86fc77246dbbd51d4ded15af39506f1f25e64c539949d8ca1a7167b7f5a27c66"
+      },
+      "name": "isolated-impulse",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-isolated-impulse-official-green.f32le",
+        "sha256": "1c43fa1138a67de170529781e85ad000979f004540254f177b67973652144aa7"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-isolated-impulse-official.f32le",
+        "sha256": "80f311c892df28b0c614ae936a874f5a278f99659b924e4d297d79328740f079"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-isolated-impulse-truth.f32le",
+        "sha256": "82bf1d0466b2759f5ae4d1c9d46131f90717171728763222f45e187099525d64"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-saturated-red-point-independent-green.f32le",
+        "sha256": "dd265854c08035df6aea2da693864a9bf87bc80d21f72a4d12a5cccadacd55a0"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-saturated-red-point-mosaic.f32le",
+        "sha256": "7d5e9e75d7584bdc2f3b0cfdec68a96c802c082efce0bfbd5c469f010d1887c5"
+      },
+      "name": "saturated-red-point",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-saturated-red-point-official-green.f32le",
+        "sha256": "dd265854c08035df6aea2da693864a9bf87bc80d21f72a4d12a5cccadacd55a0"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-saturated-red-point-official.f32le",
+        "sha256": "b32bf6055b808dbb17a407d4346ed0f24ad1b6a7dc8dc9af4c7a049f5ac3e5d3"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-saturated-red-point-truth.f32le",
+        "sha256": "590631045f3e32aefe540967c14907e159717de7b6f3ce93bfa2534ccbeb526e"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-periodic-monochrome-independent-green.f32le",
+        "sha256": "2ee62ad46b9d3297768055d20437d9e217faa15d348df7467147a0852aab98a9"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-periodic-monochrome-mosaic.f32le",
+        "sha256": "e065d4f90ad22fec0c4ac31588eb8cdd78f9923bbe6ebabf736aed6f8f0a2d7a"
+      },
+      "name": "periodic-monochrome",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-periodic-monochrome-official-green.f32le",
+        "sha256": "2ee62ad46b9d3297768055d20437d9e217faa15d348df7467147a0852aab98a9"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-periodic-monochrome-official.f32le",
+        "sha256": "a649883aeec60ef44e3ef7e8f8cad91223ac3ffa1e5b26dc61600e3ef81bd022"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-periodic-monochrome-truth.f32le",
+        "sha256": "10afaa428d8b899e04d437d72152b7d06a6ed0c242f44aed946cb00ffd20fb25"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "grbg-periodic-chromatic-independent-green.f32le",
+        "sha256": "67b9d1526b2ffe515239d7dfaafc641aca32d5b096f024e812c73767cfa6f048"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "grbg-periodic-chromatic-mosaic.f32le",
+        "sha256": "0cfc5f360370730a5d901683970be5cd8f7b40be486de59ca2f6ff5590a34969"
+      },
+      "name": "periodic-chromatic",
+      "official_green": {
+        "bytes": 9216,
+        "file": "grbg-periodic-chromatic-official-green.f32le",
+        "sha256": "67b9d1526b2ffe515239d7dfaafc641aca32d5b096f024e812c73767cfa6f048"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "grbg-periodic-chromatic-official.f32le",
+        "sha256": "125e29b72055028dedd43f80a44f3047327d84baa498f7116c48aeb0e503d521"
+      },
+      "pattern": "grbg",
+      "truth": {
+        "bytes": 27648,
+        "file": "grbg-periodic-chromatic-truth.f32le",
+        "sha256": "bc1f7e848ea244b03fbdd6672f4d402fad9a605f85f5d63c428736dc8ba8d33b"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "rggb-horizontal-gradient-independent-green.f32le",
+        "sha256": "b0f7b2c06f9e81421cde98fd4745542e664fc758ad950d0b80ebbe3e6fad0d3a"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "rggb-horizontal-gradient-mosaic.f32le",
+        "sha256": "f80f153777e7e883f78829b9dff449d80cd2a4b1fd7731c234f899590aed13b5"
+      },
+      "name": "horizontal-gradient",
+      "official_green": {
+        "bytes": 9216,
+        "file": "rggb-horizontal-gradient-official-green.f32le",
+        "sha256": "752aceb64b8a380f84ab20f9e0bdbc857f23b78cc4354d2e012a6e0e5d6325b2"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "rggb-horizontal-gradient-official.f32le",
+        "sha256": "a4feedd4c728bbee59e15db4eb53e07bac53e92250d65c04b68c364ef6f07b68"
+      },
+      "pattern": "rggb",
+      "truth": {
+        "bytes": 27648,
+        "file": "rggb-horizontal-gradient-truth.f32le",
+        "sha256": "16eb3b9957297fa3c3f566a48669688208af987f4fd43a0d2d81dae8245c01ce"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "rggb-saturated-red-point-independent-green.f32le",
+        "sha256": "31ced0ea504a826b6ac4657674d4c8e8aa48818384c06d54cece4e2d40676093"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "rggb-saturated-red-point-mosaic.f32le",
+        "sha256": "4069541558c367bf6f3c22d305966edf1bfdfb0deb1c96786a5412c58f1a1cbb"
+      },
+      "name": "saturated-red-point",
+      "official_green": {
+        "bytes": 9216,
+        "file": "rggb-saturated-red-point-official-green.f32le",
+        "sha256": "31ced0ea504a826b6ac4657674d4c8e8aa48818384c06d54cece4e2d40676093"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "rggb-saturated-red-point-official.f32le",
+        "sha256": "ce0c20a5aade9f15ba41d823997e41ee74af28077b2558c28bc9dcafba05a8bb"
+      },
+      "pattern": "rggb",
+      "truth": {
+        "bytes": 27648,
+        "file": "rggb-saturated-red-point-truth.f32le",
+        "sha256": "590631045f3e32aefe540967c14907e159717de7b6f3ce93bfa2534ccbeb526e"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "gbrg-horizontal-gradient-independent-green.f32le",
+        "sha256": "625be82ec6f44db6ecc64f25d3db52694206b314a075640ad45c84774241dc60"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "gbrg-horizontal-gradient-mosaic.f32le",
+        "sha256": "0b9d4686b6f796a82993872324a6fe276619dad0023112575e28732dffc93eab"
+      },
+      "name": "horizontal-gradient",
+      "official_green": {
+        "bytes": 9216,
+        "file": "gbrg-horizontal-gradient-official-green.f32le",
+        "sha256": "10d943dfdcb7c838086571165df6df7fa5b96a5125daedea5bc4faf6e4672770"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "gbrg-horizontal-gradient-official.f32le",
+        "sha256": "66d9fa0a828d65c12fd2277f13c5f39f87924ff80adac9e482ef85327aaf1d90"
+      },
+      "pattern": "gbrg",
+      "truth": {
+        "bytes": 27648,
+        "file": "gbrg-horizontal-gradient-truth.f32le",
+        "sha256": "16eb3b9957297fa3c3f566a48669688208af987f4fd43a0d2d81dae8245c01ce"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "gbrg-saturated-red-point-independent-green.f32le",
+        "sha256": "dd265854c08035df6aea2da693864a9bf87bc80d21f72a4d12a5cccadacd55a0"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "gbrg-saturated-red-point-mosaic.f32le",
+        "sha256": "207b6a456f9797385a67618737c49320e4e315885769437513e05cd886d3dc8e"
+      },
+      "name": "saturated-red-point",
+      "official_green": {
+        "bytes": 9216,
+        "file": "gbrg-saturated-red-point-official-green.f32le",
+        "sha256": "dd265854c08035df6aea2da693864a9bf87bc80d21f72a4d12a5cccadacd55a0"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "gbrg-saturated-red-point-official.f32le",
+        "sha256": "75af543e9e9b28cc5065b6a83eecbb3d6f7e8064ac75ddc6af7ac9368c6995ed"
+      },
+      "pattern": "gbrg",
+      "truth": {
+        "bytes": 27648,
+        "file": "gbrg-saturated-red-point-truth.f32le",
+        "sha256": "590631045f3e32aefe540967c14907e159717de7b6f3ce93bfa2534ccbeb526e"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "bggr-horizontal-gradient-independent-green.f32le",
+        "sha256": "d928a1bbb6805fc205cc2c16e3a33c8131f01db2a72985c51a04f1245e203a45"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "bggr-horizontal-gradient-mosaic.f32le",
+        "sha256": "d26d9b5e3eccdd7fbac56a3a60b0f18208639a4bfd3b5cf73323b8ce04c25121"
+      },
+      "name": "horizontal-gradient",
+      "official_green": {
+        "bytes": 9216,
+        "file": "bggr-horizontal-gradient-official-green.f32le",
+        "sha256": "dde8e43632e4d2bc69a1ccb30857aacb73294d80687ce8d2cd4bc2a6b5e72ade"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "bggr-horizontal-gradient-official.f32le",
+        "sha256": "9637e873fbae1c2dfbb6dca46b1d3b36b5420ce97fd74ff897bdb14d3cd841b4"
+      },
+      "pattern": "bggr",
+      "truth": {
+        "bytes": 27648,
+        "file": "bggr-horizontal-gradient-truth.f32le",
+        "sha256": "16eb3b9957297fa3c3f566a48669688208af987f4fd43a0d2d81dae8245c01ce"
+      },
+      "width": 48
+    },
+    {
+      "height": 48,
+      "independent_green": {
+        "bytes": 9216,
+        "file": "bggr-saturated-red-point-independent-green.f32le",
+        "sha256": "31ced0ea504a826b6ac4657674d4c8e8aa48818384c06d54cece4e2d40676093"
+      },
+      "mosaic": {
+        "bytes": 27648,
+        "file": "bggr-saturated-red-point-mosaic.f32le",
+        "sha256": "b2a53c761f0a2c9c034a72b4b706f63e05a0940e98bfbd3bca15e5ea0d0f5719"
+      },
+      "name": "saturated-red-point",
+      "official_green": {
+        "bytes": 9216,
+        "file": "bggr-saturated-red-point-official-green.f32le",
+        "sha256": "31ced0ea504a826b6ac4657674d4c8e8aa48818384c06d54cece4e2d40676093"
+      },
+      "official_output": {
+        "bytes": 27648,
+        "file": "bggr-saturated-red-point-official.f32le",
+        "sha256": "86ffd3e2c2df6c52a6b5a378321d7a7620cd8519336141ee25016b65e98b5372"
+      },
+      "pattern": "bggr",
+      "truth": {
+        "bytes": 27648,
+        "file": "bggr-saturated-red-point-truth.f32le",
+        "sha256": "590631045f3e32aefe540967c14907e159717de7b6f3ce93bfa2534ccbeb526e"
+      },
+      "width": 48
+    }
+  ],
+  "format": "rawtherapee-ari-bayer-reference-v1",
+  "independent_green_parity": {
+    "interior_margin": 16,
+    "interior_maximum_abs": 3.126100445172142e-08,
+    "interior_rms": 4.340214924258069e-09,
+    "maximum_abs": 6.423682511025319e-06,
+    "rms": 3.258969111389711e-08
+  },
+  "license": "research purpose only; all rights reserved",
+  "octave_compatibility": {
+    "files": [
+      "guidedfilter.m",
+      "guidedfilter_MLRI.m",
+      "guidedfilter_diagonal.m",
+      "guidedfilter_MLRI_diagonal.m"
+    ],
+    "replacement": "dif = max(dif,0).^0.5",
+    "scope": "temporary authenticated source copy only; clamps negative floating-point roundoff before a mathematically nonnegative RMS"
+  },
+  "octave_unmodified_limitation": "The unmodified reference can form a complex sqrt from a tiny negative regression roundoff, and Octave imfilter rejects complex intermediates. The documented compatibility clamp enforces the nonnegative least-squares residual invariant.",
+  "papers": {
+    "icip_2015": {
+      "bytes": 2568311,
+      "doi": "10.1109/ICIP.2015.7351687",
+      "sha256": "f763278c460ae0d40fdd8829513c44462e5748c4cf34d94de094ff3741a7cde5"
+    },
+    "sensors_2017": {
+      "bytes": 1243059,
+      "doi": "10.3390/s17122787",
+      "sha256": "32c11929c42a7550b57b50c74b0cecbfb12f0f985af77dcfa60acfb5bedd2a16"
+    }
+  },
+  "reference_files": {
+    "blue_interpolation.m": "16e7f0f82b2e0734a8c093054a32044f67fb87e67eae455ebccc064da7bf3f07",
+    "boxfilter.m": "002b1925acad4e472772b08f1eea34d25a1ca0d1995619c11026a7d06dfd4844",
+    "clip.m": "c2fe7a4a7153d0faf84e04e94e74e5bf91e1b8ae6349372ef39f06a50d97cbe4",
+    "demosaic_ARI.m": "71b5980873db641bb12790f25a7d1b1c5f1ab7e7f3a9a33f88ed4def645d7a5c",
+    "green_interpolation.m": "aa670e39bffafd83c5015fcde535b7274ddea0f466a8981e6077897c5ca84b2c",
+    "guidedfilter.m": "c08847c29eb417f5ff539d33543503e9cbce4ca08ecbc428631d83835c7ca062",
+    "guidedfilter_MLRI.m": "77dccdf4da3cca389ae5661f09f484ce1b3d6b5a7f00e593e7c2f4212a729caf",
+    "guidedfilter_MLRI_diagonal.m": "d2630fd0952f2059396570274f3c2db8ae97853ce04fb5279119ea7b1e762366",
+    "guidedfilter_diagonal.m": "f084e0e5e5979739e37c32aec01488efe434d635b3943f4d5cada9270a0edb97",
+    "mosaic_bayer.m": "271e4de3f2a6f8ba07dd0b99de9f237c182cec128ab3f650322143ab569556f1",
+    "readme.txt": "ddd1265692e490fff4dcd524a9840d2f21f5fa61a0c5989ce76045ad895c83d5",
+    "red_blue_interpolation_first.m": "debcb308661ce5cc6b10db0188a821ab3533ae69abdd3c6d9c04f6f2a62a2d2c",
+    "red_blue_interpolation_second.m": "3d55df2878135b75d3ef5312a3870b19ef74b5c4ba79a2739c403e76e946aeab"
+  }
+}
