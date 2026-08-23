@@ -1,0 +1,2323 @@
+{
+  "bsds": {
+    "format": "rawtherapee-xtrans-lmmse-mixture-bsds500-v1",
+    "linearization": "JPEG values inverse-EOTF decoded as IEC 61966-2-1 sRGB",
+    "mirror_revision": "a04b7c6c3a9f0ace74bf205c72a43d32e1c72722",
+    "mirror_url": "https://github.com/BIDS/BSDS500.git",
+    "official_page": "https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/bsds/",
+    "selection": "first sorted 200 train, 20 validation, and 20 test sources",
+    "sources": [
+      {
+        "chroma_rms": 0.07009627039392712,
+        "filename": "100075.jpg",
+        "height": 321,
+        "sha256": "b4b2461595dc3f70270574715acf287dc70027ec9d419a9917ed242036d1b0e5",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.059647308190495525,
+        "filename": "100080.jpg",
+        "height": 481,
+        "sha256": "d52ff44bf19e17f49389eca134bcf57a90d27b15671952fabbd2f2334f75aa8e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05588840283652564,
+        "filename": "100098.jpg",
+        "height": 321,
+        "sha256": "156fd9710dccd7bf3a821977f8d8155da0eccca553086f73771073e17a418aa6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.025185909297765294,
+        "filename": "103041.jpg",
+        "height": 321,
+        "sha256": "1e7ad4076e21f5558e487fddbd20f9553cc4e84629814a79c711f20c38e08461",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.036906153666744074,
+        "filename": "104022.jpg",
+        "height": 481,
+        "sha256": "0300ff07de52aaa0b5d77b4497df1eb5aee2347b9d40f10a6a756aae51c133c5",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.09957590039046535,
+        "filename": "105019.jpg",
+        "height": 321,
+        "sha256": "57e66c0eecb325b507a022c45fb7f44868dc56aef2d4c36db4abe45d56e443ee",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06347326921102052,
+        "filename": "105053.jpg",
+        "height": 321,
+        "sha256": "5d801fa5c75ffb4e7d3af8042a7db1b00b9e5599bcf4801e4b81e95b0cdb19ad",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.02034541958404865,
+        "filename": "106020.jpg",
+        "height": 321,
+        "sha256": "9cd3230d2afde28af85b40cc591e54979f69bf615b68654daaf5e2ac9a88dbe5",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.017844727672775017,
+        "filename": "106025.jpg",
+        "height": 481,
+        "sha256": "68c0e1afd93d8c4782d97bacea36453e59e2921d261e6f8622dc0832b2196f65",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.07576826994957886,
+        "filename": "108041.jpg",
+        "height": 481,
+        "sha256": "4d6b84cff81706d1fb2e10e8225d24c28bf3b3d39d68c572ff2b4fe3adbfe1b9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.09967168165777357,
+        "filename": "108073.jpg",
+        "height": 321,
+        "sha256": "97d56ee9ea1481464b0e4a486315737771e65542d9fdfe6580cb8f30dcbadf66",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09657787884992045,
+        "filename": "109034.jpg",
+        "height": 321,
+        "sha256": "1ea4e38e1357dea48bb0698d3d69fea800e8346bac40b0646121e8ac985e28e9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.19853698097746145,
+        "filename": "112082.jpg",
+        "height": 321,
+        "sha256": "ba0aee5213b2433aae60bc69e933f26dd547ba797319bc807f63d4c5391e60ad",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08929691952163785,
+        "filename": "113009.jpg",
+        "height": 481,
+        "sha256": "6b53775a7a66783fec86a5d6cd69a48ec6907825882f799af2241b31f3bec7db",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.19701919930476594,
+        "filename": "113016.jpg",
+        "height": 321,
+        "sha256": "f53e7355d1cb0ef5286ed4083ea6c264c5df296d9b79e47768b741eca9ed40ad",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.22780683937611704,
+        "filename": "113044.jpg",
+        "height": 321,
+        "sha256": "896df50d4bab6e05655db1b84485ab7463dab7b44b52a87134ca9061e7bd94e6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.056436190079307294,
+        "filename": "117054.jpg",
+        "height": 321,
+        "sha256": "15ef2e322dcaa34da30625c98e42e1eb0428911ee45104c483e464571ac4b7c6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07348797087985381,
+        "filename": "118020.jpg",
+        "height": 321,
+        "sha256": "da00f706075bda5d4a4fb9482ac7454980ceb56aa177578b8edd58af045bd676",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14321312466053357,
+        "filename": "118035.jpg",
+        "height": 321,
+        "sha256": "e15e989aa1f50a0870b5da340a0e939c721fa02b9d2dbb0229f92188fd634907",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.17353740820168317,
+        "filename": "12003.jpg",
+        "height": 321,
+        "sha256": "82209028e619fa21b087ea9e3863c05febbf1d05d9d4f078e6cd2fb233d67e2b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07315990473776904,
+        "filename": "12074.jpg",
+        "height": 321,
+        "sha256": "2da4340200aea1bce9a52f3824d50eca50a3dd4a7a923ae3f6de494ae1152ba6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.055402247666520174,
+        "filename": "122048.jpg",
+        "height": 321,
+        "sha256": "82ce6619f12d5c0625436aabf6f281ad9111753d1429c61274cec358ddee08fe",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14682351616216716,
+        "filename": "124084.jpg",
+        "height": 321,
+        "sha256": "db2fd9ed255d3d9125637b15ffe60779bb01e135cbb6ccd56bcb54be74653d61",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.13430037598847377,
+        "filename": "126039.jpg",
+        "height": 321,
+        "sha256": "f8327a5e7cc0c8ce726b52043eb28b9ee8009f49d60f8822f77472a2512dd071",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04900008426594625,
+        "filename": "130034.jpg",
+        "height": 321,
+        "sha256": "f7ec41ecf32e2473fa4bf4cddfdd75991028666fb70c093078ede877491991f6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06025040448432303,
+        "filename": "134008.jpg",
+        "height": 321,
+        "sha256": "27cafae75673a3dddeb065651a4007fc22ab5ad542df556287a051613caf3865",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07040501561376873,
+        "filename": "134052.jpg",
+        "height": 321,
+        "sha256": "f0d44fc6f469a2161a8156d3b8d8a5773e027f014b380a1e341c2ed613f07e9b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.058437329288977866,
+        "filename": "135037.jpg",
+        "height": 321,
+        "sha256": "2e9a39a111dc6af1a1af3bc7a88c85b4a206aa42cef01adbbcb9f67ea3bb4216",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14311312717052846,
+        "filename": "135069.jpg",
+        "height": 321,
+        "sha256": "667aafa575f92a0f46d2e35021e056a0f5dd781b42787e3146e8d85799af1812",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.02366614905847582,
+        "filename": "138032.jpg",
+        "height": 481,
+        "sha256": "2f4f4beae33576d2d16defaed093939e3d9dfda74c2385385d017d0706647c92",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.10355819817754278,
+        "filename": "138078.jpg",
+        "height": 481,
+        "sha256": "156743043490583baa9af1ab4d1ae1811359bc5fa94d5c5de3e5b522f4099eb4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05700041271471025,
+        "filename": "140055.jpg",
+        "height": 321,
+        "sha256": "bb7a083e833fde82c57b1df0ba95c0d0577f50ae3bb687cb71a066d414d117aa",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08566074101336166,
+        "filename": "140075.jpg",
+        "height": 321,
+        "sha256": "701e224e47e3de85a84ef3fe0f203412db9aa870eb50d1c1f792a763a0e7b3a3",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11064377007369298,
+        "filename": "144067.jpg",
+        "height": 481,
+        "sha256": "00053961cb5ab696951a0684c5707bf3b67fb4ba3c3fdc0c4bc75e4f87480e2e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.17464962038792592,
+        "filename": "145014.jpg",
+        "height": 321,
+        "sha256": "22d67130d0cd1f49e43b3968f30ace97d99ff5910fce67929208683c334e2672",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.13866286799842412,
+        "filename": "145053.jpg",
+        "height": 321,
+        "sha256": "08385cc993040101a9274df03fe69eb1be0911fee6370675eb9fde79c5c7bd96",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03563179634654476,
+        "filename": "147021.jpg",
+        "height": 321,
+        "sha256": "34d7ac9fa5e9e2fd50c3b7cd107315620b7dab16ff8832cf642e8fc6d3334b34",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06439615741797003,
+        "filename": "147062.jpg",
+        "height": 481,
+        "sha256": "2f61cc55df5fbf5f41df3964a1cc7538503c2ee747004bb77c096ce5bee2e868",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1470130437442637,
+        "filename": "15004.jpg",
+        "height": 481,
+        "sha256": "2ed06661ad2089a06ad998a10206d7b4d4ea5340ad9418037d9585185981e0b9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.0836602302983224,
+        "filename": "15088.jpg",
+        "height": 481,
+        "sha256": "d66df9d54fd05a288493ab11a1383d60166f7fc3c48e4e883f0ec83d8586496b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08020898535827282,
+        "filename": "151087.jpg",
+        "height": 321,
+        "sha256": "0ad59de11bcbdf8687e3f706834f5eee3e2ae7040b492e65c4e4e9673edc80b0",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12904374925626058,
+        "filename": "153077.jpg",
+        "height": 321,
+        "sha256": "110645113f9d5c2eb024358a62c87931a6478b102c5c4e9d3ecd1ebb13dc232d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10985140000300961,
+        "filename": "153093.jpg",
+        "height": 321,
+        "sha256": "690cdb2ccfcc5a6d7d8a97ca87be3d5270876a044bb6fdb541ae51b2608623c8",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12785854451351844,
+        "filename": "155060.jpg",
+        "height": 481,
+        "sha256": "5254d4eb0edc12f02b981e58b57a91c51c8f886507e44a2d52ef5a1447cbbd9f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08668330072367987,
+        "filename": "156079.jpg",
+        "height": 321,
+        "sha256": "f00f7cd383ca7952b12071aa7d3ac23faf2903f187679374d0473c840fa20447",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05034712473879192,
+        "filename": "157036.jpg",
+        "height": 481,
+        "sha256": "b51b5f204153a5a7b405fd9ff5121183cd4c8e64ea8d4c660933c4980b558b1e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.09549197777152095,
+        "filename": "159029.jpg",
+        "height": 321,
+        "sha256": "bb2dfcfcf6889b4791b3e7990a36669ad1b6b8d5299500879046328edf6b40b7",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07365572062477993,
+        "filename": "159045.jpg",
+        "height": 321,
+        "sha256": "505d42ffdc0a397baa7b2f2d47026613fd56dbfac2aac79f616838f11374687e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10774375443063651,
+        "filename": "159091.jpg",
+        "height": 321,
+        "sha256": "b38575cd4fb844fb60eb2ed78fb384c6bd96557018e01bfa4e102593106cd839",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07740018559388381,
+        "filename": "16052.jpg",
+        "height": 321,
+        "sha256": "be60accfd2bfa991b779640994308a61cc7bea0c672a45fa2d5649e004a7f15e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1439033785368653,
+        "filename": "161062.jpg",
+        "height": 321,
+        "sha256": "54593ca91901025a58ee5c3d0018ba1becc240cc5f5773935cf477455d9b10bf",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08338602736043646,
+        "filename": "163014.jpg",
+        "height": 481,
+        "sha256": "d3e56ee4417eba2b38feabf86f8707913d8703cab38691650376eda3db9c41fd",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05762228306436662,
+        "filename": "163062.jpg",
+        "height": 321,
+        "sha256": "b66eaa74e2a2a3130284a3cd92b08fab0f679137f25edf3870462f8e8e31d862",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0793143713476454,
+        "filename": "164074.jpg",
+        "height": 321,
+        "sha256": "a6a0a2f76bc102579ba47c6a076f1be1564640976fccc524a9e6420061c3a288",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05215441609840233,
+        "filename": "166081.jpg",
+        "height": 321,
+        "sha256": "34216b6ce9050572b99502f7d67397caf712487864a0a85c94b921211e73b4d0",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10945041816715523,
+        "filename": "169012.jpg",
+        "height": 321,
+        "sha256": "a1580a729655fc9a63ca0d644130e770512e492f2a95d1c0121f4183e42ded50",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.25205667732104803,
+        "filename": "170054.jpg",
+        "height": 321,
+        "sha256": "2f3cfc625e2361f264a2de6f15d9dbadb85e7d45bfa905fc630bb316f3b32a67",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0870845548557834,
+        "filename": "172032.jpg",
+        "height": 481,
+        "sha256": "497d9795ad4eac1c754e2175c26d2ae1a19fa1016c6dd1fe626c870d1e9b0b25",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05416137537399279,
+        "filename": "173036.jpg",
+        "height": 321,
+        "sha256": "ce4dd846ad9a8742c401fff0811762b29d1d5942e61bb67ddecd44f49d6a85e4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04739683526755619,
+        "filename": "176019.jpg",
+        "height": 481,
+        "sha256": "ba9443d741bba1dc79d9946902a7f85b9808c65fe42986745ff9b872a10bd7fe",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.18797899914060498,
+        "filename": "176035.jpg",
+        "height": 321,
+        "sha256": "f26789b6d421e8909898b3b0d4b67b91fab32e529e963f398793f015f286f866",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12285859690124916,
+        "filename": "176039.jpg",
+        "height": 321,
+        "sha256": "0799daf823e07de1910179b720779230f8aa076bbbac51ecc954d47aa1dc53bc",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05019389883677786,
+        "filename": "178054.jpg",
+        "height": 321,
+        "sha256": "8b76b03f5af5720cab1165a19e2d138c767abd95b807d108b29c0db5c0bdeaa2",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06618125152287363,
+        "filename": "181018.jpg",
+        "height": 481,
+        "sha256": "dbb26238f5097adc06ae16d8eca151072c7c1f62c2207d8c6635b97d880794bc",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.07734728634696429,
+        "filename": "181079.jpg",
+        "height": 481,
+        "sha256": "d5c7b9a1dd70eb66c6faa1426f5abe24c3e878d7636c65cd70b450a1d9cf1a30",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.06827165836249537,
+        "filename": "181091.jpg",
+        "height": 481,
+        "sha256": "8f9e26f3489b528b200a40de6dbfadec16a7505875998d6cd1fa80157e7bcd2a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.04872029587754222,
+        "filename": "183055.jpg",
+        "height": 321,
+        "sha256": "bd0c5c4df40bb1b449b71b5e0efde7781599a7724a12a20c0d6902d03e6011be",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0994462912914577,
+        "filename": "183087.jpg",
+        "height": 321,
+        "sha256": "8161ad4c000dc28bc80cf741a8c367e54327a1b7625ce52498bd56ab6f82da7d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.061078340333068554,
+        "filename": "187003.jpg",
+        "height": 321,
+        "sha256": "740ef38713b6a0e2efa0cfa67333cf960b904e88587d75e89215fa83c0c4556a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07598489960841297,
+        "filename": "187029.jpg",
+        "height": 481,
+        "sha256": "e65e91083c8ee708181253fc41c8c6d14ddf45ab3f293c72faa98312632e759a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1478950245392533,
+        "filename": "187039.jpg",
+        "height": 321,
+        "sha256": "f707dedd9d4477e9a140f07779afed480ad660233a4a69fb26564ecae8727863",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0994704285435076,
+        "filename": "187071.jpg",
+        "height": 481,
+        "sha256": "480d5e90c77fd119c0124de3b03d50217fc508bfcbc6b9415ebf56728120aeab",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.10695096253110946,
+        "filename": "187083.jpg",
+        "height": 481,
+        "sha256": "3a208757b2191f68cc8643f015dd88075160f0920866e2ec8c078e6f8db42158",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.06417646971772395,
+        "filename": "188005.jpg",
+        "height": 321,
+        "sha256": "373ef08b1963766234931ce4ebca06840b42dbc6a5a37c1b42a75654618c82ab",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03511064815440939,
+        "filename": "188063.jpg",
+        "height": 321,
+        "sha256": "a63954d1f0fc671278dd3f71f1a0d821f78eb04d51c01abd6706a7e03567a388",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.033069560992169,
+        "filename": "188091.jpg",
+        "height": 321,
+        "sha256": "c5f55fc1a53d803704fbf2c9d22f5bf4a352816a36936ed3e92192e313c9f183",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12626719404513467,
+        "filename": "189003.jpg",
+        "height": 321,
+        "sha256": "1c54dd3ef1530b2ebd9bdede0c6aa6700fbf65c25ea36a3fa0aa48668e6f5b11",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.20690814210561007,
+        "filename": "189011.jpg",
+        "height": 321,
+        "sha256": "33f96f0bfcb6d4bbb09555789ee73194c7c30f62f2af824b603f8c04ad684452",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04594858867354984,
+        "filename": "196015.jpg",
+        "height": 321,
+        "sha256": "40595bda6fb918d106541af67cc8e0426a04c6e5863c407ef2a73374c12e76a9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.2206682756082304,
+        "filename": "198004.jpg",
+        "height": 481,
+        "sha256": "a3f266b543e084eb9486bae66a09304bb9b90711819e1e4614f72a1a9eb5fc6b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1251468047774196,
+        "filename": "198023.jpg",
+        "height": 481,
+        "sha256": "70b5b6cdea34366b9007972603ebd3b2e794e69305393f1b6430af93933e0cb4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.09265602289867565,
+        "filename": "198054.jpg",
+        "height": 481,
+        "sha256": "99d4493b459f08f64fe5f84e25434409c7611f818b840eb47b1307d0d46f06ee",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.112058420915677,
+        "filename": "20008.jpg",
+        "height": 481,
+        "sha256": "a051d50a0ad0680cd89fdd3e7aeed911ee53de62dce312f9e76334bf7389f8db",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08754654916889235,
+        "filename": "202012.jpg",
+        "height": 321,
+        "sha256": "3ccc19af8ce606272d83533ed97e29743ef07c8087f95798ab01ec9706631357",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.042120244665974055,
+        "filename": "207056.jpg",
+        "height": 321,
+        "sha256": "7658f456c08f06af0c435fceac05d154278239ca3f6841ea2c633c6a2c8c4d62",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09333117259755327,
+        "filename": "209070.jpg",
+        "height": 321,
+        "sha256": "c56032950e50ccebca38ebe3a1545b7c9a374d069d03083fa35cbd490d4e9aa2",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10381007166061941,
+        "filename": "2092.jpg",
+        "height": 321,
+        "sha256": "274503ed987a029f7e128487ea1f657f563ee68e1bd3fb1f691e218a9aea054d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08499976016818594,
+        "filename": "216041.jpg",
+        "height": 321,
+        "sha256": "7e55b55f1db1dab5c1f3aaf34d7ea6c88fa16da189d58dacf4fb41bab093f262",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09753960928940411,
+        "filename": "216053.jpg",
+        "height": 321,
+        "sha256": "f77bad9b7ab42da16c49fb478ae3ac533d6b22b283d4ae389a448e3858915e47",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04697420438060195,
+        "filename": "216066.jpg",
+        "height": 321,
+        "sha256": "504ca6b60e5f2159b01b47c769953e4540a6eedcf9412760a591b7366e339d04",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0737882451300871,
+        "filename": "22013.jpg",
+        "height": 481,
+        "sha256": "1630638a74906aafc9aa3d7e21492b8c1ccf8f8faa29dbe349f3200f706ec547",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.15523336030642443,
+        "filename": "22090.jpg",
+        "height": 321,
+        "sha256": "0d2571b84f29236b5baaa75c917f151876c3d77746796225ec2d6b92d699abe7",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09455831828589971,
+        "filename": "22093.jpg",
+        "height": 481,
+        "sha256": "924d70d1149bfd889b21baf09c7eca6c85068b70b86128f02ea5912028e9b796",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.14129607159033253,
+        "filename": "225017.jpg",
+        "height": 481,
+        "sha256": "976e768d57a080a70fb8f5b9294614cb20f9fb87d62e627f79e90e7b4f0cb8f2",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.039412353823913296,
+        "filename": "227040.jpg",
+        "height": 321,
+        "sha256": "076c53879666e97155d5ecb7538aaaf196c944f798ac91cb92e563b97dda1b5a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12896470207186037,
+        "filename": "227046.jpg",
+        "height": 321,
+        "sha256": "5dbeff235cce6d52f08a68f74e9362be8e008f01e3d4b87d75ba5526d1496873",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04767796387197624,
+        "filename": "23025.jpg",
+        "height": 481,
+        "sha256": "5603852f1c983746485bdf459c83961a9b208d540b838697a863056a9d3446d5",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05931203096203697,
+        "filename": "23080.jpg",
+        "height": 321,
+        "sha256": "e167d0c757e60b9d7832e893a84f04c3afd34627d5d3c3a68b5605161e44d6e7",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10143617735145291,
+        "filename": "23084.jpg",
+        "height": 321,
+        "sha256": "17f5011826155d9a424a66b0a7c176e4f3cbec01a70b1b3bb9c3a21ac13cf99a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.16554386570430255,
+        "filename": "231015.jpg",
+        "height": 321,
+        "sha256": "52f766c478c17ca494ae55677b1d77b448d31119c9935b8a2523e04083b9a08e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14325749521294417,
+        "filename": "232038.jpg",
+        "height": 321,
+        "sha256": "cd8761daf9f64337f01119777b26ffb975ec113da6d0e1b22608700f675e2445",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10182961322955557,
+        "filename": "236017.jpg",
+        "height": 321,
+        "sha256": "2122231b75ce09ef22471aefe8a94ff595ca6cd048dadb3174fb6535c8241a38",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0888727881290329,
+        "filename": "238011.jpg",
+        "height": 321,
+        "sha256": "5434d6bd1f0077fefdd629f87eb58384f8c03f92e5fdce648db7dbdc216dd599",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11153828337349816,
+        "filename": "239007.jpg",
+        "height": 481,
+        "sha256": "d30c8fe68aa274ec3a0c0a98c0c62419013033faa4f0ba46b4bdab8fb3c2e2a9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1141359193990896,
+        "filename": "239096.jpg",
+        "height": 321,
+        "sha256": "d8cc6eba60e3ad80bcd1932a7506b524813c1217a678bfd5b5a275b21cf62e66",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.13012481999224298,
+        "filename": "24004.jpg",
+        "height": 481,
+        "sha256": "2d4ccde85f753a82f67c9261204c6b6333ab8484504cf433d4383382c87ebb87",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.18311269258441173,
+        "filename": "24063.jpg",
+        "height": 321,
+        "sha256": "545d3a0f4cbe1fb6b7897ef3cae6a9fcaa681e39616ad73f4e4e99ba95d1a6fb",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.2278045036858043,
+        "filename": "242078.jpg",
+        "height": 481,
+        "sha256": "433f30806efec69645d37561043e88b46a8500d5a6e508acaf08d3df28c8ed0a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.12170422670672155,
+        "filename": "245051.jpg",
+        "height": 321,
+        "sha256": "cfa804a708b2b742a3edfdf5bffc5038ad8882b999a2eb25275e142cf805f842",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.19528520692229515,
+        "filename": "246016.jpg",
+        "height": 481,
+        "sha256": "f0d4c02752e0883e838911cef69b2a579a5e47776a373d32a135089a999f7480",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1135918296151895,
+        "filename": "246053.jpg",
+        "height": 481,
+        "sha256": "111118f64a172e9c67d14da0a5a7a41878ea29d804db0b14a12c03f344b0c678",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.07914193528340285,
+        "filename": "247085.jpg",
+        "height": 321,
+        "sha256": "0bab7ce141b0b2094685f0a10fa671796f7e18f36c28022fe701f019735aa200",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.2598736895601686,
+        "filename": "249061.jpg",
+        "height": 321,
+        "sha256": "4e7e2815c209ff5a736590464a99bd3ad2cb1ffe6ee75c855973e67e276e0f1e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12403298583753819,
+        "filename": "249087.jpg",
+        "height": 321,
+        "sha256": "3da8ba0bac946efde6840c5d7bf787cafa4bd198eefb408105270114616e878f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.19746894071623025,
+        "filename": "25098.jpg",
+        "height": 481,
+        "sha256": "4cf953fb3cc6bbb9089483a8bcdc3fb956b3ea9aeb444673f5ab4703fe25705a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.133678717079448,
+        "filename": "253036.jpg",
+        "height": 321,
+        "sha256": "7a54cba62c89a3e4042c000d9f9333f940e5f7c88e18a11e88a6ea5cf771796a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09410726873209367,
+        "filename": "254033.jpg",
+        "height": 321,
+        "sha256": "62dba2a03d58e1fee456829ae170019c4dddf57c4ab0b855453d0fd127f64033",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12478877232346633,
+        "filename": "254054.jpg",
+        "height": 481,
+        "sha256": "d92db03f3a55c6d7e13decc2977ad970935691a19b843ab9e0564d749aea2109",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.03322224480546065,
+        "filename": "260081.jpg",
+        "height": 481,
+        "sha256": "7118955b0c6d988e86907d5334385963af3c48440c7ad1bb6185a2359f6598c0",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.01797443007180444,
+        "filename": "26031.jpg",
+        "height": 481,
+        "sha256": "fba6d84e560eb3eed75ad615db4fdc3046d7c7f19d8f8c3bf027fca204abb9e3",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.05663986212947033,
+        "filename": "268002.jpg",
+        "height": 481,
+        "sha256": "9ad84bc002d93644d2e6304a50abcf4997ed84136d17d8e074e33e1488a88f21",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08967950901019454,
+        "filename": "27059.jpg",
+        "height": 481,
+        "sha256": "b2ad41923ca24fbe04b6b291dc8d1ed99eb79ad9060f93d99b4c715ac4684b91",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.275687437634913,
+        "filename": "271008.jpg",
+        "height": 321,
+        "sha256": "51810e553db1d021984d797753285f6dded11db5919a55a131a196d988228450",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.15774626723795307,
+        "filename": "271031.jpg",
+        "height": 321,
+        "sha256": "49a045a1d2711c4dcd9ffe6f83a56b8c11d7308ab88fedceaf735e4d290457bd",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04853603603263761,
+        "filename": "274007.jpg",
+        "height": 481,
+        "sha256": "c71cd2933b7f209292d204ab1da52e9d707f9115789f08a553b0a62712ba29f9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.03907919056475959,
+        "filename": "277095.jpg",
+        "height": 481,
+        "sha256": "f6fe046b7f597c565443429dbc3d51d8239023038438b2fde68010316ed40ed0",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.07805904180716242,
+        "filename": "28075.jpg",
+        "height": 321,
+        "sha256": "ffd87260a8e593287b3c35151b39d8861ba2a80d3b69ef5a0f6f9d089be5ab0d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11971183367822832,
+        "filename": "28096.jpg",
+        "height": 321,
+        "sha256": "6bdb764890d0fc3d59ddd6419ee93188c0a5397cf14b94ca825ce25fc5299f7e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06622961983764823,
+        "filename": "285036.jpg",
+        "height": 321,
+        "sha256": "bad41816602b3d7aba1497f746bd3a851911ca1275814b8d13d9376b5c4810cb",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11963908749069505,
+        "filename": "286092.jpg",
+        "height": 321,
+        "sha256": "232614953c26018ca9f1038acf1c58912672be9960f433f35aff53111537ca1b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.045181012513497515,
+        "filename": "292066.jpg",
+        "height": 481,
+        "sha256": "8c810fe5667d2323067808678e7d1315e3e6d3ed6d6259516c55d4458a0a1373",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1268840551589378,
+        "filename": "293029.jpg",
+        "height": 321,
+        "sha256": "463c7966c89174d26afb6a19bb6a78a206b96dc622ace8837b6bb3abfa0eaf8a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11192425463684834,
+        "filename": "299091.jpg",
+        "height": 321,
+        "sha256": "97c5eddecfc1fd3678300f73c094ce4292d66fb659957e960f9afb79b8e0db9e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04729431709547604,
+        "filename": "301007.jpg",
+        "height": 481,
+        "sha256": "adfe1661c7be8537f7c29cbb5832603fc685442146d161fb7a69b0836a339acf",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1435893148885332,
+        "filename": "302003.jpg",
+        "height": 481,
+        "sha256": "a80e9a11541b6b93e21ef1d9b21e2434d3d2b729307a5ac86b1a02e066bc52b4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.10722531842438171,
+        "filename": "309004.jpg",
+        "height": 321,
+        "sha256": "6f12849beaa81204d9e2d9af32f78d6d95d09ca5036c61cd9216675dd8d48f14",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06613305041311276,
+        "filename": "310007.jpg",
+        "height": 321,
+        "sha256": "17e8a7650be55c9ca9393a613b95d13ab329ae80571b1a096bb7e72a24e46b88",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06132295674749252,
+        "filename": "311068.jpg",
+        "height": 481,
+        "sha256": "3146e0e94f979e2c0cd7bd50b694134734f54380bac9325ae24cfbfefd8d928f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.134338548524903,
+        "filename": "311081.jpg",
+        "height": 481,
+        "sha256": "c0e14ae2bd9800fe2ea8470eb45a6001aacf85ca884eda65371e6ee21d8ec608",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.056440544522857995,
+        "filename": "314016.jpg",
+        "height": 321,
+        "sha256": "d6c0b2e35420643aa21a16a3a7b480a525d8b7bc7f0ba1f13ba4f10f5d3c280e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.13914545386697744,
+        "filename": "317080.jpg",
+        "height": 321,
+        "sha256": "5ff96228e4bb947da0901f617c4492d6ecadef81729fee603e8c0fbda142f716",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1293038554935606,
+        "filename": "323016.jpg",
+        "height": 321,
+        "sha256": "5ab43672021c622a34fa85931a6f63d10e2c93b297e5c0dd894d3ea25148a42d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08922062988565878,
+        "filename": "326038.jpg",
+        "height": 321,
+        "sha256": "b63ecef521773f1c7b773b562422acf66aaf3f5fb14d38b6a320746bbd40d054",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.045501115792448615,
+        "filename": "33066.jpg",
+        "height": 321,
+        "sha256": "3518a4a6a931578a21fa41603a5f22d39004136a0b6c3a66c951285a6b10ad63",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.046105907475175976,
+        "filename": "35008.jpg",
+        "height": 321,
+        "sha256": "c96d0152195351dee60a3bbb1f7e719eb5d977f5d760a778ee7decda2a7f79dd",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1277666127403326,
+        "filename": "35010.jpg",
+        "height": 321,
+        "sha256": "1aec271e4b952acee3f5414899633f7d377ac054c7da57bcaa455ae30e40276f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0534055023090645,
+        "filename": "35058.jpg",
+        "height": 321,
+        "sha256": "2cc200475b427bad74a7f58a7f031e320ab14a86affc7a3873301aa78402534a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12208117461424117,
+        "filename": "35070.jpg",
+        "height": 321,
+        "sha256": "2451a585fc1817d732c81bd73b14a7614e2a1da7f647e288126a9a76b61df5e6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12654675712161378,
+        "filename": "35091.jpg",
+        "height": 321,
+        "sha256": "391d904c55e8d1161d6096edb6b0507f9621801fc630ff186259be846d939d52",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14853191443196243,
+        "filename": "353013.jpg",
+        "height": 321,
+        "sha256": "8b7696a58f1228ac42e8eb5b9ac0af9f100ea4b7eadb0cf66602d878002814f4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05208216930602512,
+        "filename": "361084.jpg",
+        "height": 321,
+        "sha256": "f080e7868d5ea74b31076e2a9a268c056fd73f6830ec1f4c4eb8814e4070fad7",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08093739382683766,
+        "filename": "365025.jpg",
+        "height": 481,
+        "sha256": "2e1c5061a9565ded28b65ab0b80b382baa5a0fb586ed0b23809b475e672938f6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.12317133606791182,
+        "filename": "365073.jpg",
+        "height": 321,
+        "sha256": "139268398b47476ae6e645527e9837d57cefe69f000ad23def31ddef1542d9dd",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.044156186288132726,
+        "filename": "368016.jpg",
+        "height": 321,
+        "sha256": "f3a61a291a3f47a3dd3e495f334ba0a4f5876d9b355dcaf3c35564d2c158ead4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1672353757566993,
+        "filename": "368078.jpg",
+        "height": 481,
+        "sha256": "8b38267196f7b7f608c2eb1db535075d6e5d3b8df9e6180db6ad8bcbd30a8561",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.15938139562372383,
+        "filename": "370036.jpg",
+        "height": 321,
+        "sha256": "aefde573f8a7e4396ad40682697200e9083ec586e6ab166f46d62920d638dd6e",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11223896518510844,
+        "filename": "372047.jpg",
+        "height": 481,
+        "sha256": "eb4314d3803bba3cd57cdd2be72c7dbe521045579f09fc25a5913752c88753f9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.058482456442174036,
+        "filename": "374020.jpg",
+        "height": 321,
+        "sha256": "c4bf625ad708d23f951b3efb0550612098b89ed485d5e076a6ecb441327a5790",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09219130410281638,
+        "filename": "374067.jpg",
+        "height": 481,
+        "sha256": "1c4ef7ec171169ecabbd23ce3ba06bcd6978efe69e98bd6ec361b6bbff3d8bb3",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.18015049423034568,
+        "filename": "376001.jpg",
+        "height": 321,
+        "sha256": "c91f6ed09df383dd0ac8471d63d93fab4cd6a1a58a8dd6c2dbe0a2bb8b55d14a",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.20441018122463947,
+        "filename": "376020.jpg",
+        "height": 321,
+        "sha256": "51746eda824648e30e297aa60f8cfedc416a0c12b75fdabe09f76c710bd40864",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06452046859349005,
+        "filename": "385028.jpg",
+        "height": 321,
+        "sha256": "f77f509acec929bbedf9f641febc8cc57ba5db26677606357af94837a5218b86",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08626522122254396,
+        "filename": "388016.jpg",
+        "height": 481,
+        "sha256": "0cd67065b3ece3c4b88cd4abbd1c49b8b9aa4cd94d848b54533310d15142b680",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.14098334743867802,
+        "filename": "41004.jpg",
+        "height": 321,
+        "sha256": "18ab4ca2c20426fad316757ea6ab3b260fa6ea37ccff518cd4a7cc329091991b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07713913033480983,
+        "filename": "41025.jpg",
+        "height": 321,
+        "sha256": "f251407ef9a59235329e84c4d37cdf730fcd1dd431eeafe60585d9af4e8ba789",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0315107688362368,
+        "filename": "42044.jpg",
+        "height": 321,
+        "sha256": "a8ef1539007cfeda438d7c20cd4e009c5ca5e31fbdbd73dd40683897361222b8",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.028370050872390657,
+        "filename": "42078.jpg",
+        "height": 321,
+        "sha256": "8581db9f492bf49c7c4ccd3afa51d5af4bd9f2584f1478aaba76072a8cb2cd9f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.030440850819605087,
+        "filename": "43070.jpg",
+        "height": 321,
+        "sha256": "b1530a4865876dc03e202d63e8c7f53e6005e951858d1971f222d3fce4ad2574",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06163009415276848,
+        "filename": "43083.jpg",
+        "height": 321,
+        "sha256": "f84b16dc078d7ec78712be49223bbde0378a85d7546980e00849bf717721c7bd",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10015423272104143,
+        "filename": "45077.jpg",
+        "height": 321,
+        "sha256": "be1cc8eccd4d479e7c7af652b445813caba0078fa53214ef8b29daef2040fbe2",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.16885004268944648,
+        "filename": "46076.jpg",
+        "height": 481,
+        "sha256": "0dd7dd057a991aba7b44e809a3d03aaf75c8ab889f8b56c5cd1eb1493246f0f8",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1251851748894361,
+        "filename": "48055.jpg",
+        "height": 481,
+        "sha256": "2dbf3f3f6203be60b47f17f33553bb855de73b065cc309b718d7a4289320dc61",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.0884734711660797,
+        "filename": "54005.jpg",
+        "height": 481,
+        "sha256": "dd779e6b4a42380908dfc22423edd559ed0fd063420991a6d6b45986d6827d18",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.127995587101384,
+        "filename": "55067.jpg",
+        "height": 321,
+        "sha256": "18b06e3e62c990d7a3ff385e7caee567b008c5c92c7073d0d5bae16bcaf963bf",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10839058831440075,
+        "filename": "55075.jpg",
+        "height": 481,
+        "sha256": "42a554b3cc0eed83ee5ba8b4a1470cf7318e75dd27fc6ca621411e3ca13d7292",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.10596628846081438,
+        "filename": "56028.jpg",
+        "height": 321,
+        "sha256": "766ba9a6405c78d0f7114f8b502de63a78c2d1cf5b0fcd437fdd20bb7165e80b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06198709151776248,
+        "filename": "59078.jpg",
+        "height": 321,
+        "sha256": "0c17430f9e2250cf5a60e10cb65079cf8df3dad8881a2e7bb5a23e24bf0803e4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1528844112111521,
+        "filename": "60079.jpg",
+        "height": 481,
+        "sha256": "112c3f4f07287535a093ba931e49ee972fef1ceccb02df25bd1390b4a47113cc",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.12244183664011776,
+        "filename": "61060.jpg",
+        "height": 321,
+        "sha256": "25c41d4456ad719d6fe6397e65bcfffa9a75d21e50a7866169e7ffdcff245ae4",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08038066215608185,
+        "filename": "61086.jpg",
+        "height": 481,
+        "sha256": "e35da38a9202415a56cb5eeb4ce33cd83f39035a4098193881072f85968cf7e6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.0715514117252596,
+        "filename": "65010.jpg",
+        "height": 321,
+        "sha256": "a9fd6ca16e5240c9db1cd435ed42cdabddaa3fb7a7e229a71a3fef8efa75b378",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.29952859431444373,
+        "filename": "65019.jpg",
+        "height": 321,
+        "sha256": "f5c2174b99323b9471090ae16efddb50937430d122225502bdebee0db29bcaa6",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1882251438307683,
+        "filename": "65074.jpg",
+        "height": 481,
+        "sha256": "30b3d41657fe2f12937a21b55ef12f4353b790081d974462b809177332331b64",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.13277383000371146,
+        "filename": "65132.jpg",
+        "height": 321,
+        "sha256": "f2f34b87c0425d5392ebbd6aba9761cb76b5c2e16609a7a57977519b3184fa28",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1731715628084942,
+        "filename": "66039.jpg",
+        "height": 481,
+        "sha256": "6077f1d3c4c03aac7be0851276558ef68b8a73ea94274db74dfdcecdfc7a482f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.06311083447080258,
+        "filename": "66075.jpg",
+        "height": 481,
+        "sha256": "cc01e01f2610d83a999569acd34cccc61698fef2ec06b0ee839282c52e57fb37",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08783173567916912,
+        "filename": "67079.jpg",
+        "height": 321,
+        "sha256": "37f4f4ae413fd239e5b4c504b62fc970450d47527b7048b2ea88720391f97d8d",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1395958428932978,
+        "filename": "68077.jpg",
+        "height": 321,
+        "sha256": "bc19d03ee0abaf862c05c386fe94a6d72946661a2613932c6b959f50b0d079bc",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0753319314331671,
+        "filename": "71046.jpg",
+        "height": 321,
+        "sha256": "046813509539dbe475f389c8afc86e78ab1b661736a2e0ce5ac8f2becb3d305f",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05706932733691182,
+        "filename": "76002.jpg",
+        "height": 321,
+        "sha256": "3b6097fcf9468966497876ef6a6717b4fe0f56767053936b718161a8dca75f04",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.074450795955438,
+        "filename": "78019.jpg",
+        "height": 321,
+        "sha256": "1436d47bdef4749c71ebdbba473508cfa23e0eee6a01c7eb62c80118a488692c",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03322850011987919,
+        "filename": "80099.jpg",
+        "height": 321,
+        "sha256": "e56ed8b4ecb8246ed8096360bcebc13a4489872520d665c39be34915cf51db88",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.035023118281584394,
+        "filename": "8049.jpg",
+        "height": 321,
+        "sha256": "418ea26f53efd8707399bea46c9a295c7c7e96b05b5b4792af7214649aba249b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07383853403699739,
+        "filename": "8143.jpg",
+        "height": 321,
+        "sha256": "76e88b97c7640c2203a0f61d6739d8590f0c7e89d064d045cb68c65ead634fd9",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12958638392624142,
+        "filename": "87065.jpg",
+        "height": 321,
+        "sha256": "0e09f38f2f09e2eee85b9b3ed447a29e6e7b3506f5ac936a2948f4b2e9ce33bb",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0389157394487717,
+        "filename": "90076.jpg",
+        "height": 321,
+        "sha256": "bd9f9463f273b26cbd0a39e653e13a48f3884c41db03ce7fadd75313e6479230",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.052068829855802204,
+        "filename": "92059.jpg",
+        "height": 481,
+        "sha256": "71cf42a1550c534cefb59fe712635ab25682b2239300bb53983f16cb81e0ed3b",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08783574540844405,
+        "filename": "94079.jpg",
+        "height": 321,
+        "sha256": "37c4fe1f79704719bb93b8c1c1f95ea5d3feea8b39779ad9f2ac4fca1ad8a145",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11801236328748674,
+        "filename": "95006.jpg",
+        "height": 321,
+        "sha256": "78201312e9625758f755002e2f62bb45fede72a0623d4511baaf69dd80952b65",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09926972603456793,
+        "filename": "97017.jpg",
+        "height": 321,
+        "sha256": "14af2c9a1e7711930840fc502b89b3c46416c894c48a0e1bb271a23d35b7d160",
+        "split": "train",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07207225458821581,
+        "filename": "101085.jpg",
+        "height": 481,
+        "sha256": "dbefbd4ae3749913ee9fffcdb663bea87ab6634dc8b989422f741243bdbedc8a",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.08925522048357568,
+        "filename": "101087.jpg",
+        "height": 481,
+        "sha256": "d755a74144410290cff5e214bb7cbf352a8cb920d45fac3d992b9772ad92a017",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.2041495755003204,
+        "filename": "102061.jpg",
+        "height": 481,
+        "sha256": "35ce0a9baaebae00c19f6abccd1d7b3ecd8f1c62003e178610b2179c082f0a8e",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.04284685887398671,
+        "filename": "103070.jpg",
+        "height": 321,
+        "sha256": "6d1d9e564b5459e969f65470ff03aa3104af779e93c93ca434ad546477e27261",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10136380846059824,
+        "filename": "105025.jpg",
+        "height": 321,
+        "sha256": "6678e84e923e5c1b085afe43ae2fc3735f7f424e02eaefe50a64405f76b9b51b",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09656759823512012,
+        "filename": "106024.jpg",
+        "height": 321,
+        "sha256": "ea31189313c34be7b7a48b7cd776c17f3afb5585de37a6e740a638320fa9847d",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06148747658793346,
+        "filename": "108005.jpg",
+        "height": 321,
+        "sha256": "e0210b50350e928e35f048fe4b8ea54e58200c58ae3bb5ff619b2074b38fac01",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.05855800204015954,
+        "filename": "108070.jpg",
+        "height": 321,
+        "sha256": "6a5d0dd5e9e0a14f680b1c8225b151268c40a41935add1c91483575fd5db51cb",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04608852319465085,
+        "filename": "108082.jpg",
+        "height": 321,
+        "sha256": "389d781d17c9809aeec1f609a324725aa694aea668036bc17f79176a729f7071",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.04387577858674236,
+        "filename": "109053.jpg",
+        "height": 321,
+        "sha256": "91819e7ece60560b5f37398dacd12fc1ac41d095f3454bee965645781599a968",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.035163191596151874,
+        "filename": "119082.jpg",
+        "height": 321,
+        "sha256": "8cf5ce02395627b797b3da7a3845bcb0da14d66942d422a1c898372b67536d4c",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11187772393442097,
+        "filename": "12084.jpg",
+        "height": 321,
+        "sha256": "937a95df6a3ded078400451ac163cac6ec20f0ca912c741ae7427d6fca84175d",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.029767886353881567,
+        "filename": "123074.jpg",
+        "height": 321,
+        "sha256": "f47e336f7f3c4da54d5d95b6217e4381ea62a8ff12d061f39da48539794aa82a",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.09046133628346657,
+        "filename": "126007.jpg",
+        "height": 321,
+        "sha256": "4a61a754b422680d24a148430cab10c3bb548aeee3f51ae8dc39cd783ef854ad",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07538262182324722,
+        "filename": "130026.jpg",
+        "height": 321,
+        "sha256": "ab2865a5f0e54ad3a1b2f911b701560b1537e9c4ced6064d9759d33be0906761",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03916583871354801,
+        "filename": "134035.jpg",
+        "height": 321,
+        "sha256": "fe71f4eed285623dc41b1be0d767f7223fe496a979ac16b264c47649655e1e7c",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07258709994108362,
+        "filename": "14037.jpg",
+        "height": 321,
+        "sha256": "5cbff02cd015ece351725d5f89a880d6a70f71f383b412c81071c66546ce5076",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.14434979170272016,
+        "filename": "143090.jpg",
+        "height": 321,
+        "sha256": "b080362885015372c4d808000009820d044e21de1ea39f89b02307bfc73a0beb",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11841694119793587,
+        "filename": "145086.jpg",
+        "height": 321,
+        "sha256": "ea31167eece902040a4dfc2e50e1a6112a6888c19566aa93ba698ec754f6e815",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.20681877388120345,
+        "filename": "147091.jpg",
+        "height": 321,
+        "sha256": "208f65955ad60894070a3b768ea7f241c87a3919cfc00ecae9ecf2c51220c791",
+        "split": "val",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.08428108568162529,
+        "filename": "100007.jpg",
+        "height": 321,
+        "sha256": "464449ecba30a5a5c229c0133059c83b034e9000bd1d7752a189a8cf21182bf9",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.07594457050620376,
+        "filename": "100039.jpg",
+        "height": 321,
+        "sha256": "418366bbb4f0f4c2200b93e8bda153ab84809fe873a371b32e7cc36c2d091cc3",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1612283542029909,
+        "filename": "100099.jpg",
+        "height": 321,
+        "sha256": "e5a275fcafb0dc986d802037210989f4852bfb09bd19e525c3b7719104f1fc77",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10338268574745087,
+        "filename": "10081.jpg",
+        "height": 321,
+        "sha256": "ce1a8bd8da460cf2606b6b5fd55762f8e13b2576fff508228ac24c80839db389",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.0653916790056434,
+        "filename": "101027.jpg",
+        "height": 321,
+        "sha256": "22903efe16abd94cfd821952de276cc36c531070c27bd84de7a3fb958bd64bc9",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.16937539312795974,
+        "filename": "101084.jpg",
+        "height": 481,
+        "sha256": "6bfa36b8e03b12a83abcfd59c5ccdc89334ea23761f11242d5903935ad292d0c",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.0969439882379115,
+        "filename": "102062.jpg",
+        "height": 321,
+        "sha256": "242ea9821b189197d436da1b252325f5e7850248c5d57da53cec29c37ba0773d",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.11355871002383051,
+        "filename": "103006.jpg",
+        "height": 321,
+        "sha256": "67968e9d84cd4c69dea832184ba910d4851c284fcc65a38ed6aee89f2a3a72c1",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03823404375902344,
+        "filename": "103029.jpg",
+        "height": 321,
+        "sha256": "a05f1c0b30f4e18ad31364abacb54ec55300704ff3a4f8b2889f400bc3757da1",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.060087266095795656,
+        "filename": "103078.jpg",
+        "height": 321,
+        "sha256": "2b21f416993ca1ef49aafa28e5b7f463713dc1b1d510144c673d8b72e035c1f7",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.13288211486378218,
+        "filename": "104010.jpg",
+        "height": 481,
+        "sha256": "1f8516487071b94e3820d833c4795c788ef8df130cb8f7fccf0b87f4cd952339",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.10764020829131209,
+        "filename": "104055.jpg",
+        "height": 481,
+        "sha256": "d2de9fccbf15edde57948cda64ae034a92b14ab2ecefb7d77a436151c8dd7751",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 321
+      },
+      {
+        "chroma_rms": 0.1057036796405518,
+        "filename": "105027.jpg",
+        "height": 321,
+        "sha256": "f6cba0ae618d793b67729ba561461be7b5339aeaad27429f3a2804f588a4e623",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.06578461831372966,
+        "filename": "106005.jpg",
+        "height": 321,
+        "sha256": "35cd328a7d0e4bcaccbdb8154ec5ebbc8f24439807e573b2fe4a4996ea802bed",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.03296971903352189,
+        "filename": "106047.jpg",
+        "height": 321,
+        "sha256": "2e6250fdfdd796b6d63924233362eb8a194f10466d8d7d69a60cc3ef51a2c356",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.1874389425758582,
+        "filename": "107014.jpg",
+        "height": 321,
+        "sha256": "7bba718bed4919723a576cad0623c0a10e92b8c707d35196180257a3e867cfcd",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.10268395512950765,
+        "filename": "107045.jpg",
+        "height": 321,
+        "sha256": "11ee811a5c67b3499eabbafc9157cd0bce74df369c57e18c988123f576a6f20c",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.18906342390519276,
+        "filename": "107072.jpg",
+        "height": 321,
+        "sha256": "faa70504470e50ea37c0ad01f7f2c2e8682098af3630064a3ca02f6261b2e076",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.12256270600096245,
+        "filename": "108004.jpg",
+        "height": 321,
+        "sha256": "3fb004a47be33dca07744000e794b0ca3cff2251ba85a99f46ccf34d3b9b29df",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      },
+      {
+        "chroma_rms": 0.057957613718765365,
+        "filename": "108036.jpg",
+        "height": 321,
+        "sha256": "f24bee7977df112c548f5cd02cb8342784df2582dbb11853b80d59ccd01a62e2",
+        "split": "test",
+        "true_chromatic": true,
+        "width": 481
+      }
+    ],
+    "terms": "non-commercial research and educational use; cite Martin et al., ICCV 2001"
+  },
+  "external_chromatic": {
+    "format": "rawtherapee-xtrans-lmmse-mixture-skimage-controls-v1",
+    "note": "six source-held-out pinned scikit-image 0.26.0 controls; never used for fitting or threshold selection",
+    "sources": [
+      {
+        "category": "fur, portrait, diagonal edges",
+        "crops": [
+          [
+            141,
+            66
+          ],
+          [
+            207,
+            86
+          ],
+          [
+            100,
+            6
+          ]
+        ],
+        "filename": "chelsea.png",
+        "group": "chelsea",
+        "height": 300,
+        "id": "chelsea",
+        "license": "CC0; photographer Stefan van der Walt",
+        "sha256": "596aa1e7cb875eb79f437e310381d26b338a81c2da23439704a73c4651e8c4bb",
+        "width": 451
+      },
+      {
+        "category": "saturated objects and texture",
+        "crops": [
+          [
+            216,
+            116
+          ],
+          [
+            375,
+            186
+          ],
+          [
+            110,
+            74
+          ]
+        ],
+        "filename": "coffee.png",
+        "group": "coffee",
+        "height": 400,
+        "id": "coffee",
+        "license": "CC0; photographer Rachel Michetti",
+        "sha256": "cc02f8ca188b167c775a7101b5d767d1e71792cf762c33d6fa15a4599b5a8de7",
+        "width": 600
+      },
+      {
+        "category": "fine saturated biological texture",
+        "crops": [
+          [
+            172,
+            172
+          ],
+          [
+            67,
+            42
+          ],
+          [
+            312,
+            137
+          ]
+        ],
+        "filename": "ihc.png",
+        "group": "ihc",
+        "height": 512,
+        "id": "ihc",
+        "license": "no known copyright restrictions; CMMI",
+        "sha256": "f8dd1aa387ddd1f49d8ad13b50921b237df8e9b262606d258770687b0ef93cef",
+        "width": 512
+      },
+      {
+        "category": "vehicles, fabric, fine text",
+        "crops": [
+          [
+            286,
+            166
+          ],
+          [
+            226,
+            252
+          ],
+          [
+            397,
+            215
+          ]
+        ],
+        "filename": "motorcycle_left.png",
+        "group": "middlebury-motorcycle",
+        "height": 500,
+        "id": "motorcycle-left",
+        "license": "Middlebury 2014 stereo benchmark; terms not stated in local docstring",
+        "sha256": "db18e9c4157617403c3537a6ba355dfeafe9a7eabb6b9b94cb33f6525dd49179",
+        "width": 741
+      },
+      {
+        "category": "saturated biological structure",
+        "crops": [
+          [
+            621,
+            621
+          ],
+          [
+            330,
+            501
+          ],
+          [
+            1139,
+            302
+          ]
+        ],
+        "filename": "retina.jpg",
+        "group": "retina",
+        "height": 1411,
+        "id": "retina",
+        "license": "CC0 1.0; Mikael Haeggstroem",
+        "sha256": "38a07f36f27f095e818aea7b96d34202c05176d30253c66733f2e00379e9e0e6",
+        "width": 1411
+      },
+      {
+        "category": "smooth sky, architecture, fine detail",
+        "crops": [
+          [
+            236,
+            129
+          ],
+          [
+            31,
+            89
+          ],
+          [
+            414,
+            42
+          ]
+        ],
+        "filename": "rocket.jpg",
+        "group": "rocket",
+        "height": 427,
+        "id": "rocket",
+        "license": "SpaceX public domain",
+        "sha256": "c2dd0de7c538df8d111e479619b129464d0269d0ae5fd18ca91d33a7fdfea95c",
+        "width": 640
+      }
+    ]
+  }
+}
