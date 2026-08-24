@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from tools.xtrans_gmr.model import (
     PhaseConditionedGMR,
@@ -175,3 +176,36 @@ def test_native_float32_model_is_deterministic_and_close_to_float64() -> None:
     assert serialize_native_model(native) == serialize_native_model(
         prepare_native_model(source)
     )
+
+
+def test_fixed_student_t_coarse_ranking_specialization_is_exact() -> None:
+    rng = np.random.default_rng(0x53395138)
+    component_constant = rng.normal(size=32).astype(np.float32)
+    quadratic = np.exp(rng.uniform(-8.0, 8.0, size=32)).astype(np.float32)
+    logarithmic = component_constant - np.float32(6.0) * np.log1p(
+        quadratic / np.float32(3.0)
+    )
+    scale = np.exp(
+        (component_constant - np.max(component_constant)) / np.float32(6.0)
+    )
+    specialized = scale / (np.float32(1.0) + quadratic / np.float32(3.0))
+    expected = np.lexsort((np.arange(32), -logarithmic))[:8]
+    actual = np.lexsort((np.arange(32), -specialized))[:8]
+    np.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.parametrize("seed", [1, 7, 0x54474D52])
+def test_fixed_student_t_full_weight_specialization_matches_softmax(seed: int) -> None:
+    rng = np.random.default_rng(seed)
+    component_constant = rng.normal(size=8).astype(np.float32)
+    quadratic = np.exp(rng.uniform(-7.0, 7.0, size=8)).astype(np.float32)
+    logarithmic = component_constant - np.float32(6.5) * np.log1p(
+        quadratic / np.float32(3.0)
+    )
+    expected = np.exp(logarithmic - np.max(logarithmic))
+    expected /= np.sum(expected)
+    scale = np.exp(component_constant - np.max(component_constant))
+    s = np.float32(1.0) + quadratic / np.float32(3.0)
+    specialized = scale / (s**6 * np.sqrt(s))
+    specialized /= np.sum(specialized)
+    np.testing.assert_allclose(specialized, expected, rtol=2e-6, atol=2e-7)

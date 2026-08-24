@@ -101,5 +101,39 @@ g++ -O3 -DNDEBUG -std=c++11 -fopenmp \
   -o /tmp/xtrans-tgmr-reduce/tgmr_benchmark
 ```
 
+The subsequent implementation-viability experiment retains that source as
+its embedded O0 oracle and adds fixed-Student-t specialization, phase/chunk
+OpenMP, AVX2/FMA component batching, and bounded direct-mosaic streaming:
+
+```sh
+g++ -O3 -DNDEBUG -std=c++11 -fopenmp -mavx2 -mfma \
+  -Wall -Wextra -Wpedantic -Werror \
+  tools/xtrans_tgmr_reduce/native/tgmr_optimized_benchmark.cc \
+  -o /tmp/xtrans-tgmr-reduce/tgmr_optimized_benchmark
+
+OMP_PROC_BIND=spread OMP_PLACES=cores \
+  /tmp/xtrans-tgmr-reduce/tgmr_optimized_benchmark \
+    /tmp/xtrans-tgmr-reduce/tgmr32-native.bin \
+    o5-stream 2048 2048 18 5 --chunk 512 --tile 128 --profile
+```
+
+Verify the final native arithmetic over the entire frozen scientific corpus:
+
+```sh
+nice -n 10 env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  .venv/bin/python -m tools.xtrans_tgmr_reduce.native_optimized_check \
+    --executable /tmp/xtrans-tgmr-reduce/tgmr_optimized_benchmark \
+    --native-artifact /tmp/xtrans-tgmr-reduce/tgmr32-native.bin \
+    --model /tmp/xtrans-tgmr-reduce/models/k32-nu3-i30.npz \
+    --full --threads 12
+```
+
+The final direct-mosaic path measures approximately 6.9 MP/s on the Ryzen 9
+5900X and reproduces the frozen float32 result with `4.29e-8` RMS and
+`4.77e-7` maximum error. The weights remain external, and no RawTherapee
+engine or GUI method is added.
+
 See `devnotes/xtrans-tgmr-reduction-report.md` for the complete quality/cost
-frontier and safety result.
+frontier and safety result, and
+`devnotes/xtrans-tgmr-native-optimization-report.md` for the native viability
+result.
