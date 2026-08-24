@@ -1,0 +1,4467 @@
+{
+  "external": {
+    "degrees_of_freedom": 5.0,
+    "methods": {
+      "mmse": {
+        "count": 7776,
+        "maximum_abs": 0.11344019593219239,
+        "median_abs": 0.0008488833534482793,
+        "mse": 9.823848501342191e-05,
+        "p95_abs": 0.020956998119535913,
+        "p99_abs": 0.04240852668786071,
+        "psnr_db": 40.07718343631494,
+        "sse": 0.7639024594643687
+      }
+    },
+    "posterior": {
+      "effective_component_count_mean": 5.259972295670646,
+      "entropy_mean": 1.2407160848133791,
+      "entropy_p95": 2.773406240886961,
+      "maximum_responsibility_mean": 0.60281839258705,
+      "maximum_responsibility_p05": 0.18043769604837237,
+      "top_two_ratio_median": 2.821077525785265
+    },
+    "posterior_rows": {
+      "chelsea-0": {
+        "count": 144,
+        "entropy_mean": 2.5994596409584307,
+        "maximum_responsibility_mean": 0.2340538429005942,
+        "predictive_risk_mean": 0.0004400636664821493,
+        "rgb_error_rms": 0.010445960750603856
+      },
+      "chelsea-1": {
+        "count": 144,
+        "entropy_mean": 1.1444443071920096,
+        "maximum_responsibility_mean": 0.6214474074637226,
+        "predictive_risk_mean": 0.00020345549189391745,
+        "rgb_error_rms": 0.00558287983225705
+      },
+      "chelsea-2": {
+        "count": 144,
+        "entropy_mean": 2.152323456045453,
+        "maximum_responsibility_mean": 0.3514101596608932,
+        "predictive_risk_mean": 0.0003308583817528398,
+        "rgb_error_rms": 0.009520857502017924
+      },
+      "coffee-0": {
+        "count": 144,
+        "entropy_mean": 1.4414394184686306,
+        "maximum_responsibility_mean": 0.5230760645383685,
+        "predictive_risk_mean": 0.0011409002937256907,
+        "rgb_error_rms": 0.017026945099198033
+      },
+      "coffee-1": {
+        "count": 144,
+        "entropy_mean": 0.3489230039396601,
+        "maximum_responsibility_mean": 0.878567019374038,
+        "predictive_risk_mean": 2.7455242858352637e-05,
+        "rgb_error_rms": 0.006043296204885755
+      },
+      "coffee-2": {
+        "count": 144,
+        "entropy_mean": 1.3237724005827656,
+        "maximum_responsibility_mean": 0.5157411933655567,
+        "predictive_risk_mean": 0.00010172160067436521,
+        "rgb_error_rms": 0.007089453045795945
+      },
+      "ihc-0": {
+        "count": 144,
+        "entropy_mean": 2.4518459904329077,
+        "maximum_responsibility_mean": 0.30759078869785544,
+        "predictive_risk_mean": 0.0016422648942109905,
+        "rgb_error_rms": 0.015512145601375728
+      },
+      "ihc-1": {
+        "count": 144,
+        "entropy_mean": 1.804054561471605,
+        "maximum_responsibility_mean": 0.42474315827069475,
+        "predictive_risk_mean": 0.00012218197439034596,
+        "rgb_error_rms": 0.003805863705084581
+      },
+      "ihc-2": {
+        "count": 144,
+        "entropy_mean": 2.6423050039166114,
+        "maximum_responsibility_mean": 0.237542928318813,
+        "predictive_risk_mean": 0.00040582955488288196,
+        "rgb_error_rms": 0.008342820004210216
+      },
+      "motorcycle-left-0": {
+        "count": 144,
+        "entropy_mean": 0.9520931483915176,
+        "maximum_responsibility_mean": 0.641228371166719,
+        "predictive_risk_mean": 0.00016407929633316688,
+        "rgb_error_rms": 0.005167738285802278
+      },
+      "motorcycle-left-1": {
+        "count": 144,
+        "entropy_mean": 1.2295579496159463,
+        "maximum_responsibility_mean": 0.5405852824865531,
+        "predictive_risk_mean": 2.34634204558121e-05,
+        "rgb_error_rms": 0.0026847419445164256
+      },
+      "motorcycle-left-2": {
+        "count": 144,
+        "entropy_mean": 1.4598625202721305,
+        "maximum_responsibility_mean": 0.5379285202101644,
+        "predictive_risk_mean": 0.0005167964581057328,
+        "rgb_error_rms": 0.012095660828949839
+      },
+      "retina-0": {
+        "count": 144,
+        "entropy_mean": 0.3260274471603999,
+        "maximum_responsibility_mean": 0.8747944487412866,
+        "predictive_risk_mean": 1.8585484201712073e-05,
+        "rgb_error_rms": 0.002663501708986059
+      },
+      "retina-1": {
+        "count": 144,
+        "entropy_mean": 0.35246892549416764,
+        "maximum_responsibility_mean": 0.8717466820763282,
+        "predictive_risk_mean": 3.990258229830614e-05,
+        "rgb_error_rms": 0.0027751308268272267
+      },
+      "retina-2": {
+        "count": 144,
+        "entropy_mean": 0.4694379076288947,
+        "maximum_responsibility_mean": 0.8297446847851092,
+        "predictive_risk_mean": 1.7356129585914422e-05,
+        "rgb_error_rms": 0.0019449161977244502
+      },
+      "rocket-0": {
+        "count": 144,
+        "entropy_mean": 0.14343600371990445,
+        "maximum_responsibility_mean": 0.9585909854570708,
+        "predictive_risk_mean": 3.1455651352430432e-06,
+        "rgb_error_rms": 0.0012403043661857402
+      },
+      "rocket-1": {
+        "count": 144,
+        "entropy_mean": 1.4829350014544522,
+        "maximum_responsibility_mean": 0.5032140436910507,
+        "predictive_risk_mean": 0.0005252230274505682,
+        "rgb_error_rms": 0.0252077227007008
+      },
+      "rocket-2": {
+        "count": 144,
+        "entropy_mean": 0.008502839895339941,
+        "maximum_responsibility_mean": 0.9987254853620805,
+        "predictive_risk_mean": 1.1719596856662818e-06,
+        "rgb_error_rms": 0.00042722577251226785
+      }
+    },
+    "predictive_uncertainty": {
+      "decile_calibration": [
+        {
+          "bin": 0,
+          "count": 260,
+          "error_rms": 0.0007424194674725653,
+          "risk_mean": 1.8870915514355916e-06
+        },
+        {
+          "bin": 1,
+          "count": 260,
+          "error_rms": 0.0017451412425841986,
+          "risk_mean": 1.0376230853632504e-05
+        },
+        {
+          "bin": 2,
+          "count": 259,
+          "error_rms": 0.003591205427986822,
+          "risk_mean": 2.141146994427413e-05
+        },
+        {
+          "bin": 3,
+          "count": 259,
+          "error_rms": 0.004476764751410242,
+          "risk_mean": 3.6647441739303905e-05
+        },
+        {
+          "bin": 4,
+          "count": 259,
+          "error_rms": 0.005081639003799266,
+          "risk_mean": 7.207993882533884e-05
+        },
+        {
+          "bin": 5,
+          "count": 259,
+          "error_rms": 0.006008530504586605,
+          "risk_mean": 0.00013459428051763988
+        },
+        {
+          "bin": 6,
+          "count": 259,
+          "error_rms": 0.007494942868801584,
+          "risk_mean": 0.00022411423684400974
+        },
+        {
+          "bin": 7,
+          "count": 259,
+          "error_rms": 0.009153553854182813,
+          "risk_mean": 0.0003341733256381324
+        },
+        {
+          "bin": 8,
+          "count": 259,
+          "error_rms": 0.015329432199820513,
+          "risk_mean": 0.0005537090212428162
+        },
+        {
+          "bin": 9,
+          "count": 259,
+          "error_rms": 0.022576890303350798,
+          "risk_mean": 0.0017936681989492134
+        }
+      ],
+      "risk_error_spearman": 0.7580672193647289,
+      "risk_maximum": 0.005695016372307459,
+      "risk_median": 9.961145105456817e-05,
+      "risk_minimum": 7.80663283511203e-07
+    },
+    "rows": {
+      "chelsea-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03834083324529175,
+          "median_abs": 0.0033249399714639916,
+          "mse": 0.00010911809600315625,
+          "p95_abs": 0.02400902909743328,
+          "p99_abs": 0.034941382386895,
+          "psnr_db": 39.621032206067405,
+          "sse": 0.0471390174733635
+        }
+      },
+      "chelsea-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.030143841881338673,
+          "median_abs": 0.0012055787836043746,
+          "mse": 3.116854722142251e-05,
+          "p95_abs": 0.01270468710025148,
+          "p99_abs": 0.02175874463068773,
+          "psnr_db": 45.06283439892664,
+          "sse": 0.013464812399654524
+        }
+      },
+      "chelsea-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.04219553421689187,
+          "median_abs": 0.0028775076845926617,
+          "mse": 9.064672757373098e-05,
+          "p95_abs": 0.022583788493790526,
+          "p99_abs": 0.03596106259145836,
+          "psnr_db": 40.42647869696702,
+          "sse": 0.039159386311851785
+        }
+      },
+      "coffee-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.06502706876364217,
+          "median_abs": 0.0035583782570039087,
+          "mse": 0.00028991685941110395,
+          "p95_abs": 0.04093824334560718,
+          "p99_abs": 0.05623977900403111,
+          "psnr_db": 35.3772652856942,
+          "sse": 0.1252440832655969
+        }
+      },
+      "coffee-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.039921230707657296,
+          "median_abs": 0.000639747056114629,
+          "mse": 3.652142901998658e-05,
+          "p95_abs": 0.014319747719053045,
+          "p99_abs": 0.023142605830137598,
+          "psnr_db": 44.37452237617674,
+          "sse": 0.015777257336634203
+        }
+      },
+      "coffee-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03989065440803552,
+          "median_abs": 0.0019005407249363393,
+          "mse": 5.0260344488545406e-05,
+          "p95_abs": 0.014790033084831953,
+          "p99_abs": 0.026072404883361416,
+          "psnr_db": 42.98774539043052,
+          "sse": 0.021712468819051617
+        }
+      },
+      "ihc-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.07185789659217379,
+          "median_abs": 0.004813521961754247,
+          "mse": 0.00024062666115828038,
+          "p95_abs": 0.034674158596774925,
+          "p99_abs": 0.05480305540847747,
+          "psnr_db": 36.186562549993326,
+          "sse": 0.10395071762037712
+        }
+      },
+      "ihc-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.017046570925966426,
+          "median_abs": 0.0013255591923456642,
+          "mse": 1.4484598541680136e-05,
+          "p95_abs": 0.008568695589455805,
+          "p99_abs": 0.011808501434322074,
+          "psnr_db": 48.39093537294819,
+          "sse": 0.006257346570005819
+        }
+      },
+      "ihc-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.033451874226972766,
+          "median_abs": 0.002899373405330641,
+          "mse": 6.960264562265018e-05,
+          "p95_abs": 0.018709757411016256,
+          "p99_abs": 0.026796575402377724,
+          "psnr_db": 41.57374252379648,
+          "sse": 0.030068342908984875
+        }
+      },
+      "motorcycle-left-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03459348788896266,
+          "median_abs": 0.0013716684278553548,
+          "mse": 2.6705518990546674e-05,
+          "p95_abs": 0.010877560219615615,
+          "p99_abs": 0.020576672329393596,
+          "psnr_db": 45.73398977607204,
+          "sse": 0.011536784203916163
+        }
+      },
+      "motorcycle-left-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.012314669192070749,
+          "median_abs": 0.0009984097259057231,
+          "mse": 7.207839308645838e-06,
+          "p95_abs": 0.005816346794628594,
+          "p99_abs": 0.008852267229399852,
+          "psnr_db": 51.4219490406927,
+          "sse": 0.0031137865813350017
+        }
+      },
+      "motorcycle-left-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.06642854788851921,
+          "median_abs": 0.002878978879490679,
+          "mse": 0.00014630501088899148,
+          "p95_abs": 0.026690605160886505,
+          "p99_abs": 0.04331450867822016,
+          "psnr_db": 38.34740799205031,
+          "sse": 0.06320376470404432
+        }
+      },
+      "retina-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.014455683951580311,
+          "median_abs": 0.00027108148298610754,
+          "mse": 7.094241353771658e-06,
+          "p95_abs": 0.006356736689767011,
+          "p99_abs": 0.011182457099374809,
+          "psnr_db": 51.490940404442604,
+          "sse": 0.003064712264829356
+        }
+      },
+      "retina-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.019189186531366587,
+          "median_abs": 0.0006191904725156502,
+          "mse": 7.701351106006768e-06,
+          "p95_abs": 0.006259024535051352,
+          "p99_abs": 0.011457330296767201,
+          "psnr_db": 51.13433076592614,
+          "sse": 0.003326983677794924
+        }
+      },
+      "retina-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.009645218670339795,
+          "median_abs": 0.00037302140200271006,
+          "mse": 3.782699016170933e-06,
+          "p95_abs": 0.0048541235555290135,
+          "p99_abs": 0.006891515528790029,
+          "psnr_db": 54.22198213509369,
+          "sse": 0.001634125974985843
+        }
+      },
+      "rocket-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.00517430703870439,
+          "median_abs": 0.00026128051343733347,
+          "mse": 1.5383549207794104e-06,
+          "p95_abs": 0.002774213452980883,
+          "p99_abs": 0.004445311587127312,
+          "psnr_db": 58.1294345494196,
+          "sse": 0.0006645693257767053
+        }
+      },
+      "rocket-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.11344019593219239,
+          "median_abs": 0.002223021455299847,
+          "mse": 0.0006354292837554266,
+          "p95_abs": 0.062284074102737036,
+          "p99_abs": 0.09899705871154525,
+          "psnr_db": 31.969327745886048,
+          "sse": 0.27450545058234427
+        }
+      },
+      "rocket-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.0031287836203864466,
+          "median_abs": 8.078123834136773e-05,
+          "mse": 1.8252186069870402e-07,
+          "p95_abs": 0.000999318405433566,
+          "p99_abs": 0.0015510536702832572,
+          "psnr_db": 67.38685112510265,
+          "sse": 7.884944382184014e-05
+        }
+      }
+    }
+  },
+  "external_delta_vs_gmax_db": {
+    "chelsea-0": 0.5515213670121497,
+    "chelsea-1": 7.343430685293008,
+    "chelsea-2": 2.6621937054100826,
+    "coffee-0": 5.722174283115994,
+    "coffee-1": -0.4610587802360513,
+    "coffee-2": 0.9390566035510091,
+    "ihc-0": 1.5173409650980787,
+    "ihc-1": 2.593484775885564,
+    "ihc-2": 0.8070224019560683,
+    "motorcycle-left-0": 2.4353185184350536,
+    "motorcycle-left-1": 0.4795172506576506,
+    "motorcycle-left-2": 2.785298516006506,
+    "retina-0": 2.30150843753961,
+    "retina-1": 4.575552335115695,
+    "retina-2": 3.1948558623345917,
+    "rocket-0": 1.886747179005539,
+    "rocket-1": 1.6726380996766288,
+    "rocket-2": 1.1545853642524264
+  },
+  "external_gaussian": {
+    "degrees_of_freedom": "infinity",
+    "methods": {
+      "mmse": {
+        "count": 7776,
+        "maximum_abs": 0.13597321105540097,
+        "median_abs": 0.0009446444552701112,
+        "mse": 0.00011481900381526172,
+        "p95_abs": 0.021173978109019734,
+        "p99_abs": 0.05059607996918963,
+        "psnr_db": 39.399862254479466,
+        "sse": 0.8928325736674751
+      }
+    },
+    "posterior": {
+      "effective_component_count_mean": 2.9704484868331056,
+      "entropy_mean": 0.8349448170640253,
+      "entropy_p95": 2.085625629222975,
+      "maximum_responsibility_mean": 0.7192313630895427,
+      "maximum_responsibility_p05": 0.29852831240370087,
+      "top_two_ratio_median": 5.774706802517594
+    },
+    "posterior_rows": {
+      "chelsea-0": {
+        "count": 144,
+        "entropy_mean": 1.7924961849959264,
+        "maximum_responsibility_mean": 0.42384123217424097,
+        "predictive_risk_mean": 0.00045125620747691236,
+        "rgb_error_rms": 0.010195465832714502
+      },
+      "chelsea-1": {
+        "count": 144,
+        "entropy_mean": 0.702068124108786,
+        "maximum_responsibility_mean": 0.7708547587264314,
+        "predictive_risk_mean": 0.0002471510913551876,
+        "rgb_error_rms": 0.0057729017027797185
+      },
+      "chelsea-2": {
+        "count": 144,
+        "entropy_mean": 1.425807961969287,
+        "maximum_responsibility_mean": 0.5612657071759881,
+        "predictive_risk_mean": 0.0003562981133153117,
+        "rgb_error_rms": 0.009502181431322978
+      },
+      "coffee-0": {
+        "count": 144,
+        "entropy_mean": 0.8587295933962774,
+        "maximum_responsibility_mean": 0.6918994522544671,
+        "predictive_risk_mean": 0.0014097863391931411,
+        "rgb_error_rms": 0.02061812236930178
+      },
+      "coffee-1": {
+        "count": 144,
+        "entropy_mean": 0.3771390351911514,
+        "maximum_responsibility_mean": 0.8451019532624634,
+        "predictive_risk_mean": 5.908676472472316e-05,
+        "rgb_error_rms": 0.005988971209603588
+      },
+      "coffee-2": {
+        "count": 144,
+        "entropy_mean": 0.765131270837905,
+        "maximum_responsibility_mean": 0.7249289839660257,
+        "predictive_risk_mean": 0.000108159603706688,
+        "rgb_error_rms": 0.007207862219715191
+      },
+      "ihc-0": {
+        "count": 144,
+        "entropy_mean": 1.8028043842269976,
+        "maximum_responsibility_mean": 0.4458662468504695,
+        "predictive_risk_mean": 0.0018193173314061523,
+        "rgb_error_rms": 0.01619087458749762
+      },
+      "ihc-1": {
+        "count": 144,
+        "entropy_mean": 1.1066941405272566,
+        "maximum_responsibility_mean": 0.6327827565639476,
+        "predictive_risk_mean": 0.0001375950937853521,
+        "rgb_error_rms": 0.003985461483900979
+      },
+      "ihc-2": {
+        "count": 144,
+        "entropy_mean": 1.8883570681174031,
+        "maximum_responsibility_mean": 0.40277398549288673,
+        "predictive_risk_mean": 0.00044563477387184116,
+        "rgb_error_rms": 0.008019595184698336
+      },
+      "motorcycle-left-0": {
+        "count": 144,
+        "entropy_mean": 0.513405763229366,
+        "maximum_responsibility_mean": 0.7967740213520728,
+        "predictive_risk_mean": 0.00020427086314799578,
+        "rgb_error_rms": 0.007545626872310811
+      },
+      "motorcycle-left-1": {
+        "count": 144,
+        "entropy_mean": 0.605487238773335,
+        "maximum_responsibility_mean": 0.7772710803513763,
+        "predictive_risk_mean": 3.343429347653222e-05,
+        "rgb_error_rms": 0.0028041156030711835
+      },
+      "motorcycle-left-2": {
+        "count": 144,
+        "entropy_mean": 1.0275612176646947,
+        "maximum_responsibility_mean": 0.6633983254174489,
+        "predictive_risk_mean": 0.0006437700265656712,
+        "rgb_error_rms": 0.012206274870990167
+      },
+      "retina-0": {
+        "count": 144,
+        "entropy_mean": 0.45368094424583166,
+        "maximum_responsibility_mean": 0.8054487957740458,
+        "predictive_risk_mean": 4.955993303102555e-05,
+        "rgb_error_rms": 0.0028757375037118927
+      },
+      "retina-1": {
+        "count": 144,
+        "entropy_mean": 0.27409537260845196,
+        "maximum_responsibility_mean": 0.9031554475598765,
+        "predictive_risk_mean": 6.751292342447488e-05,
+        "rgb_error_rms": 0.002835794881578782
+      },
+      "retina-2": {
+        "count": 144,
+        "entropy_mean": 0.41349915180074914,
+        "maximum_responsibility_mean": 0.8394266769756287,
+        "predictive_risk_mean": 3.972932138915363e-05,
+        "rgb_error_rms": 0.0022326580386075297
+      },
+      "rocket-0": {
+        "count": 144,
+        "entropy_mean": 0.0044871155643644665,
+        "maximum_responsibility_mean": 0.9994204117708073,
+        "predictive_risk_mean": 6.174751376342133e-06,
+        "rgb_error_rms": 0.001238772073187515
+      },
+      "rocket-1": {
+        "count": 144,
+        "entropy_mean": 1.0168304720913923,
+        "maximum_responsibility_mean": 0.6620241317724316,
+        "predictive_risk_mean": 0.0005352885385114826,
+        "rgb_error_rms": 0.02733313402381112
+      },
+      "rocket-2": {
+        "count": 144,
+        "entropy_mean": 0.0007316678032814902,
+        "maximum_responsibility_mean": 0.9999305681711613,
+        "predictive_risk_mean": 6.167704643408115e-06,
+        "rgb_error_rms": 0.00042733721903047043
+      }
+    },
+    "predictive_uncertainty": {
+      "decile_calibration": [
+        {
+          "bin": 0,
+          "count": 260,
+          "error_rms": 0.0009395979017949123,
+          "risk_mean": 6.015643702358894e-06
+        },
+        {
+          "bin": 1,
+          "count": 260,
+          "error_rms": 0.002704856980949716,
+          "risk_mean": 1.9233367600519665e-05
+        },
+        {
+          "bin": 2,
+          "count": 259,
+          "error_rms": 0.0033144204744454966,
+          "risk_mean": 3.7524223094825046e-05
+        },
+        {
+          "bin": 3,
+          "count": 259,
+          "error_rms": 0.004738813603133564,
+          "risk_mean": 6.115566727486716e-05
+        },
+        {
+          "bin": 4,
+          "count": 259,
+          "error_rms": 0.005069878080222562,
+          "risk_mean": 8.628002058367023e-05
+        },
+        {
+          "bin": 5,
+          "count": 259,
+          "error_rms": 0.006607917614966203,
+          "risk_mean": 0.00014539197508284582
+        },
+        {
+          "bin": 6,
+          "count": 259,
+          "error_rms": 0.008359402740510252,
+          "risk_mean": 0.0002497899934280534
+        },
+        {
+          "bin": 7,
+          "count": 259,
+          "error_rms": 0.010398594758104049,
+          "risk_mean": 0.00035686643813502886
+        },
+        {
+          "bin": 8,
+          "count": 259,
+          "error_rms": 0.01477518712878979,
+          "risk_mean": 0.0006048346976140791
+        },
+        {
+          "bin": 9,
+          "count": 259,
+          "error_rms": 0.02533218113249664,
+          "risk_mean": 0.0021135359275474513
+        }
+      ],
+      "risk_error_spearman": 0.7303266035533557,
+      "risk_maximum": 0.009832161712833853,
+      "risk_median": 0.00010425402789272384,
+      "risk_minimum": 4.857731462322505e-06
+    },
+    "rows": {
+      "chelsea-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.037583191114695325,
+          "median_abs": 0.003281069467346187,
+          "mse": 0.00010394752354604883,
+          "p95_abs": 0.023247251418320083,
+          "p99_abs": 0.03415914706868691,
+          "psnr_db": 39.83185852875052,
+          "sse": 0.04490533017189309
+        }
+      },
+      "chelsea-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03573279056799189,
+          "median_abs": 0.001213118367859171,
+          "mse": 3.332639406995697e-05,
+          "p95_abs": 0.012110346767710965,
+          "p99_abs": 0.021981720515011266,
+          "psnr_db": 44.77211674645489,
+          "sse": 0.014397002238221412
+        }
+      },
+      "chelsea-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.044651825168432246,
+          "median_abs": 0.002689588383318821,
+          "mse": 9.029145195377918e-05,
+          "p95_abs": 0.02276260849343267,
+          "p99_abs": 0.03563128832432398,
+          "psnr_db": 40.44353363141947,
+          "sse": 0.039005907244032606
+        }
+      },
+      "coffee-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.07985582117767853,
+          "median_abs": 0.0038192917756721713,
+          "mse": 0.00042510697003550246,
+          "p95_abs": 0.05236919728129311,
+          "p99_abs": 0.07016713254653795,
+          "psnr_db": 33.71501774300952,
+          "sse": 0.18364621105533707
+        }
+      },
+      "coffee-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03992484683218411,
+          "median_abs": 0.0006840779447089668,
+          "mse": 3.586777614946066e-05,
+          "p95_abs": 0.014060073271948458,
+          "p99_abs": 0.023143482028841686,
+          "psnr_db": 44.452955493334514,
+          "sse": 0.015494879296567007
+        }
+      },
+      "coffee-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03948309532462002,
+          "median_abs": 0.0019621072513679727,
+          "mse": 5.19532777783976e-05,
+          "p95_abs": 0.014765727856926241,
+          "p99_abs": 0.02640003477109391,
+          "psnr_db": 42.84387047218172,
+          "sse": 0.022443816000267763
+        }
+      },
+      "ihc-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.07374232500872002,
+          "median_abs": 0.005034262963450775,
+          "mse": 0.00026214441990807626,
+          "p95_abs": 0.03551343368421445,
+          "p99_abs": 0.0549995067718834,
+          "psnr_db": 35.814593823863575,
+          "sse": 0.11324638940028894
+        }
+      },
+      "ihc-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.016955193517692008,
+          "median_abs": 0.0014249019341877542,
+          "mse": 1.5883903239658198e-05,
+          "p95_abs": 0.008559905980369556,
+          "p99_abs": 0.012719902300353261,
+          "psnr_db": 47.990427672018654,
+          "sse": 0.006861846199532342
+        }
+      },
+      "ihc-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.03220156710360181,
+          "median_abs": 0.0028441690165235817,
+          "mse": 6.431390692643672e-05,
+          "p95_abs": 0.017608542578659618,
+          "p99_abs": 0.02496369626808038,
+          "psnr_db": 41.9169510719449,
+          "sse": 0.027783607792220666
+        }
+      },
+      "motorcycle-left-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.07324444272857211,
+          "median_abs": 0.0016481079148434469,
+          "mse": 5.693648489613902e-05,
+          "p95_abs": 0.013704050123152258,
+          "p99_abs": 0.02457341092367403,
+          "psnr_db": 42.44609348522624,
+          "sse": 0.024596561475132058
+        }
+      },
+      "motorcycle-left-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.012381791094029232,
+          "median_abs": 0.001020175077353462,
+          "mse": 7.863064315387267e-06,
+          "p95_abs": 0.006030292461480434,
+          "p99_abs": 0.00931846357061318,
+          "psnr_db": 51.04408172037723,
+          "sse": 0.0033968437842472996
+        }
+      },
+      "motorcycle-left-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.06919836545709512,
+          "median_abs": 0.0027757703893247637,
+          "mse": 0.00014899314622616598,
+          "p95_abs": 0.027109125033016143,
+          "p99_abs": 0.048224467096195156,
+          "psnr_db": 38.268337089341486,
+          "sse": 0.06436503916970371
+        }
+      },
+      "retina-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.015811014220423414,
+          "median_abs": 0.00041673795807574973,
+          "mse": 8.269866190255107e-06,
+          "p95_abs": 0.006624678821912399,
+          "p99_abs": 0.011193322064498351,
+          "psnr_db": 50.825015174491426,
+          "sse": 0.0035725821941902064
+        }
+      },
+      "retina-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.019179925342499682,
+          "median_abs": 0.0006389410178874178,
+          "mse": 8.04173261038842e-06,
+          "p95_abs": 0.00640743834481946,
+          "p99_abs": 0.011518948886470077,
+          "psnr_db": 50.946503713926965,
+          "sse": 0.003474028487687798
+        }
+      },
+      "retina-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.011223075578184583,
+          "median_abs": 0.0005460420673727533,
+          "mse": 4.984761917358822e-06,
+          "p95_abs": 0.005169102815267631,
+          "p99_abs": 0.008863296690848385,
+          "psnr_db": 53.02355579668577,
+          "sse": 0.002153417148299011
+        }
+      },
+      "rocket-0": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.005178442322963411,
+          "median_abs": 0.00027103252200798983,
+          "mse": 1.5345562493092944e-06,
+          "p95_abs": 0.00281175487442242,
+          "p99_abs": 0.004441877988128886,
+          "psnr_db": 58.14017187833714,
+          "sse": 0.0006629282997016152
+        }
+      },
+      "rocket-1": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.13597321105540097,
+          "median_abs": 0.0021335082607306793,
+          "mse": 0.0007471002155636212,
+          "p95_abs": 0.06624349038582265,
+          "p99_abs": 0.10546897728602402,
+          "psnr_db": 31.266211382822288,
+          "sse": 0.3227472931234844
+        }
+      },
+      "rocket-2": {
+        "mmse": {
+          "count": 432,
+          "maximum_abs": 0.0031288405034469724,
+          "median_abs": 8.106854887881838e-05,
+          "mse": 1.8261709876869623e-07,
+          "p95_abs": 0.0009993718608834706,
+          "p99_abs": 0.0015510521924257863,
+          "psnr_db": 67.38458561121375,
+          "sse": 7.889058666807677e-05
+        }
+      }
+    }
+  },
+  "format": "rawtherapee-xtrans-student-t-gmr-stage-a-v1",
+  "frozen": {
+    "component_count": 64,
+    "iterations": 10,
+    "model_logical_sha256": "6e8b90300dd0cdb729fd0aaaa8dbb1d37496b9a5127f793b11061a1046f53137",
+    "patch_size": 7,
+    "phase_count": 18,
+    "tau": 0.0003,
+    "temperature": 4.0
+  },
+  "gaussian_limit_parity": {
+    "all_18_phases_present": true,
+    "bit_identical_output": true,
+    "bit_identical_responsibilities": true,
+    "maximum_output_abs_difference": 0.0,
+    "maximum_responsibility_abs_difference": 0.0
+  },
+  "parent": {
+    "dataset_format": "rawtherapee-xtrans-joint-color-gmm-corpus-v1",
+    "full_gmm_results_sha256": "2a1fd2c2ee2974c5760d68f107c480cb0e5312c894ab2b01f7103e219aeb654f",
+    "gmr_results_sha256": "4e4f62c9b570d486d703d068e0a0b96a11c3da2373c4fbf92f92dcbd7abb31e4"
+  },
+  "selected_finite_nu": 5.0,
+  "selected_validation_delta_vs_gaussian_db": 0.44014713229975655,
+  "stage_a_promising": true,
+  "stars": {
+    "hubble": {
+      "degrees_of_freedom": 5.0,
+      "methods": {
+        "mmse": {
+          "count": 1728,
+          "maximum_abs": 0.3891521459714883,
+          "median_abs": 0.0004793073431669907,
+          "mse": 0.0003595857506624014,
+          "p95_abs": 0.011535481887002933,
+          "p99_abs": 0.07584306276988545,
+          "psnr_db": 34.441975264251894,
+          "sse": 0.6213641771446295
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 2.175585490294845,
+        "entropy_mean": 0.5567708031101436,
+        "entropy_p95": 1.8430481870575754,
+        "maximum_responsibility_mean": 0.8233060997287645,
+        "maximum_responsibility_p05": 0.38703124165068675,
+        "top_two_ratio_median": 15.801366668379003
+      },
+      "posterior_rows": {
+        "hubble": {
+          "count": 576,
+          "entropy_mean": 0.5567708031101436,
+          "maximum_responsibility_mean": 0.8233060997287645,
+          "predictive_risk_mean": 0.0001732023246594284,
+          "rgb_error_rms": 0.018962746390288547
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 58,
+            "error_rms": 0.0007331012105665244,
+            "risk_mean": 2.1154165154638462e-06
+          },
+          {
+            "bin": 1,
+            "count": 58,
+            "error_rms": 0.0009668614187451181,
+            "risk_mean": 2.671322380373795e-06
+          },
+          {
+            "bin": 2,
+            "count": 58,
+            "error_rms": 0.0010963216053358723,
+            "risk_mean": 3.21161788815588e-06
+          },
+          {
+            "bin": 3,
+            "count": 58,
+            "error_rms": 0.001054574858316434,
+            "risk_mean": 3.7795510615334427e-06
+          },
+          {
+            "bin": 4,
+            "count": 58,
+            "error_rms": 0.001014908825949807,
+            "risk_mean": 4.523696422580843e-06
+          },
+          {
+            "bin": 5,
+            "count": 58,
+            "error_rms": 0.0014956677328162855,
+            "risk_mean": 7.960637121342063e-06
+          },
+          {
+            "bin": 6,
+            "count": 57,
+            "error_rms": 0.002448452717225248,
+            "risk_mean": 2.374178944512235e-05
+          },
+          {
+            "bin": 7,
+            "count": 57,
+            "error_rms": 0.002390775095775477,
+            "risk_mean": 5.616706011717669e-05
+          },
+          {
+            "bin": 8,
+            "count": 57,
+            "error_rms": 0.00518381266418454,
+            "risk_mean": 0.00014590539578824627
+          },
+          {
+            "bin": 9,
+            "count": 57,
+            "error_rms": 0.05989948985984825,
+            "risk_mean": 0.0014997529301449396
+          }
+        ],
+        "risk_error_spearman": 0.6370611358099113,
+        "risk_maximum": 0.016040478379491244,
+        "risk_median": 5.220781751817297e-06,
+        "risk_minimum": 1.5253793483705338e-06
+      },
+      "rows": {
+        "hubble": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.3891521459714883,
+            "median_abs": 0.0004793073431669907,
+            "mse": 0.0003595857506624014,
+            "p95_abs": 0.011535481887002933,
+            "p99_abs": 0.07584306276988545,
+            "psnr_db": 34.441975264251894,
+            "sse": 0.6213641771446295
+          }
+        }
+      }
+    },
+    "hubble-bright": {
+      "degrees_of_freedom": 5.0,
+      "methods": {
+        "mmse": {
+          "count": 288,
+          "maximum_abs": 0.6902801896555444,
+          "median_abs": 0.03613375468905233,
+          "mse": 0.026239674402777337,
+          "p95_abs": 0.34702963520092434,
+          "p99_abs": 0.5823858111843722,
+          "psnr_db": 15.810415582428119,
+          "sse": 7.557026227999873
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 10.712110139684036,
+        "entropy_mean": 2.2538197512214286,
+        "entropy_p95": 2.9924603187836643,
+        "maximum_responsibility_mean": 0.3425451050334803,
+        "maximum_responsibility_p05": 0.1404440997211918,
+        "top_two_ratio_median": 1.6668861034657958
+      },
+      "posterior_rows": {
+        "hubble-bright": {
+          "count": 96,
+          "entropy_mean": 2.2538197512214286,
+          "maximum_responsibility_mean": 0.3425451050334803,
+          "predictive_risk_mean": 0.012221652882347127,
+          "rgb_error_rms": 0.16198664884112313
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 10,
+            "error_rms": 0.04694949923547264,
+            "risk_mean": 0.0014109578952392473
+          },
+          {
+            "bin": 1,
+            "count": 10,
+            "error_rms": 0.043001165034569036,
+            "risk_mean": 0.0026699982728289563
+          },
+          {
+            "bin": 2,
+            "count": 10,
+            "error_rms": 0.07058474860318655,
+            "risk_mean": 0.004295838187985209
+          },
+          {
+            "bin": 3,
+            "count": 10,
+            "error_rms": 0.0851509107751996,
+            "risk_mean": 0.007222893694318058
+          },
+          {
+            "bin": 4,
+            "count": 10,
+            "error_rms": 0.15735903936529524,
+            "risk_mean": 0.009387989634476334
+          },
+          {
+            "bin": 5,
+            "count": 10,
+            "error_rms": 0.16599732065998005,
+            "risk_mean": 0.011163826794086269
+          },
+          {
+            "bin": 6,
+            "count": 9,
+            "error_rms": 0.18901298725824722,
+            "risk_mean": 0.01281942511158951
+          },
+          {
+            "bin": 7,
+            "count": 9,
+            "error_rms": 0.20417923768746832,
+            "risk_mean": 0.015997677599396604
+          },
+          {
+            "bin": 8,
+            "count": 9,
+            "error_rms": 0.22241149786753833,
+            "risk_mean": 0.019687657925552215
+          },
+          {
+            "bin": 9,
+            "count": 9,
+            "error_rms": 0.27709586420115234,
+            "risk_mean": 0.041691198465237625
+          }
+        ],
+        "risk_error_spearman": 0.8196961475854586,
+        "risk_maximum": 0.07561436370020558,
+        "risk_median": 0.010094540282297084,
+        "risk_minimum": 0.000754383248154214
+      },
+      "rows": {
+        "hubble-bright": {
+          "mmse": {
+            "count": 288,
+            "maximum_abs": 0.6902801896555444,
+            "median_abs": 0.03613375468905233,
+            "mse": 0.026239674402777337,
+            "p95_abs": 0.34702963520092434,
+            "p99_abs": 0.5823858111843722,
+            "psnr_db": 15.810415582428119,
+            "sse": 7.557026227999873
+          }
+        }
+      }
+    },
+    "nasa-hydra-starfield": {
+      "degrees_of_freedom": 5.0,
+      "methods": {
+        "mmse": {
+          "count": 1728,
+          "maximum_abs": 0.0007702205904151363,
+          "median_abs": 3.5718374193365325e-05,
+          "mse": 1.2561207648696522e-08,
+          "p95_abs": 0.00023432168576907936,
+          "p99_abs": 0.00037350259185092716,
+          "psnr_db": 79.00968605029368,
+          "sse": 2.170576681694759e-05
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 1.0012899923213292,
+        "entropy_mean": 0.0012864689686204328,
+        "entropy_p95": 0.0036941618811961643,
+        "maximum_responsibility_mean": 0.9998580099917955,
+        "maximum_responsibility_p05": 0.9995833822010612,
+        "top_two_ratio_median": 18070.2800515758
+      },
+      "posterior_rows": {
+        "nasa-hydra-starfield": {
+          "count": 576,
+          "entropy_mean": 0.0012864689686204328,
+          "maximum_responsibility_mean": 0.9998580099917955,
+          "predictive_risk_mean": 7.28673259202911e-07,
+          "rgb_error_rms": 0.0001120767935332579
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 58,
+            "error_rms": 8.233881051118158e-05,
+            "risk_mean": 5.450924692790645e-07
+          },
+          {
+            "bin": 1,
+            "count": 58,
+            "error_rms": 0.00010805232294730735,
+            "risk_mean": 5.83695194062341e-07
+          },
+          {
+            "bin": 2,
+            "count": 58,
+            "error_rms": 9.365650780611178e-05,
+            "risk_mean": 6.400678881449434e-07
+          },
+          {
+            "bin": 3,
+            "count": 58,
+            "error_rms": 0.00011037070072392885,
+            "risk_mean": 6.702410347535577e-07
+          },
+          {
+            "bin": 4,
+            "count": 58,
+            "error_rms": 0.00010409665388958828,
+            "risk_mean": 6.955425194076084e-07
+          },
+          {
+            "bin": 5,
+            "count": 58,
+            "error_rms": 0.00010048385032614087,
+            "risk_mean": 7.238992520944122e-07
+          },
+          {
+            "bin": 6,
+            "count": 57,
+            "error_rms": 0.00010138732836950383,
+            "risk_mean": 7.604199533411047e-07
+          },
+          {
+            "bin": 7,
+            "count": 57,
+            "error_rms": 9.70291092765892e-05,
+            "risk_mean": 7.916600912235746e-07
+          },
+          {
+            "bin": 8,
+            "count": 57,
+            "error_rms": 0.0001045439605612718,
+            "risk_mean": 8.401379050615608e-07
+          },
+          {
+            "bin": 9,
+            "count": 57,
+            "error_rms": 0.00018684452387271152,
+            "risk_mean": 1.0449850775991093e-06
+          }
+        ],
+        "risk_error_spearman": 0.12902035767211717,
+        "risk_maximum": 1.420641388514583e-06,
+        "risk_median": 7.090024318267388e-07,
+        "risk_minimum": 5.076076446490058e-07
+      },
+      "rows": {
+        "nasa-hydra-starfield": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0007702205904151363,
+            "median_abs": 3.5718374193365325e-05,
+            "mse": 1.2561207648696522e-08,
+            "p95_abs": 0.00023432168576907936,
+            "p99_abs": 0.00037350259185092716,
+            "psnr_db": 79.00968605029368,
+            "sse": 2.170576681694759e-05
+          }
+        }
+      }
+    },
+    "nasa-hydra-starfield-bright": {
+      "degrees_of_freedom": 5.0,
+      "methods": {
+        "mmse": {
+          "count": 288,
+          "maximum_abs": 0.038682879089638744,
+          "median_abs": 0.0055619055572951465,
+          "mse": 0.00012904683051485108,
+          "p95_abs": 0.025278916456731283,
+          "p99_abs": 0.0338244871001121,
+          "psnr_db": 38.89252657581285,
+          "sse": 0.037165487188277106
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 5.541063682180375,
+        "entropy_mean": 1.530724498440349,
+        "entropy_p95": 2.414430331313667,
+        "maximum_responsibility_mean": 0.5154599879531203,
+        "maximum_responsibility_p05": 0.2501772906756947,
+        "top_two_ratio_median": 2.0988520544583427
+      },
+      "posterior_rows": {
+        "nasa-hydra-starfield-bright": {
+          "count": 96,
+          "entropy_mean": 1.530724498440349,
+          "maximum_responsibility_mean": 0.5154599879531203,
+          "predictive_risk_mean": 0.0005833814882440418,
+          "rgb_error_rms": 0.011359878102992615
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 10,
+            "error_rms": 0.006659568758036633,
+            "risk_mean": 9.914299081567601e-05
+          },
+          {
+            "bin": 1,
+            "count": 10,
+            "error_rms": 0.00844109845723101,
+            "risk_mean": 0.0001457967445332831
+          },
+          {
+            "bin": 2,
+            "count": 10,
+            "error_rms": 0.008101724807267079,
+            "risk_mean": 0.00019490616006392886
+          },
+          {
+            "bin": 3,
+            "count": 10,
+            "error_rms": 0.009805022211428852,
+            "risk_mean": 0.0002546643160115399
+          },
+          {
+            "bin": 4,
+            "count": 10,
+            "error_rms": 0.010365130062077878,
+            "risk_mean": 0.0002974780741101177
+          },
+          {
+            "bin": 5,
+            "count": 10,
+            "error_rms": 0.01201577044021851,
+            "risk_mean": 0.0003668289941552843
+          },
+          {
+            "bin": 6,
+            "count": 9,
+            "error_rms": 0.010184630831653028,
+            "risk_mean": 0.0005111293843124686
+          },
+          {
+            "bin": 7,
+            "count": 9,
+            "error_rms": 0.011291623224290058,
+            "risk_mean": 0.0007960682900911857
+          },
+          {
+            "bin": 8,
+            "count": 9,
+            "error_rms": 0.014926997118136994,
+            "risk_mean": 0.001097113465562287
+          },
+          {
+            "bin": 9,
+            "count": 9,
+            "error_rms": 0.018288371380519884,
+            "risk_mean": 0.002308627757204027
+          }
+        ],
+        "risk_error_spearman": 0.5109875203472599,
+        "risk_maximum": 0.0037141492074450177,
+        "risk_median": 0.0003148073488245225,
+        "risk_minimum": 6.223377142042173e-05
+      },
+      "rows": {
+        "nasa-hydra-starfield-bright": {
+          "mmse": {
+            "count": 288,
+            "maximum_abs": 0.038682879089638744,
+            "median_abs": 0.0055619055572951465,
+            "mse": 0.00012904683051485108,
+            "p95_abs": 0.025278916456731283,
+            "p99_abs": 0.0338244871001121,
+            "psnr_db": 38.89252657581285,
+            "sse": 0.037165487188277106
+          }
+        }
+      }
+    }
+  },
+  "synthetic": [
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.0007736381438395723,
+        "median_abs": 7.83347025460901e-05,
+        "mse": 5.095522116362836e-08,
+        "p95_abs": 0.00047780468513406436,
+        "p99_abs": 0.0006814632777366679,
+        "psnr_db": 72.92811309079002,
+        "sse": 2.7515819428359313e-06
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.000836358342607979,
+        "median_abs": 0.00013031691320786187,
+        "mse": 1.021743306575758e-07,
+        "p90_abs": 0.0005552698309363225,
+        "p95_abs": 0.0006412462931204008,
+        "p99_abs": 0.0008014373124300088,
+        "psnr_db": 69.90658198663333,
+        "sse": 5.517413855509093e-06
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 20.951016467281733,
+        "gmax": 14.516599912146177,
+        "student_t": 18.380192878767858
+      },
+      "scene": "gray-gradient",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.0008502608913963927,
+        "median_abs": 0.00010294856083831183,
+        "mse": 5.972269973298294e-08,
+        "p95_abs": 0.0005123796950428802,
+        "p99_abs": 0.0007786649175584946,
+        "psnr_db": 72.23860568451431,
+        "sse": 3.2250257855810793e-06
+      }
+    },
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.002040347044602986,
+        "median_abs": 0.00017856787334902258,
+        "mse": 4.26099588744478e-07,
+        "p95_abs": 0.0016243595865894683,
+        "p99_abs": 0.0019138630812415012,
+        "psnr_db": 63.704888849642735,
+        "sse": 2.3009377792201812e-05
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.003333284837851891,
+        "median_abs": 0.00045110888708671526,
+        "mse": 1.1479459942788731e-06,
+        "p90_abs": 0.001782508753902523,
+        "p95_abs": 0.002254896634640921,
+        "p99_abs": 0.003017342134098146,
+        "psnr_db": 59.400785430690384,
+        "sse": 6.198908369105915e-05
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 25.660326689071724,
+        "gmax": 16.110361474057868,
+        "student_t": 21.658208934913105
+      },
+      "scene": "chromatic-gradient",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.0017668795185745712,
+        "median_abs": 0.00019819586370400932,
+        "mse": 3.025135795714827e-07,
+        "p95_abs": 0.0012703218194157037,
+        "p99_abs": 0.0016858512702792549,
+        "psnr_db": 65.19255125472365,
+        "sse": 1.6335733296860064e-05
+      }
+    },
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.22204201011909552,
+        "median_abs": 0.029747602467702028,
+        "mse": 0.004996403267288481,
+        "p95_abs": 0.15497146118783706,
+        "p99_abs": 0.18841413087877873,
+        "psnr_db": 23.01342516316687,
+        "sse": 0.269805776433578
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.23951962622774325,
+        "median_abs": 0.04276025349660739,
+        "mse": 0.01112613205798922,
+        "p90_abs": 0.19677519637066054,
+        "p95_abs": 0.21975261543559205,
+        "p99_abs": 0.23610389476228646,
+        "psnr_db": 19.536557896481437,
+        "sse": 0.6008111311314178
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 16.296689759440675,
+        "gmax": 6.338342021876439,
+        "student_t": 14.345367932000535
+      },
+      "scene": "red-gray-edge",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.15581486620335572,
+        "median_abs": 0.02684527319066271,
+        "mse": 0.0032473132799585172,
+        "p95_abs": 0.12824297374828497,
+        "p99_abs": 0.15240370644204562,
+        "psnr_db": 24.884758114065914,
+        "sse": 0.17535491711775994
+      }
+    },
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.38127280485807213,
+        "median_abs": 0.06334682983423223,
+        "mse": 0.01421385325819117,
+        "p95_abs": 0.23771137647039062,
+        "p99_abs": 0.33300033150752795,
+        "psnr_db": 18.47288172465197,
+        "sse": 0.7675480759423232
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.4300590047762336,
+        "median_abs": 0.032244374229519424,
+        "mse": 0.024128527497368796,
+        "p90_abs": 0.2586113212885396,
+        "p95_abs": 0.34372853938921827,
+        "p99_abs": 0.4101808889060034,
+        "psnr_db": 16.17469181169558,
+        "sse": 1.302940484857915
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 24.894566161758775,
+        "gmax": 29.42045001705483,
+        "student_t": 20.034146569198906
+      },
+      "scene": "periodic-chromatic",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.3435499535378138,
+        "median_abs": 0.06392567982253367,
+        "mse": 0.015759570720476658,
+        "p95_abs": 0.26717440301931467,
+        "p99_abs": 0.34240481740736495,
+        "psnr_db": 18.02455616558857,
+        "sse": 0.8510168189057395
+      }
+    },
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.935452776413653,
+        "median_abs": 0.24244595649481093,
+        "mse": 0.1465452613969399,
+        "p95_abs": 0.9169793961453425,
+        "p99_abs": 0.9354395638689619,
+        "psnr_db": 8.340282200944158,
+        "sse": 7.913444115434754
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.8832774535509905,
+        "median_abs": 0.24722579180706725,
+        "mse": 0.1400049149664703,
+        "p90_abs": 0.529744037374726,
+        "p95_abs": 0.8792075006979616,
+        "p99_abs": 0.8831058733069852,
+        "psnr_db": 8.538567178549828,
+        "sse": 7.560265408189396
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 14.07036457654109,
+        "gmax": 8.297475694283609,
+        "student_t": 14.858032658434382
+      },
+      "scene": "tiny-star",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.9357222905940382,
+        "median_abs": 0.20611828621572809,
+        "mse": 0.14151689689704824,
+        "p95_abs": 0.9262454402953356,
+        "p99_abs": 0.9330820849283578,
+        "psnr_db": 8.491917029591585,
+        "sse": 7.641912432440605
+      }
+    },
+    {
+      "gaussian_gmr": {
+        "count": 54,
+        "maximum_abs": 0.987648584193381,
+        "median_abs": 0.5090195997992049,
+        "mse": 0.4110690574518547,
+        "p95_abs": 0.9852444236139247,
+        "p99_abs": 0.9873109956632806,
+        "psnr_db": 3.8608521279316332,
+        "sse": 22.197729102400153
+      },
+      "gmax": {
+        "count": 54,
+        "maximum_abs": 0.9929618439713535,
+        "median_abs": 0.7023515742752755,
+        "mse": 0.4161690708816821,
+        "p90_abs": 0.991086122615562,
+        "p95_abs": 0.9923521889994741,
+        "p99_abs": 0.9928649249722591,
+        "psnr_db": 3.807301990992598,
+        "sse": 22.473129827610833
+      },
+      "phase_range_db": {
+        "gaussian_gmr": 6.206318822962271,
+        "gmax": 4.518014514758267,
+        "student_t": 5.699284237916881
+      },
+      "scene": "saturated-point",
+      "student_t": {
+        "count": 54,
+        "maximum_abs": 0.9943002508707951,
+        "median_abs": 0.5662902152587747,
+        "mse": 0.40504693026044936,
+        "p95_abs": 0.9840278255860382,
+        "p99_abs": 0.9924286738510651,
+        "psnr_db": 3.9249465487826942,
+        "sse": 21.872534234064265
+      }
+    }
+  ],
+  "validation_sweep": [
+    {
+      "degrees_of_freedom": 3.0,
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.19743191201937565,
+          "median_abs": 0.0012411109875847919,
+          "mse": 0.00012444698417675868,
+          "p95_abs": 0.022794920809188424,
+          "p99_abs": 0.04882500130860394,
+          "psnr_db": 39.050156235331876,
+          "sse": 4.30088777314878
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 7.011916717236156,
+        "entropy_mean": 1.6392889868064036,
+        "entropy_p95": 2.92656656479225,
+        "maximum_responsibility_mean": 0.47440484492881196,
+        "maximum_responsibility_p05": 0.15716785620729226,
+        "top_two_ratio_median": 1.9227842371704422
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 2.0928815758020067,
+          "maximum_responsibility_mean": 0.3770124511386686,
+          "predictive_risk_mean": 0.00025220583064868577,
+          "rgb_error_rms": 0.007151905912531596
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6653656107584633,
+          "maximum_responsibility_mean": 0.48656831125867556,
+          "predictive_risk_mean": 0.00021393494107448726,
+          "rgb_error_rms": 0.006929758359021919
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8353636867209175,
+          "maximum_responsibility_mean": 0.3770686058917464,
+          "predictive_risk_mean": 4.472725227220079e-05,
+          "rgb_error_rms": 0.00233636086806969
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 1.1882196807751564,
+          "maximum_responsibility_mean": 0.5551358323962454,
+          "predictive_risk_mean": 1.5094716384954657e-05,
+          "rgb_error_rms": 0.0014712968564761064
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 1.3089366352860594,
+          "maximum_responsibility_mean": 0.5556451066749659,
+          "predictive_risk_mean": 0.000254578082907419,
+          "rgb_error_rms": 0.006994725248913005
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9567398242934088,
+          "maximum_responsibility_mean": 0.6491365413847325,
+          "predictive_risk_mean": 4.724316409398743e-05,
+          "rgb_error_rms": 0.0036649681085654216
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6495197291099002,
+          "maximum_responsibility_mean": 0.48001631670105305,
+          "predictive_risk_mean": 0.0009938652989487662,
+          "rgb_error_rms": 0.014579568937846801
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 2.4457062749755027,
+          "maximum_responsibility_mean": 0.2913464864805046,
+          "predictive_risk_mean": 0.0004938567658823182,
+          "rgb_error_rms": 0.010623525445489562
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 2.032698394865177,
+          "maximum_responsibility_mean": 0.3572229804301838,
+          "predictive_risk_mean": 0.0001266228092929963,
+          "rgb_error_rms": 0.004607309909087574
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 2.1360920540417547,
+          "maximum_responsibility_mean": 0.37578522901783606,
+          "predictive_risk_mean": 0.0011447631778054895,
+          "rgb_error_rms": 0.013166796382779006
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.0486444572132503,
+          "maximum_responsibility_mean": 0.6038036539043392,
+          "predictive_risk_mean": 5.196991704183976e-05,
+          "rgb_error_rms": 0.004127276561055751
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.917878890088804,
+          "maximum_responsibility_mean": 0.4491077631293676,
+          "predictive_risk_mean": 0.0020876554670879854,
+          "rgb_error_rms": 0.023359399358163085
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5068354573238105,
+          "maximum_responsibility_mean": 0.46849788677779586,
+          "predictive_risk_mean": 6.744985409118562e-05,
+          "rgb_error_rms": 0.0037336847652939525
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6065018864007319,
+          "maximum_responsibility_mean": 0.7404740064556743,
+          "predictive_risk_mean": 7.85278964504546e-06,
+          "rgb_error_rms": 0.001703728864557694
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 1.1594845588431015,
+          "maximum_responsibility_mean": 0.5845014259677694,
+          "predictive_risk_mean": 0.0003761621854158263,
+          "rgb_error_rms": 0.008804724495739281
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 2.859303087483975,
+          "maximum_responsibility_mean": 0.19199404458094524,
+          "predictive_risk_mean": 0.005236588894800874,
+          "rgb_error_rms": 0.0196580822150705
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9091743020186437,
+          "maximum_responsibility_mean": 0.6750075968928382,
+          "predictive_risk_mean": 5.299900784840408e-05,
+          "rgb_error_rms": 0.003991633133494358
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.924958245679682,
+          "maximum_responsibility_mean": 0.6735086034481433,
+          "predictive_risk_mean": 0.0003206878520519246,
+          "rgb_error_rms": 0.01224437537147836
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.8673887927503365,
+          "maximum_responsibility_mean": 0.19095717632824313,
+          "predictive_risk_mean": 0.002757114469653341,
+          "rgb_error_rms": 0.02321056937249544
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6740865916973846,
+          "maximum_responsibility_mean": 0.40530687971651186,
+          "predictive_risk_mean": 0.00023134325655435847,
+          "rgb_error_rms": 0.007188959770262399
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.0012267452745057317,
+            "risk_mean": 5.921478106321436e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.001634861202771563,
+            "risk_mean": 1.6773330544089682e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.0027197396740826127,
+            "risk_mean": 3.6977972759921654e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.004114700139797439,
+            "risk_mean": 5.94300474454802e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.004850543795168089,
+            "risk_mean": 8.942368615969287e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.0062340704868038945,
+            "risk_mean": 0.00014886074715291363
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.007358415466479523,
+            "risk_mean": 0.0002481116033735187
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.009743482478692047,
+            "risk_mean": 0.000488980555284372
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.01725688278790112,
+            "risk_mean": 0.001542482937363328
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.02658366571831214,
+            "risk_mean": 0.004751395508561407
+          }
+        ],
+        "risk_error_spearman": 0.7941595716389563,
+        "risk_maximum": 0.019827467674666376,
+        "risk_median": 0.00011303984803090982,
+        "risk_minimum": 7.718083341629053e-07
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.05250720067221505,
+            "median_abs": 0.001454170246887564,
+            "mse": 5.114975818170442e-05,
+            "p95_abs": 0.015719217122950564,
+            "p99_abs": 0.023240212536695594,
+            "psnr_db": 42.91156415140475,
+            "sse": 0.08838678213798523
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.039718157068669685,
+            "median_abs": 0.0018435502961094419,
+            "mse": 4.8021550914434175e-05,
+            "p95_abs": 0.015356895323730965,
+            "p99_abs": 0.025531326518957474,
+            "psnr_db": 43.18563817983616,
+            "sse": 0.08298123998014226
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010859081043299662,
+            "median_abs": 0.0006575227141558705,
+            "mse": 5.458582105847354e-06,
+            "p95_abs": 0.00528800969588855,
+            "p99_abs": 0.007671373069059743,
+            "psnr_db": 52.62920152821991,
+            "sse": 0.009432429878904228
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.012903649785156651,
+            "median_abs": 0.0003856125974436436,
+            "mse": 2.164714439876472e-06,
+            "p95_abs": 0.002949634943511642,
+            "p99_abs": 0.005307151679032947,
+            "psnr_db": 56.64599385853552,
+            "sse": 0.0037406265521065436
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03254279831691065,
+            "median_abs": 0.0022975391100375497,
+            "mse": 4.892618130778111e-05,
+            "p95_abs": 0.01575094227315069,
+            "p99_abs": 0.02164667915013444,
+            "psnr_db": 43.10458679635068,
+            "sse": 0.08454444129984576
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.018567514747928837,
+            "median_abs": 0.0013025062921427355,
+            "mse": 1.3431991236801604e-05,
+            "p95_abs": 0.008293458275574497,
+            "p99_abs": 0.011903995665986556,
+            "psnr_db": 48.71859600209045,
+            "sse": 0.023210480857193173
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.12092181795094303,
+            "median_abs": 0.0016492334064142355,
+            "mse": 0.00021256383041342732,
+            "p95_abs": 0.031368828619805784,
+            "p99_abs": 0.0640781125446532,
+            "psnr_db": 36.72510632513726,
+            "sse": 0.3673102989544024
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11222803577464358,
+            "median_abs": 0.002878662483697801,
+            "mse": 0.00011285929289096417,
+            "p95_abs": 0.022235046418401856,
+            "p99_abs": 0.03721644026718881,
+            "psnr_db": 39.47462675087725,
+            "sse": 0.1950208581155861
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.033756405524968974,
+            "median_abs": 0.0011401599165387771,
+            "mse": 2.1227304598376546e-05,
+            "p95_abs": 0.00963250480202193,
+            "p99_abs": 0.01912213745735166,
+            "psnr_db": 46.73105148197099,
+            "sse": 0.03668078234599467
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.105293916052765,
+            "median_abs": 0.0030360096381100987,
+            "mse": 0.00017336452698556233,
+            "p95_abs": 0.028146359937378886,
+            "p99_abs": 0.05496515259803257,
+            "psnr_db": 37.610397610146116,
+            "sse": 0.2995739026310517
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.027802985216020898,
+            "median_abs": 0.0009816347090798663,
+            "mse": 1.703441181144019e-05,
+            "p95_abs": 0.010064538621281096,
+            "p99_abs": 0.015770649953323525,
+            "psnr_db": 47.68672857778875,
+            "sse": 0.029435463610168647
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.19743191201937565,
+            "median_abs": 0.004874487063454964,
+            "mse": 0.00054566153837415,
+            "p95_abs": 0.04967443548425657,
+            "p99_abs": 0.09640512080386941,
+            "psnr_db": 32.63076656919708,
+            "sse": 0.9429031383105311
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.017475779679402892,
+            "median_abs": 0.0013161327492343944,
+            "mse": 1.3940401926588156e-05,
+            "p95_abs": 0.008403033690581317,
+            "p99_abs": 0.011710153435794218,
+            "psnr_db": 48.55724704574954,
+            "sse": 0.024089014529144335
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010764947406968067,
+            "median_abs": 0.00042937050443226515,
+            "mse": 2.9026920439270486e-06,
+            "p95_abs": 0.003574757714534624,
+            "p99_abs": 0.007381537795381991,
+            "psnr_db": 55.371990374434034,
+            "sse": 0.00501585185190594
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.07408864595642073,
+            "median_abs": 0.0005900755755786679,
+            "mse": 7.752317344587135e-05,
+            "p95_abs": 0.019786053141036368,
+            "p99_abs": 0.04133255915002774,
+            "psnr_db": 41.10568457554023,
+            "sse": 0.13396004371446568
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1057325841938539,
+            "median_abs": 0.007589250769092712,
+            "mse": 0.00038644019637447115,
+            "p95_abs": 0.04219604660042132,
+            "p99_abs": 0.061879060955152713,
+            "psnr_db": 34.12917705870215,
+            "sse": 0.6677686593350861
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04269773322833148,
+            "median_abs": 0.0006215384598511988,
+            "mse": 1.5933135072409988e-05,
+            "p95_abs": 0.008997806471089036,
+            "p99_abs": 0.01694832935035003,
+            "psnr_db": 47.97698762134365,
+            "sse": 0.027532457405124458
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13204611522055115,
+            "median_abs": 0.0018758931888135238,
+            "mse": 0.00014992472823766585,
+            "p95_abs": 0.021415031462036476,
+            "p99_abs": 0.05802354302105498,
+            "psnr_db": 38.24126729717057,
+            "sse": 0.25906993039468657
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13223814256345712,
+            "median_abs": 0.007313282314016685,
+            "mse": 0.0005387305305954235,
+            "p95_abs": 0.05137368529419431,
+            "p99_abs": 0.0752673888689855,
+            "psnr_db": 32.68628411694802,
+            "sse": 0.9309263568688917
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03615934229779372,
+            "median_abs": 0.0025577352549858434,
+            "mse": 5.1681142578451204e-05,
+            "p95_abs": 0.015831521825771976,
+            "p99_abs": 0.02412212514364425,
+            "psnr_db": 42.866678934256804,
+            "sse": 0.08930501437556368
+          }
+        }
+      }
+    },
+    {
+      "degrees_of_freedom": 5.0,
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.19781761746580023,
+          "median_abs": 0.0012590174014964275,
+          "mse": 0.0001243177162280874,
+          "p95_abs": 0.022776533252276344,
+          "p99_abs": 0.04904684644617741,
+          "psnr_db": 39.054669766532776,
+          "sse": 4.296420272842701
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 6.587769971809074,
+        "entropy_mean": 1.5782383245421128,
+        "entropy_p95": 2.872465360972408,
+        "maximum_responsibility_mean": 0.4939552739589778,
+        "maximum_responsibility_p05": 0.16639846194817087,
+        "top_two_ratio_median": 2.0393760218630046
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 2.0611242794186095,
+          "maximum_responsibility_mean": 0.3778756142548514,
+          "predictive_risk_mean": 0.0002528288614912688,
+          "rgb_error_rms": 0.00718225958362526
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6197000302386462,
+          "maximum_responsibility_mean": 0.4965841003239249,
+          "predictive_risk_mean": 0.00021544432335916095,
+          "rgb_error_rms": 0.006956680050550113
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 1.7378671527109206,
+          "maximum_responsibility_mean": 0.3991027451239032,
+          "predictive_risk_mean": 4.5295542789580276e-05,
+          "rgb_error_rms": 0.0023583097596142715
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 1.0883171241327736,
+          "maximum_responsibility_mean": 0.5946278615936534,
+          "predictive_risk_mean": 1.5854485876236862e-05,
+          "rgb_error_rms": 0.001475973856925488
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 1.267881267659397,
+          "maximum_responsibility_mean": 0.5696464109911828,
+          "predictive_risk_mean": 0.0002469610231654103,
+          "rgb_error_rms": 0.006978302288726358
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9002221997117577,
+          "maximum_responsibility_mean": 0.6732208435664221,
+          "predictive_risk_mean": 4.714191077020087e-05,
+          "rgb_error_rms": 0.003666062047267237
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6009803401112734,
+          "maximum_responsibility_mean": 0.4917476657952441,
+          "predictive_risk_mean": 0.000990241419250659,
+          "rgb_error_rms": 0.014573006427197192
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 2.3753941904308626,
+          "maximum_responsibility_mean": 0.3061783718958736,
+          "predictive_risk_mean": 0.0004939951286237628,
+          "rgb_error_rms": 0.010674686167806936
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.9484771428199055,
+          "maximum_responsibility_mean": 0.376252860033815,
+          "predictive_risk_mean": 0.00012758442790871058,
+          "rgb_error_rms": 0.0046274534212673996
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 2.073657444600342,
+          "maximum_responsibility_mean": 0.38795652555418036,
+          "predictive_risk_mean": 0.001128703859031089,
+          "rgb_error_rms": 0.013156106894316049
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9831642660654999,
+          "maximum_responsibility_mean": 0.6280415112817547,
+          "predictive_risk_mean": 5.258683907133635e-05,
+          "rgb_error_rms": 0.004137933216608867
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8737826798862534,
+          "maximum_responsibility_mean": 0.4567706818410471,
+          "predictive_risk_mean": 0.002072826573901805,
+          "rgb_error_rms": 0.023316198714190703
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 1.4531728803388777,
+          "maximum_responsibility_mean": 0.4882129581973332,
+          "predictive_risk_mean": 6.604366349191556e-05,
+          "rgb_error_rms": 0.003731389364782745
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.4999778136668362,
+          "maximum_responsibility_mean": 0.7960527426205142,
+          "predictive_risk_mean": 8.049116564828192e-06,
+          "rgb_error_rms": 0.001707974300689515
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 1.0847566065870893,
+          "maximum_responsibility_mean": 0.6154616403119743,
+          "predictive_risk_mean": 0.0003693672417863777,
+          "rgb_error_rms": 0.008866562880541917
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 2.7908323052555994,
+          "maximum_responsibility_mean": 0.2026924018613303,
+          "predictive_risk_mean": 0.0052104939892088165,
+          "rgb_error_rms": 0.019639401250076235
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.863228356730497,
+          "maximum_responsibility_mean": 0.6931745588864344,
+          "predictive_risk_mean": 5.448009027111215e-05,
+          "rgb_error_rms": 0.003985284175430277
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.8783082110435623,
+          "maximum_responsibility_mean": 0.6964488521999783,
+          "predictive_risk_mean": 0.0003106819801009556,
+          "rgb_error_rms": 0.012214904928902358
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.812267497173033,
+          "maximum_responsibility_mean": 0.20316638533688033,
+          "predictive_risk_mean": 0.0027546600492270334,
+          "rgb_error_rms": 0.023169638943294418
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6516547022605175,
+          "maximum_responsibility_mean": 0.4258907475092583,
+          "predictive_risk_mean": 0.00022124685710146806,
+          "rgb_error_rms": 0.007199353137376164
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.0012530797042434865,
+            "risk_mean": 6.235896062705352e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.001671138673932455,
+            "risk_mean": 1.7929482565024592e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.002783458028423693,
+            "risk_mean": 3.8161260045547754e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.0040728119239322146,
+            "risk_mean": 5.9636336112435135e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.004883098323408451,
+            "risk_mean": 8.909240370761189e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.006204680283296552,
+            "risk_mean": 0.0001468736996200489
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.007353242495492007,
+            "risk_mean": 0.00024389339888957568
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.0098358189413683,
+            "risk_mean": 0.000484098847291829
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.017333436621580125,
+            "risk_mean": 0.0015334126122227194
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.026474035814193993,
+            "risk_mean": 0.004722909754978367
+          }
+        ],
+        "risk_error_spearman": 0.7923409496405276,
+        "risk_maximum": 0.019665674220398843,
+        "risk_median": 0.00011177389296264018,
+        "risk_minimum": 9.281475524261525e-07
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.05302226682788361,
+            "median_abs": 0.0015100462990109533,
+            "mse": 5.158485272657688e-05,
+            "p95_abs": 0.016085904810942526,
+            "p99_abs": 0.02353854039678964,
+            "psnr_db": 42.87477805020072,
+            "sse": 0.08913862551152485
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04004003200332287,
+            "median_abs": 0.001881189806793776,
+            "mse": 4.839539732572193e-05,
+            "p95_abs": 0.015538793908388455,
+            "p99_abs": 0.02561043585416628,
+            "psnr_db": 43.15195940237654,
+            "sse": 0.0836272465788475
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010895186931036485,
+            "median_abs": 0.0006895427124806626,
+            "mse": 5.561624922291924e-06,
+            "p95_abs": 0.005288311872726316,
+            "p99_abs": 0.007678091290681172,
+            "psnr_db": 52.54798303438705,
+            "sse": 0.009610487865720444
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.013011272856986139,
+            "median_abs": 0.0003777723031817837,
+            "mse": 2.1784988263275012e-06,
+            "p95_abs": 0.002962401318110709,
+            "p99_abs": 0.005248972333700262,
+            "psnr_db": 56.61842669705564,
+            "sse": 0.003764445971893922
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03206382734543234,
+            "median_abs": 0.0022961643952166266,
+            "mse": 4.869670283284352e-05,
+            "p95_abs": 0.015750587157191787,
+            "p99_abs": 0.02137568772019586,
+            "psnr_db": 43.125004430970286,
+            "sse": 0.08414790249515361
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.018620404180502037,
+            "median_abs": 0.0012810640826740882,
+            "mse": 1.3440010934413243e-05,
+            "p95_abs": 0.008288494786304263,
+            "p99_abs": 0.011941202114237489,
+            "psnr_db": 48.71600377952327,
+            "sse": 0.023224338894666085
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.12149046220917592,
+            "median_abs": 0.0016556243590127627,
+            "mse": 0.00021237251632713071,
+            "p95_abs": 0.0312887950822179,
+            "p99_abs": 0.06405559993938399,
+            "psnr_db": 36.7290168711868,
+            "sse": 0.36697970821328185
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11266026661729495,
+            "median_abs": 0.0028936762707403047,
+            "mse": 0.00011394892478116869,
+            "p95_abs": 0.02233889111752977,
+            "p99_abs": 0.03757593041029801,
+            "psnr_db": 39.43289768454719,
+            "sse": 0.1969037420218595
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.034411664295526265,
+            "median_abs": 0.0011668978261218429,
+            "mse": 2.1413325165999364e-05,
+            "p95_abs": 0.009590320068136766,
+            "p99_abs": 0.018884648437989378,
+            "psnr_db": 46.69315888094839,
+            "sse": 0.0370022258868469
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.106122520240228,
+            "median_abs": 0.0030585832664731805,
+            "mse": 0.00017308314861467028,
+            "p95_abs": 0.02841532487267334,
+            "p99_abs": 0.05520987918522064,
+            "psnr_db": 37.617452130022066,
+            "sse": 0.2990876808061502
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.02760149427002251,
+            "median_abs": 0.0010123796366639619,
+            "mse": 1.7122491305115006e-05,
+            "p95_abs": 0.01012883418720712,
+            "p99_abs": 0.015751168359391176,
+            "psnr_db": 47.66433045654875,
+            "sse": 0.02958766497523873
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.19781761746580023,
+            "median_abs": 0.004785089895012241,
+            "mse": 0.0005436451224796284,
+            "p95_abs": 0.04958004810605223,
+            "p99_abs": 0.09658441250750784,
+            "psnr_db": 32.64684504053895,
+            "sse": 0.9394187716447978
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.017401469482275167,
+            "median_abs": 0.0013045187635335742,
+            "mse": 1.3923266591613778e-05,
+            "p95_abs": 0.008429087375924514,
+            "p99_abs": 0.011761183508658698,
+            "psnr_db": 48.56258861257031,
+            "sse": 0.02405940467030861
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010821971594488194,
+            "median_abs": 0.0004376837671789535,
+            "mse": 2.9171762118158384e-06,
+            "p95_abs": 0.0036125314575025983,
+            "p99_abs": 0.007450310454532775,
+            "psnr_db": 55.35037336559484,
+            "sse": 0.005040880494017769
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.07594025063751542,
+            "median_abs": 0.0005808543218680674,
+            "mse": 7.861593731460379e-05,
+            "p95_abs": 0.020011522923693025,
+            "p99_abs": 0.041132290169288425,
+            "psnr_db": 41.04489403246006,
+            "sse": 0.13584833967963533
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.10572029792160753,
+            "median_abs": 0.007582156615254215,
+            "mse": 0.0003857060814614959,
+            "p95_abs": 0.042263210084028016,
+            "p99_abs": 0.06117342099991914,
+            "psnr_db": 34.13743513520922,
+            "sse": 0.666500108765465
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0428490574742294,
+            "median_abs": 0.0006091513388628124,
+            "mse": 1.5882489958934977e-05,
+            "p95_abs": 0.00893505336659561,
+            "p99_abs": 0.016839603186529033,
+            "psnr_db": 47.990814105578195,
+            "sse": 0.027444942649039638
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13202673833545292,
+            "median_abs": 0.0018926024258687085,
+            "mse": 0.00014920390242212313,
+            "p95_abs": 0.0214623573286887,
+            "p99_abs": 0.0579032403485959,
+            "psnr_db": 38.2621981775993,
+            "sse": 0.25782434338542876
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13145309448110792,
+            "median_abs": 0.007162148571800198,
+            "mse": 0.0005368321687626252,
+            "p95_abs": 0.05132678982037336,
+            "p99_abs": 0.07538936872568187,
+            "psnr_db": 32.70161467694684,
+            "sse": 0.9276459876218164
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.035800788561586305,
+            "median_abs": 0.0026100276010606605,
+            "mse": 5.1830685596648006e-05,
+            "p95_abs": 0.015864872174802466,
+            "p99_abs": 0.024026085597212966,
+            "psnr_db": 42.8541304643981,
+            "sse": 0.08956342471100776
+          }
+        }
+      }
+    },
+    {
+      "degrees_of_freedom": 10.0,
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.1984587558857453,
+          "median_abs": 0.0012553503155736502,
+          "mse": 0.0001248715134568305,
+          "p95_abs": 0.0228650479550239,
+          "p99_abs": 0.0492915314712951,
+          "psnr_db": 39.035366245525324,
+          "sse": 4.315559505068062
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 5.872589929485627,
+        "entropy_mean": 1.4710209169331434,
+        "entropy_p95": 2.7534688668480323,
+        "maximum_responsibility_mean": 0.5264525081030293,
+        "maximum_responsibility_p05": 0.18315496076735832,
+        "top_two_ratio_median": 2.2388759954089927
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 1.9856835881938761,
+          "maximum_responsibility_mean": 0.38874967688994466,
+          "predictive_risk_mean": 0.00025564125913712823,
+          "rgb_error_rms": 0.007228502907188567
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5373011576925621,
+          "maximum_responsibility_mean": 0.5158694711093914,
+          "predictive_risk_mean": 0.0002190509429020031,
+          "rgb_error_rms": 0.006994601440108435
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5833185471458884,
+          "maximum_responsibility_mean": 0.44215823984866665,
+          "predictive_risk_mean": 4.592913853570673e-05,
+          "rgb_error_rms": 0.002381751323816089
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9307650904166999,
+          "maximum_responsibility_mean": 0.6521308245281239,
+          "predictive_risk_mean": 1.6782878967567465e-05,
+          "rgb_error_rms": 0.001484774096914905
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 1.1906140228242563,
+          "maximum_responsibility_mean": 0.5953487440422591,
+          "predictive_risk_mean": 0.0002375378312871762,
+          "rgb_error_rms": 0.0069622773776881405
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7999346993591099,
+          "maximum_responsibility_mean": 0.7128130931872462,
+          "predictive_risk_mean": 4.700071380562748e-05,
+          "rgb_error_rms": 0.0036667841275171502
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5190938833482166,
+          "maximum_responsibility_mean": 0.5119539642605394,
+          "predictive_risk_mean": 0.0009887792446593652,
+          "rgb_error_rms": 0.014605977215225186
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 2.2488244872359817,
+          "maximum_responsibility_mean": 0.3335230828834862,
+          "predictive_risk_mean": 0.0004949166735584055,
+          "rgb_error_rms": 0.010763872105102872
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8095942150399833,
+          "maximum_responsibility_mean": 0.4113044357985723,
+          "predictive_risk_mean": 0.00012903651682880443,
+          "rgb_error_rms": 0.004655759654908612
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 1.9598128662790262,
+          "maximum_responsibility_mean": 0.4102453663194821,
+          "predictive_risk_mean": 0.0011103079325074738,
+          "rgb_error_rms": 0.013166071970725439
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 0.8847241958917366,
+          "maximum_responsibility_mean": 0.6674987139826823,
+          "predictive_risk_mean": 5.346530418802864e-05,
+          "rgb_error_rms": 0.00415758758540005
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.7890326571610622,
+          "maximum_responsibility_mean": 0.47241079078330056,
+          "predictive_risk_mean": 0.0020628727021120286,
+          "rgb_error_rms": 0.02324776211608596
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 1.3506659094122182,
+          "maximum_responsibility_mean": 0.5219779868277781,
+          "predictive_risk_mean": 6.411452358405311e-05,
+          "rgb_error_rms": 0.003729468173203344
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.36491465944129975,
+          "maximum_responsibility_mean": 0.8614435738665779,
+          "predictive_risk_mean": 8.246916691263938e-06,
+          "rgb_error_rms": 0.0017127189184962697
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9656473390904081,
+          "maximum_responsibility_mean": 0.6640491565231238,
+          "predictive_risk_mean": 0.0003643259897194891,
+          "rgb_error_rms": 0.009046883137167243
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 2.6445798727456573,
+          "maximum_responsibility_mean": 0.2258709445187695,
+          "predictive_risk_mean": 0.005191202329943144,
+          "rgb_error_rms": 0.019716287785407134
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7958357606017136,
+          "maximum_responsibility_mean": 0.7172938305738117,
+          "predictive_risk_mean": 5.697358883516848e-05,
+          "rgb_error_rms": 0.003994654412264637
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7892443730351972,
+          "maximum_responsibility_mean": 0.7294593813224111,
+          "predictive_risk_mean": 0.00030235678235144404,
+          "rgb_error_rms": 0.01228493443413314
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.698748305831627,
+          "maximum_responsibility_mean": 0.22683597121186358,
+          "predictive_risk_mean": 0.002773458324117985,
+          "rgb_error_rms": 0.023193399708727726
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5720827079163446,
+          "maximum_responsibility_mean": 0.4681129135825553,
+          "predictive_risk_mean": 0.00020823226531367048,
+          "rgb_error_rms": 0.007229558377952723
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.001272908242505174,
+            "risk_mean": 6.6088574311821856e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.00170881661894259,
+            "risk_mean": 1.9198016837338677e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.0029159704243849893,
+            "risk_mean": 3.9642366256966966e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.004054145675297499,
+            "risk_mean": 5.983301824481104e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.00496490454184746,
+            "risk_mean": 8.898074566872545e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.006242121072870363,
+            "risk_mean": 0.00014433028422252596
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.007271672343690954,
+            "risk_mean": 0.00023908322772925046
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.00983055595538228,
+            "risk_mean": 0.00048029601596208876
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.017569055109748172,
+            "risk_mean": 0.0015295049651208726
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.02640895123157244,
+            "risk_mean": 0.004707638432049004
+          }
+        ],
+        "risk_error_spearman": 0.7892740267035642,
+        "risk_maximum": 0.019496817055782302,
+        "risk_median": 0.00011102782755574631,
+        "risk_minimum": 1.272374391076327e-06
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.05340113733261251,
+            "median_abs": 0.0016202203234917884,
+            "mse": 5.2251254279233545e-05,
+            "p95_abs": 0.016198175294560975,
+            "p99_abs": 0.023707215611118965,
+            "psnr_db": 42.81903279953524,
+            "sse": 0.09029016739451556
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04055879530309517,
+            "median_abs": 0.001863261710157018,
+            "mse": 4.8924449305966985e-05,
+            "p95_abs": 0.015622883950914879,
+            "p99_abs": 0.02609724314628936,
+            "psnr_db": 43.10474054064969,
+            "sse": 0.08454144840071096
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.011006813357455486,
+            "median_abs": 0.0006959035049465285,
+            "mse": 5.672739368499692e-06,
+            "p95_abs": 0.0053407086537860604,
+            "p99_abs": 0.007739942377636044,
+            "psnr_db": 52.462071694447474,
+            "sse": 0.009802493628767468
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01317697850865654,
+            "median_abs": 0.00037381260296879756,
+            "mse": 2.204554118869471e-06,
+            "p95_abs": 0.0029433724551954235,
+            "p99_abs": 0.00532026018717064,
+            "psnr_db": 56.56679235355288,
+            "sse": 0.003809469517406446
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.031159843892375916,
+            "median_abs": 0.002249913008150084,
+            "mse": 4.8473306283868054e-05,
+            "p95_abs": 0.015723064976989182,
+            "p99_abs": 0.021249323932018897,
+            "psnr_db": 43.14497356760257,
+            "sse": 0.083761873258524
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0187004247944772,
+            "median_abs": 0.001265783718749719,
+            "mse": 1.344530583781171e-05,
+            "p95_abs": 0.008330528901947423,
+            "p99_abs": 0.012067668392272954,
+            "psnr_db": 48.71429314514438,
+            "sse": 0.023233488487738634
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.12217709732658011,
+            "median_abs": 0.0016927259345693203,
+            "mse": 0.00021333457041167726,
+            "p95_abs": 0.032078094941072284,
+            "p99_abs": 0.06361780790220871,
+            "psnr_db": 36.70938762354178,
+            "sse": 0.3686421376713783
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11352770681235758,
+            "median_abs": 0.002807264001858439,
+            "mse": 0.0001158609426950117,
+            "p95_abs": 0.02230319907299438,
+            "p99_abs": 0.0374892609693541,
+            "psnr_db": 39.36062942213829,
+            "sse": 0.2002077089769802
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.035301094964692026,
+            "median_abs": 0.0011910973744695807,
+            "mse": 2.1676097964274758e-05,
+            "p95_abs": 0.009503654663701453,
+            "p99_abs": 0.018674034902468124,
+            "psnr_db": 46.640188948783305,
+            "sse": 0.03745629728226678
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.10806738754595063,
+            "median_abs": 0.003029995853879641,
+            "mse": 0.000173345451138322,
+            "p95_abs": 0.027888723338888092,
+            "p99_abs": 0.055417096029679584,
+            "psnr_db": 37.61087550439348,
+            "sse": 0.29954093956702044
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.027299995586176018,
+            "median_abs": 0.0010064678344610702,
+            "mse": 1.7285534530272622e-05,
+            "p95_abs": 0.010184733730487797,
+            "p99_abs": 0.01575412922710442,
+            "psnr_db": 47.62317185982239,
+            "sse": 0.02986940366831109
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1984587558857453,
+            "median_abs": 0.004762786028658695,
+            "mse": 0.0005404584434061215,
+            "p95_abs": 0.04952578214939009,
+            "p99_abs": 0.09661546943399502,
+            "psnr_db": 32.672376939276006,
+            "sse": 0.9339121902057779
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.017216471028889735,
+            "median_abs": 0.0012930402421679477,
+            "mse": 1.3908932854936689e-05,
+            "p95_abs": 0.008446233155956525,
+            "p99_abs": 0.011865375205808873,
+            "psnr_db": 48.56706189417798,
+            "sse": 0.0240346359733306
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010857326790367355,
+            "median_abs": 0.00045851906370136114,
+            "mse": 2.933406093775032e-06,
+            "p95_abs": 0.0035974958316805214,
+            "p99_abs": 0.007484729440195038,
+            "psnr_db": 55.326278101604835,
+            "sse": 0.005068925730043255
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.07980571734143194,
+            "median_abs": 0.0005922794181396525,
+            "mse": 8.184609449756101e-05,
+            "p95_abs": 0.020461237358000733,
+            "p99_abs": 0.04148474568064054,
+            "psnr_db": 40.870020392651796,
+            "sse": 0.14143005129178543
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.10688846611227515,
+            "median_abs": 0.007596557813676491,
+            "mse": 0.0003887320040369947,
+            "p95_abs": 0.0426567523250094,
+            "p99_abs": 0.060919994204215476,
+            "psnr_db": 34.10349702732523,
+            "sse": 0.6717289029759268
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04329883429915071,
+            "median_abs": 0.0006293714247670308,
+            "mse": 1.595726387342533e-05,
+            "p95_abs": 0.008880788967705505,
+            "p99_abs": 0.01693488910369323,
+            "psnr_db": 47.9704157329497,
+            "sse": 0.02757415197327897
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13247329394037072,
+            "median_abs": 0.0018325481603116284,
+            "mse": 0.00015091961405095013,
+            "p95_abs": 0.021702119049781903,
+            "p99_abs": 0.06063393201340696,
+            "psnr_db": 38.21254314097579,
+            "sse": 0.26078909308004183
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13026956528388867,
+            "median_abs": 0.007107031629626032,
+            "mse": 0.0005379337900488114,
+            "p95_abs": 0.05151095171296043,
+            "p99_abs": 0.0748852829400674,
+            "psnr_db": 32.692711748651405,
+            "sse": 0.929549589204346
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0360625827270592,
+            "median_abs": 0.002605015426197732,
+            "mse": 5.226651434022639e-05,
+            "p95_abs": 0.015803230448783668,
+            "p99_abs": 0.02399429182070033,
+            "psnr_db": 42.81776462084805,
+            "sse": 0.09031653677991121
+          }
+        }
+      }
+    },
+    {
+      "degrees_of_freedom": 20.0,
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.19900201369239112,
+          "median_abs": 0.0012629963723550987,
+          "mse": 0.00012684349952709977,
+          "p95_abs": 0.023058360258435415,
+          "p99_abs": 0.04965140556589645,
+          "psnr_db": 38.9673178458611,
+          "sse": 4.383711343656568
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 5.1300950201719395,
+        "entropy_mean": 1.3494548954537262,
+        "entropy_p95": 2.599136883795444,
+        "maximum_responsibility_mean": 0.5616763406953686,
+        "maximum_responsibility_p05": 0.2041546988536187,
+        "top_two_ratio_median": 2.492426310441391
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8856181815802817,
+          "maximum_responsibility_mean": 0.4052473610112509,
+          "predictive_risk_mean": 0.0002612628063708337,
+          "rgb_error_rms": 0.007286264559598128
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.4370548606448648,
+          "maximum_responsibility_mean": 0.541016233162779,
+          "predictive_risk_mean": 0.0002249383156289819,
+          "rgb_error_rms": 0.007037029218419403
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 1.416015017463721,
+          "maximum_responsibility_mean": 0.49211161092142075,
+          "predictive_risk_mean": 4.6812957814034105e-05,
+          "rgb_error_rms": 0.0023986493321449553
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7713680659573572,
+          "maximum_responsibility_mean": 0.71103017423465,
+          "predictive_risk_mean": 1.7558214005197088e-05,
+          "rgb_error_rms": 0.0014940613681346856
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 1.0953063909265832,
+          "maximum_responsibility_mean": 0.624606275761063,
+          "predictive_risk_mean": 0.00023316784070646676,
+          "rgb_error_rms": 0.006975037461508879
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6902204462846329,
+          "maximum_responsibility_mean": 0.7531684937523644,
+          "predictive_risk_mean": 4.72472959841053e-05,
+          "rgb_error_rms": 0.003667242374598859
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.4251407554949391,
+          "maximum_responsibility_mean": 0.5372814092760945,
+          "predictive_risk_mean": 0.000994573958872117,
+          "rgb_error_rms": 0.01470936406238594
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 2.101726440523876,
+          "maximum_responsibility_mean": 0.3669367035355229,
+          "predictive_risk_mean": 0.0004982362744811028,
+          "rgb_error_rms": 0.01086009637929043
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.655995903155165,
+          "maximum_responsibility_mean": 0.4520317226478089,
+          "predictive_risk_mean": 0.00013106881069514093,
+          "rgb_error_rms": 0.0046824269209006925
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8268292949638125,
+          "maximum_responsibility_mean": 0.438739616877809,
+          "predictive_risk_mean": 0.0011002106818855943,
+          "rgb_error_rms": 0.013212457401536832
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7818218670121819,
+          "maximum_responsibility_mean": 0.711430116956964,
+          "predictive_risk_mean": 5.449243701264951e-05,
+          "rgb_error_rms": 0.0041784881635140905
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6848783008082744,
+          "maximum_responsibility_mean": 0.49283013963512823,
+          "predictive_risk_mean": 0.0020731308618946146,
+          "rgb_error_rms": 0.02320767620084723
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 1.237165277632438,
+          "maximum_responsibility_mean": 0.5577978156730796,
+          "predictive_risk_mean": 6.309892857536913e-05,
+          "rgb_error_rms": 0.0037295731539184153
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.2637359318207945,
+          "maximum_responsibility_mean": 0.9041464550451965,
+          "predictive_risk_mean": 8.395029574056905e-06,
+          "rgb_error_rms": 0.0017156975260613932
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 0.8462273556486026,
+          "maximum_responsibility_mean": 0.7106303093992623,
+          "predictive_risk_mean": 0.00036778603530722594,
+          "rgb_error_rms": 0.009383781758142142
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 2.453769383043768,
+          "maximum_responsibility_mean": 0.25661554249227664,
+          "predictive_risk_mean": 0.0051977438715056605,
+          "rgb_error_rms": 0.01995774907854077
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7196834952687109,
+          "maximum_responsibility_mean": 0.7446941018869186,
+          "predictive_risk_mean": 5.9780074463258124e-05,
+          "rgb_error_rms": 0.004023038416751562
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.705263448557329,
+          "maximum_responsibility_mean": 0.7514988414232489,
+          "predictive_risk_mean": 0.0003025535711676952,
+          "rgb_error_rms": 0.012637962846333268
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.5487667662103806,
+          "maximum_responsibility_mean": 0.2572494977787382,
+          "predictive_risk_mean": 0.002818577770988642,
+          "rgb_error_rms": 0.02334821855774956
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.442510726076811,
+          "maximum_responsibility_mean": 0.5244643924357965,
+          "predictive_risk_mean": 0.00020120545140587945,
+          "rgb_error_rms": 0.007283891600532485
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.0013008420292744249,
+            "risk_mean": 6.8679215138721216e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.001712166873911628,
+            "risk_mean": 2.0127980499049694e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.003092345840747651,
+            "risk_mean": 4.105440028947643e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.004072460989702095,
+            "risk_mean": 6.030114613501129e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.005056570519398237,
+            "risk_mean": 8.938693122275943e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.006160137170012592,
+            "risk_mean": 0.00014380824806029975
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.007320250979576924,
+            "risk_mean": 0.00023848049592923578
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.009899935022616702,
+            "risk_mean": 0.00048329055568808294
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.017858693181829043,
+            "risk_mean": 0.0015394649435851633
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.02652583350585917,
+            "risk_mean": 0.004728137971246361
+          }
+        ],
+        "risk_error_spearman": 0.7857499289047172,
+        "risk_maximum": 0.019589721288084595,
+        "risk_median": 0.0001117605827338149,
+        "risk_minimum": 1.8073576579774426e-06
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.053442803974541375,
+            "median_abs": 0.0016538572335982073,
+            "mse": 5.30896512324557e-05,
+            "p95_abs": 0.016289522304677038,
+            "p99_abs": 0.023920428420259203,
+            "psnr_db": 42.749901277068275,
+            "sse": 0.09173891732968345
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04108358178951038,
+            "median_abs": 0.0018713883431744696,
+            "mse": 4.95197802208884e-05,
+            "p95_abs": 0.015719878497738,
+            "p99_abs": 0.026941971102102513,
+            "psnr_db": 43.0522129147314,
+            "sse": 0.08557018022169516
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.011140389200790496,
+            "median_abs": 0.0007291321205600138,
+            "mse": 5.753518618599441e-06,
+            "p95_abs": 0.005393587139049875,
+            "p99_abs": 0.00770316265775686,
+            "psnr_db": 52.40066477174839,
+            "sse": 0.009942080172939833
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.013903836294533053,
+            "median_abs": 0.00037156214778952083,
+            "mse": 2.232219371752489e-06,
+            "p95_abs": 0.0029791409964043695,
+            "p99_abs": 0.005328659421785711,
+            "psnr_db": 56.51263127270299,
+            "sse": 0.0038572750743883005
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03073119735684504,
+            "median_abs": 0.002335643395456638,
+            "mse": 4.865114758945223e-05,
+            "p95_abs": 0.015239773471222354,
+            "p99_abs": 0.02141395339364946,
+            "psnr_db": 43.129069110813745,
+            "sse": 0.08406918303457345
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.018776338879325172,
+            "median_abs": 0.0012684333285994942,
+            "mse": 1.344866663405348e-05,
+            "p95_abs": 0.008356394691904198,
+            "p99_abs": 0.011991100175277734,
+            "psnr_db": 48.71320771585593,
+            "sse": 0.023239295943644413
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.12247065951755809,
+            "median_abs": 0.001742413855511691,
+            "mse": 0.00021636539111981093,
+            "p95_abs": 0.032115453952177485,
+            "p99_abs": 0.06320159019602316,
+            "psnr_db": 36.648122058932394,
+            "sse": 0.37387939585503327
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11464793230709547,
+            "median_abs": 0.0028292066753266556,
+            "mse": 0.00011794169336747711,
+            "p95_abs": 0.022490853218003,
+            "p99_abs": 0.037179635954343475,
+            "psnr_db": 39.283326410581985,
+            "sse": 0.20380324613900044
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03597601143833769,
+            "median_abs": 0.00122775005491162,
+            "mse": 2.1925121869575542e-05,
+            "p95_abs": 0.009331511890022815,
+            "p99_abs": 0.01886006299471242,
+            "psnr_db": 46.590579839533895,
+            "sse": 0.037886610590626535
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11049121110063209,
+            "median_abs": 0.0030019993613041307,
+            "mse": 0.00017456903058742546,
+            "p95_abs": 0.02770834302946349,
+            "p99_abs": 0.054817434421261864,
+            "psnr_db": 37.58032799793983,
+            "sse": 0.3016552848550712
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.02704454265735018,
+            "median_abs": 0.0009842507613728076,
+            "mse": 1.745976333262736e-05,
+            "p95_abs": 0.010194513376610453,
+            "p99_abs": 0.015721052675173403,
+            "psnr_db": 47.57961647459234,
+            "sse": 0.030170471038780074
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.19900201369239112,
+            "median_abs": 0.004863627869112076,
+            "mse": 0.000538596234643371,
+            "p95_abs": 0.04933507027418654,
+            "p99_abs": 0.0958734206078876,
+            "psnr_db": 32.68736687091093,
+            "sse": 0.9306942934637452
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01688168920571992,
+            "median_abs": 0.0013098157203920158,
+            "mse": 1.3909715910428953e-05,
+            "p95_abs": 0.008445605148030453,
+            "p99_abs": 0.012019084161815368,
+            "psnr_db": 48.56681739870858,
+            "sse": 0.02403598909322123
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01086632824030992,
+            "median_abs": 0.0004599604942660679,
+            "mse": 2.9436180009331852e-06,
+            "p95_abs": 0.0036134535172015914,
+            "p99_abs": 0.007490739917050195,
+            "psnr_db": 55.31118549922492,
+            "sse": 0.005086571905612544
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.08510427006826327,
+            "median_abs": 0.0006243283811966649,
+            "mse": 8.805536008444122e-05,
+            "p95_abs": 0.02077544360948717,
+            "p99_abs": 0.04380965932428797,
+            "psnr_db": 40.55244202624091,
+            "sse": 0.15215966222591443
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.10961612388353609,
+            "median_abs": 0.007693582058481488,
+            "mse": 0.00039831174828199506,
+            "p95_abs": 0.043283755374719866,
+            "p99_abs": 0.06049341204927326,
+            "psnr_db": 33.997768838020804,
+            "sse": 0.6882827010312874
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04423690090093291,
+            "median_abs": 0.0006275207640868842,
+            "mse": 1.618483810265891e-05,
+            "p95_abs": 0.009032108621828041,
+            "p99_abs": 0.016723550985529287,
+            "psnr_db": 47.908916404982655,
+            "sse": 0.0279674002413946
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1339688502771032,
+            "median_abs": 0.0018442489677251428,
+            "mse": 0.00015971810490530007,
+            "p95_abs": 0.022189925935885663,
+            "p99_abs": 0.06181837050870175,
+            "psnr_db": 37.966458514582506,
+            "sse": 0.2759928852763585
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1289560951794782,
+            "median_abs": 0.007162286740785256,
+            "mse": 0.0005451393098204408,
+            "p95_abs": 0.05208428115761028,
+            "p99_abs": 0.07600686246641493,
+            "psnr_db": 32.63492500007604,
+            "sse": 0.9420007273697217
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0362359522236555,
+            "median_abs": 0.0026032371002929766,
+            "mse": 5.3055076848307685e-05,
+            "p95_abs": 0.015802756378985316,
+            "p99_abs": 0.024143515883138168,
+            "psnr_db": 42.75273052069689,
+            "sse": 0.09167917279387568
+          }
+        }
+      }
+    },
+    {
+      "degrees_of_freedom": 50.0,
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.1992475193964543,
+          "median_abs": 0.001270047263793303,
+          "mse": 0.00013075459593474425,
+          "p95_abs": 0.02319739419109712,
+          "p99_abs": 0.05064877498771933,
+          "psnr_db": 38.83543037037978,
+          "sse": 4.518878835504761
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 4.359061347547418,
+        "entropy_mean": 1.2068765498288059,
+        "entropy_p95": 2.408895054670748,
+        "maximum_responsibility_mean": 0.6025753686468268,
+        "maximum_responsibility_p05": 0.22987294518660378,
+        "top_two_ratio_median": 2.8648403205035002
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 1.7523104214851335,
+          "maximum_responsibility_mean": 0.43338907121363085,
+          "predictive_risk_mean": 0.00027095336154008725,
+          "rgb_error_rms": 0.007366101000071929
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.3099806652340156,
+          "maximum_responsibility_mean": 0.5766285110039657,
+          "predictive_risk_mean": 0.000234951915238535,
+          "rgb_error_rms": 0.007096704067276541
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 1.2247033265418834,
+          "maximum_responsibility_mean": 0.5521542993342295,
+          "predictive_risk_mean": 4.853596748022586e-05,
+          "rgb_error_rms": 0.002415241423795107
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 0.607768767453167,
+          "maximum_responsibility_mean": 0.770912278898253,
+          "predictive_risk_mean": 1.85043127284285e-05,
+          "rgb_error_rms": 0.0015035986585427066
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9812179305048647,
+          "maximum_responsibility_mean": 0.6579030678910479,
+          "predictive_risk_mean": 0.00023818176943857616,
+          "rgb_error_rms": 0.0070504966913135575
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.5842489430110006,
+          "maximum_responsibility_mean": 0.7909586036758873,
+          "predictive_risk_mean": 4.819454080861725e-05,
+          "rgb_error_rms": 0.0036697725286187655
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.3058122830968115,
+          "maximum_responsibility_mean": 0.571589299410881,
+          "predictive_risk_mean": 0.0010117684763517377,
+          "rgb_error_rms": 0.014928640078634113
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 1.9235190138279448,
+          "maximum_responsibility_mean": 0.40697994504322776,
+          "predictive_risk_mean": 0.0005065257395604779,
+          "rgb_error_rms": 0.010964450926241757
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.479280239424832,
+          "maximum_responsibility_mean": 0.5028899231749913,
+          "predictive_risk_mean": 0.00013458385520609764,
+          "rgb_error_rms": 0.004710673396914905
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6643214568706786,
+          "maximum_responsibility_mean": 0.4778683798699716,
+          "predictive_risk_mean": 0.0011000799670621642,
+          "rgb_error_rms": 0.013343833276312432
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6568826157873394,
+          "maximum_responsibility_mean": 0.7611571405657861,
+          "predictive_risk_mean": 5.654835601780949e-05,
+          "rgb_error_rms": 0.004199774648660671
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5514723118952725,
+          "maximum_responsibility_mean": 0.5206289822344901,
+          "predictive_risk_mean": 0.0021181124272905932,
+          "rgb_error_rms": 0.02323590751220184
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 1.1231577772781347,
+          "maximum_responsibility_mean": 0.6001649885051585,
+          "predictive_risk_mean": 6.345019378773516e-05,
+          "rgb_error_rms": 0.003730165437002698
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.18586117066602395,
+          "maximum_responsibility_mean": 0.9341154692824765,
+          "predictive_risk_mean": 8.598860663166323e-06,
+          "rgb_error_rms": 0.0017173814280803997
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 0.7245622483468147,
+          "maximum_responsibility_mean": 0.7548785805333141,
+          "predictive_risk_mean": 0.00038289443746852646,
+          "rgb_error_rms": 0.009955149171866936
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 2.2056462018204335,
+          "maximum_responsibility_mean": 0.2990302938901952,
+          "predictive_risk_mean": 0.005248750324543145,
+          "rgb_error_rms": 0.020416379810605324
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6216051789950985,
+          "maximum_responsibility_mean": 0.7754274281983131,
+          "predictive_risk_mean": 6.347379357085048e-05,
+          "rgb_error_rms": 0.004073922399506573
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6349556990155527,
+          "maximum_responsibility_mean": 0.7721702823120071,
+          "predictive_risk_mean": 0.00030870380680435256,
+          "rgb_error_rms": 0.013231149815755912
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.349756552161807,
+          "maximum_responsibility_mean": 0.29770102901674006,
+          "predictive_risk_mean": 0.0029022237834498577,
+          "rgb_error_rms": 0.023652187764294837
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.2504681931593085,
+          "maximum_responsibility_mean": 0.594959798881971,
+          "predictive_risk_mean": 0.00020129719171016044,
+          "rgb_error_rms": 0.007378195580046053
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.0013227927995295907,
+            "risk_mean": 7.043595056739956e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.001744936665716166,
+            "risk_mean": 2.1365934640389195e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.0032121702061573723,
+            "risk_mean": 4.263579462872823e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.004169553256422324,
+            "risk_mean": 6.149346910597916e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.0051220456583652456,
+            "risk_mean": 9.046165166389045e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.006113421206729888,
+            "risk_mean": 0.00014602401231756748
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.0074039465401364605,
+            "risk_mean": 0.0002446671461047903
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.010113088507773984,
+            "risk_mean": 0.0004971678101810899
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.01794481368625049,
+            "risk_mean": 0.001569762087520009
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.027061588468738167,
+            "risk_mean": 0.004802545039141388
+          }
+        ],
+        "risk_error_spearman": 0.7828253310679393,
+        "risk_maximum": 0.020540441268775616,
+        "risk_median": 0.00011331408086060586,
+        "risk_minimum": 2.7507648496989503e-06
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.05325384385086461,
+            "median_abs": 0.0016841443773976342,
+            "mse": 5.425944394326067e-05,
+            "p95_abs": 0.016487547029667444,
+            "p99_abs": 0.024824617822027804,
+            "psnr_db": 42.65524661249154,
+            "sse": 0.09376031913395444
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04162920023788988,
+            "median_abs": 0.0018775294181235247,
+            "mse": 5.0363208618499393e-05,
+            "p95_abs": 0.015608906913137863,
+            "p99_abs": 0.027165553941272447,
+            "psnr_db": 42.97886608966901,
+            "sse": 0.08702762449276695
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01127088156552708,
+            "median_abs": 0.0007197509388438723,
+            "mse": 5.833391135215816e-06,
+            "p95_abs": 0.005419104271705356,
+            "p99_abs": 0.007653503686053523,
+            "psnr_db": 52.34078902676642,
+            "sse": 0.01008009988165293
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.014585818178913287,
+            "median_abs": 0.0003750086033595737,
+            "mse": 2.260808925971426e-06,
+            "p95_abs": 0.0030317846676134338,
+            "p99_abs": 0.005333703253935927,
+            "psnr_db": 56.45736140840313,
+            "sse": 0.003906677824078625
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.0329099832824421,
+            "median_abs": 0.002413121013835118,
+            "mse": 4.970950359422342e-05,
+            "p95_abs": 0.015629961878152816,
+            "p99_abs": 0.02211625267195072,
+            "psnr_db": 43.035605737623484,
+            "sse": 0.08589802221081806
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.018832111485114877,
+            "median_abs": 0.0012776462947425848,
+            "mse": 1.346723041180497e-05,
+            "p95_abs": 0.008340036121913662,
+            "p99_abs": 0.012018174996730586,
+            "psnr_db": 48.707217094398764,
+            "sse": 0.023271374151598988
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.12247396401549449,
+            "median_abs": 0.001824659133420923,
+            "mse": 0.0002228642945974008,
+            "p95_abs": 0.03285433637627449,
+            "p99_abs": 0.061803875688768745,
+            "psnr_db": 36.51959504877449,
+            "sse": 0.3851095010643086
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1162977901399605,
+            "median_abs": 0.0029051484622831716,
+            "mse": 0.00012021918411396372,
+            "p95_abs": 0.022848398605524664,
+            "p99_abs": 0.03707105170029332,
+            "psnr_db": 39.2002622376389,
+            "sse": 0.2077387501489293
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03821055141908769,
+            "median_abs": 0.00122994692429001,
+            "mse": 2.2190443852401806e-05,
+            "p95_abs": 0.009314123107535436,
+            "p99_abs": 0.018842354161775904,
+            "psnr_db": 46.53834010939643,
+            "sse": 0.03834508697695032
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11255022287856054,
+            "median_abs": 0.0029551621999082053,
+            "mse": 0.00017805788650602296,
+            "p95_abs": 0.02785067301777789,
+            "p99_abs": 0.05303832709764272,
+            "psnr_db": 37.494387858751814,
+            "sse": 0.3076840278824077
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.026857349330257935,
+            "median_abs": 0.0010074048868729518,
+            "mse": 1.7638107099532865e-05,
+            "p95_abs": 0.01020328405782157,
+            "p99_abs": 0.015751498325020506,
+            "psnr_db": 47.53548024665549,
+            "sse": 0.03047864906799279
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1992475193964543,
+            "median_abs": 0.005018920150563695,
+            "mse": 0.000539907397915598,
+            "p95_abs": 0.050148099122981224,
+            "p99_abs": 0.09534123946237023,
+            "psnr_db": 32.67680721700993,
+            "sse": 0.9329599835981532
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.016203901356270367,
+            "median_abs": 0.0013269707294479571,
+            "mse": 1.391413418740953e-05,
+            "p95_abs": 0.008447194921519756,
+            "p99_abs": 0.012021816713091485,
+            "psnr_db": 48.56543812637813,
+            "sse": 0.02404362387584367
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010868098937649867,
+            "median_abs": 0.00046611315984314283,
+            "mse": 2.949398969515473e-06,
+            "p95_abs": 0.0035911511380794883,
+            "p99_abs": 0.007492698673834097,
+            "psnr_db": 55.302664758241846,
+            "sse": 0.0050965614193227374
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.09127770624565845,
+            "median_abs": 0.0006348348135049014,
+            "mse": 9.910499503412292e-05,
+            "p95_abs": 0.021564452178227216,
+            "p99_abs": 0.04789161799361548,
+            "psnr_db": 40.039044558972954,
+            "sse": 0.1712534314189644
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11331839776955621,
+            "median_abs": 0.007410212993168103,
+            "mse": 0.0004168285645708927,
+            "p95_abs": 0.04473343659110915,
+            "p99_abs": 0.0637087981566008,
+            "psnr_db": 33.80042527207464,
+            "sse": 0.7202797595785025
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04612066154460201,
+            "median_abs": 0.0006314333735679498,
+            "mse": 1.6596843717201388e-05,
+            "p95_abs": 0.00899624993559797,
+            "p99_abs": 0.016532028167094065,
+            "psnr_db": 47.79974495486172,
+            "sse": 0.028679345943324
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13988511755053434,
+            "median_abs": 0.0018732395039047084,
+            "mse": 0.0001750633254469777,
+            "p95_abs": 0.022262809614481627,
+            "p99_abs": 0.062252996093611505,
+            "psnr_db": 37.56804826071001,
+            "sse": 0.3025094263723775
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13117461761689636,
+            "median_abs": 0.0071686167639508636,
+            "mse": 0.0005594259860374584,
+            "p95_abs": 0.052192058292822134,
+            "p99_abs": 0.07579145827377093,
+            "psnr_db": 32.522573639735086,
+            "sse": 0.9666881038727281
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03616339851451511,
+            "median_abs": 0.0026947657830502236,
+            "mse": 5.44377700174111e-05,
+            "p95_abs": 0.016038256731048223,
+            "p99_abs": 0.024384512552078276,
+            "psnr_db": 42.64099673493849,
+            "sse": 0.09406846659008639
+          }
+        }
+      }
+    },
+    {
+      "degrees_of_freedom": "infinity",
+      "methods": {
+        "mmse": {
+          "count": 34560,
+          "maximum_abs": 0.1998122274860904,
+          "median_abs": 0.0012935274141719598,
+          "mse": 0.0001375776023866875,
+          "p95_abs": 0.02372988813731165,
+          "p99_abs": 0.0517803131655862,
+          "psnr_db": 38.61452263423302,
+          "sse": 4.75468193848392
+        }
+      },
+      "posterior": {
+        "effective_component_count_mean": 3.546227304935915,
+        "entropy_mean": 1.0311394717018638,
+        "entropy_p95": 2.1666892862167413,
+        "maximum_responsibility_mean": 0.6531353493710091,
+        "maximum_responsibility_p05": 0.268723316869897,
+        "top_two_ratio_median": 3.5585105676223954
+      },
+      "posterior_rows": {
+        "101085.jpg": {
+          "count": 576,
+          "entropy_mean": 1.5571024424744186,
+          "maximum_responsibility_mean": 0.48409744796438997,
+          "predictive_risk_mean": 0.000292191507142392,
+          "rgb_error_rms": 0.007501635584607928
+        },
+        "101087.jpg": {
+          "count": 576,
+          "entropy_mean": 1.143782233465718,
+          "maximum_responsibility_mean": 0.6231267582301823,
+          "predictive_risk_mean": 0.0002579502641651954,
+          "rgb_error_rms": 0.007197280288295273
+        },
+        "102061.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9967134567417867,
+          "maximum_responsibility_mean": 0.6295246085226371,
+          "predictive_risk_mean": 5.27523460259933e-05,
+          "rgb_error_rms": 0.002436371821535461
+        },
+        "103070.jpg": {
+          "count": 576,
+          "entropy_mean": 0.44738926556773506,
+          "maximum_responsibility_mean": 0.8306226902428917,
+          "predictive_risk_mean": 2.0562638829892195e-05,
+          "rgb_error_rms": 0.0015135886816147735
+        },
+        "105025.jpg": {
+          "count": 576,
+          "entropy_mean": 0.8284817003578353,
+          "maximum_responsibility_mean": 0.7091134570764022,
+          "predictive_risk_mean": 0.0002658468224573667,
+          "rgb_error_rms": 0.007253050196285823
+        },
+        "106024.jpg": {
+          "count": 576,
+          "entropy_mean": 0.47863010523345156,
+          "maximum_responsibility_mean": 0.8304347001427668,
+          "predictive_risk_mean": 5.184045893525339e-05,
+          "rgb_error_rms": 0.0036778241343861443
+        },
+        "108005.jpg": {
+          "count": 576,
+          "entropy_mean": 1.142888970145719,
+          "maximum_responsibility_mean": 0.6155685834548306,
+          "predictive_risk_mean": 0.0010571040733446543,
+          "rgb_error_rms": 0.015345283013870711
+        },
+        "108070.jpg": {
+          "count": 576,
+          "entropy_mean": 1.6929308381104509,
+          "maximum_responsibility_mean": 0.46014234880175103,
+          "predictive_risk_mean": 0.0005306544683249146,
+          "rgb_error_rms": 0.011091243850490049
+        },
+        "108082.jpg": {
+          "count": 576,
+          "entropy_mean": 1.2579746536295078,
+          "maximum_responsibility_mean": 0.5710455879608118,
+          "predictive_risk_mean": 0.00014285800712290946,
+          "rgb_error_rms": 0.004752039929137579
+        },
+        "109053.jpg": {
+          "count": 576,
+          "entropy_mean": 1.4583002189119858,
+          "maximum_responsibility_mean": 0.5294455174950303,
+          "predictive_risk_mean": 0.0011413030769538918,
+          "rgb_error_rms": 0.01375425815450362
+        },
+        "119082.jpg": {
+          "count": 576,
+          "entropy_mean": 0.5036980616701374,
+          "maximum_responsibility_mean": 0.8199714903587861,
+          "predictive_risk_mean": 6.346760415530824e-05,
+          "rgb_error_rms": 0.004227291652737203
+        },
+        "12084.jpg": {
+          "count": 576,
+          "entropy_mean": 1.3700204297246545,
+          "maximum_responsibility_mean": 0.5610219720414507,
+          "predictive_risk_mean": 0.002254611355863609,
+          "rgb_error_rms": 0.023398330116692845
+        },
+        "123074.jpg": {
+          "count": 576,
+          "entropy_mean": 0.9634149988271032,
+          "maximum_responsibility_mean": 0.6584401983246573,
+          "predictive_risk_mean": 6.767767050908544e-05,
+          "rgb_error_rms": 0.003730896977165412
+        },
+        "126007.jpg": {
+          "count": 576,
+          "entropy_mean": 0.12888411934849828,
+          "maximum_responsibility_mean": 0.9532328629340819,
+          "predictive_risk_mean": 9.259425247008712e-06,
+          "rgb_error_rms": 0.0017171159234104637
+        },
+        "130026.jpg": {
+          "count": 576,
+          "entropy_mean": 0.6095560701923655,
+          "maximum_responsibility_mean": 0.7887367279105606,
+          "predictive_risk_mean": 0.00043060938103887687,
+          "rgb_error_rms": 0.01101994098999916
+        },
+        "134035.jpg": {
+          "count": 576,
+          "entropy_mean": 1.8788855951897436,
+          "maximum_responsibility_mean": 0.3629571435864977,
+          "predictive_risk_mean": 0.0054363202464764665,
+          "rgb_error_rms": 0.021225383199198793
+        },
+        "14037.jpg": {
+          "count": 576,
+          "entropy_mean": 0.4919312963418775,
+          "maximum_responsibility_mean": 0.8233284852547295,
+          "predictive_risk_mean": 7.111473178496475e-05,
+          "rgb_error_rms": 0.004163710547865642
+        },
+        "143090.jpg": {
+          "count": 576,
+          "entropy_mean": 0.5482332718270647,
+          "maximum_responsibility_mean": 0.802880025793416,
+          "predictive_risk_mean": 0.0003476129718629073,
+          "rgb_error_rms": 0.013690542763463402
+        },
+        "145086.jpg": {
+          "count": 576,
+          "entropy_mean": 2.0754437828014667,
+          "maximum_responsibility_mean": 0.3539880530041403,
+          "predictive_risk_mean": 0.003079053700045291,
+          "rgb_error_rms": 0.024153273638444786
+        },
+        "147091.jpg": {
+          "count": 576,
+          "entropy_mean": 1.0485279234757532,
+          "maximum_responsibility_mean": 0.6550283283201704,
+          "predictive_risk_mean": 0.0002135181038450238,
+          "rgb_error_rms": 0.007519161406203438
+        }
+      },
+      "predictive_uncertainty": {
+        "decile_calibration": [
+          {
+            "bin": 0,
+            "count": 1152,
+            "error_rms": 0.0013251460157977547,
+            "risk_mean": 7.367565143830377e-06
+          },
+          {
+            "bin": 1,
+            "count": 1152,
+            "error_rms": 0.001859921939962751,
+            "risk_mean": 2.4242634594160236e-05
+          },
+          {
+            "bin": 2,
+            "count": 1152,
+            "error_rms": 0.0035875042417729463,
+            "risk_mean": 4.4929708421494775e-05
+          },
+          {
+            "bin": 3,
+            "count": 1152,
+            "error_rms": 0.004084634246037701,
+            "risk_mean": 6.562041869551727e-05
+          },
+          {
+            "bin": 4,
+            "count": 1152,
+            "error_rms": 0.005113923469450432,
+            "risk_mean": 9.496558309218777e-05
+          },
+          {
+            "bin": 5,
+            "count": 1152,
+            "error_rms": 0.006271269026103195,
+            "risk_mean": 0.00015699571260864353
+          },
+          {
+            "bin": 6,
+            "count": 1152,
+            "error_rms": 0.007622472145181578,
+            "risk_mean": 0.0002667102938797408
+          },
+          {
+            "bin": 7,
+            "count": 1152,
+            "error_rms": 0.01026656118470914,
+            "risk_mean": 0.0005411282208703595
+          },
+          {
+            "bin": 8,
+            "count": 1152,
+            "error_rms": 0.018088376031847642,
+            "risk_mean": 0.001658374366769524
+          },
+          {
+            "bin": 9,
+            "count": 1152,
+            "error_rms": 0.028014845039553045,
+            "risk_mean": 0.005032819922990043
+          }
+        ],
+        "risk_error_spearman": 0.7778780023297194,
+        "risk_maximum": 0.02505015807343897,
+        "risk_median": 0.00011801045216099866,
+        "risk_minimum": 4.857901309962414e-06
+      },
+      "rows": {
+        "101085.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.053254849609196644,
+            "median_abs": 0.001632061853834908,
+            "mse": 5.627453644425593e-05,
+            "p95_abs": 0.016689587116909613,
+            "p99_abs": 0.025616862382949454,
+            "psnr_db": 42.496880737691285,
+            "sse": 0.09724239897567424
+          }
+        },
+        "101087.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.042362564369107514,
+            "median_abs": 0.0019038193290122074,
+            "mse": 5.1800843548283707e-05,
+            "p95_abs": 0.0158976319919687,
+            "p99_abs": 0.027805843451005324,
+            "psnr_db": 42.85663167950097,
+            "sse": 0.08951185765143424
+          }
+        },
+        "102061.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.011418065675433409,
+            "median_abs": 0.0007328480439035452,
+            "mse": 5.93590765277202e-06,
+            "p95_abs": 0.00544376856671949,
+            "p99_abs": 0.007791991159905794,
+            "psnr_db": 52.2651286416493,
+            "sse": 0.010257248423990051
+          }
+        },
+        "103070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.015109417013941986,
+            "median_abs": 0.00037392616021385966,
+            "mse": 2.2909506971123487e-06,
+            "p95_abs": 0.0029756674249127608,
+            "p99_abs": 0.005333868285558574,
+            "psnr_db": 56.39984257036027,
+            "sse": 0.003958762804610138
+          }
+        },
+        "105025.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.035807304994076694,
+            "median_abs": 0.0025620434679818893,
+            "mse": 5.2606737149841816e-05,
+            "p95_abs": 0.016039619917394124,
+            "p99_abs": 0.02355919673973657,
+            "psnr_db": 42.789586337999296,
+            "sse": 0.09090444179492665
+          }
+        },
+        "106024.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01871136516757821,
+            "median_abs": 0.0013097806822834346,
+            "mse": 1.3526390363473189e-05,
+            "p95_abs": 0.00837732176545745,
+            "p99_abs": 0.012028835685315297,
+            "psnr_db": 48.68818083252832,
+            "sse": 0.02337360254808167
+          }
+        },
+        "108005.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1228719826781256,
+            "median_abs": 0.001767421204882557,
+            "mse": 0.00023547771077578894,
+            "p95_abs": 0.033321288133751216,
+            "p99_abs": 0.06253771009350986,
+            "psnr_db": 36.2805019488414,
+            "sse": 0.4069054842205633
+          }
+        },
+        "108070.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1193761968786124,
+            "median_abs": 0.0029459617948526615,
+            "mse": 0.00012301569015103333,
+            "p95_abs": 0.023159315159581317,
+            "p99_abs": 0.03668796470358697,
+            "psnr_db": 39.10039492532657,
+            "sse": 0.2125711125809856
+          }
+        },
+        "108082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.04055694850185987,
+            "median_abs": 0.0012545139616076516,
+            "mse": 2.258188348811789e-05,
+            "p95_abs": 0.009436587467825339,
+            "p99_abs": 0.019467140441116186,
+            "psnr_db": 46.46239837681982,
+            "sse": 0.03902149466746771
+          }
+        },
+        "109053.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11608744512815394,
+            "median_abs": 0.0029830724941132675,
+            "mse": 0.00018917961738072932,
+            "p95_abs": 0.029768984326115216,
+            "p99_abs": 0.05627333862121684,
+            "psnr_db": 37.23125657236175,
+            "sse": 0.3269023788339003
+          }
+        },
+        "119082.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.026746682929310955,
+            "median_abs": 0.0010028035264530843,
+            "mse": 1.7869994717301635e-05,
+            "p95_abs": 0.010129337160381582,
+            "p99_abs": 0.015873451442336,
+            "psnr_db": 47.47875575879755,
+            "sse": 0.03087935087149723
+          }
+        },
+        "12084.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.1998122274860904,
+            "median_abs": 0.0051951928016588655,
+            "mse": 0.0005474818522497355,
+            "p95_abs": 0.050336594042848744,
+            "p99_abs": 0.0956730318928029,
+            "psnr_db": 32.61630272101403,
+            "sse": 0.9460486406875429
+          }
+        },
+        "123074.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.01538007569379779,
+            "median_abs": 0.0013491551690616443,
+            "mse": 1.391959225422201e-05,
+            "p95_abs": 0.00838021855537798,
+            "p99_abs": 0.011841789040568118,
+            "psnr_db": 48.56373486301247,
+            "sse": 0.024053055415295635
+          }
+        },
+        "126007.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.010868156747868202,
+            "median_abs": 0.00046538486123984604,
+            "mse": 2.9484870944297695e-06,
+            "p95_abs": 0.0035971966416783905,
+            "p99_abs": 0.007492977812906358,
+            "psnr_db": 55.30400768795181,
+            "sse": 0.005094985699174642
+          }
+        },
+        "130026.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.10745916112505882,
+            "median_abs": 0.0006377185431767421,
+            "mse": 0.00012143909942306365,
+            "p95_abs": 0.022927269753726113,
+            "p99_abs": 0.054066468660283425,
+            "psnr_db": 39.156414621093674,
+            "sse": 0.209846763803054
+          }
+        },
+        "134035.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.11718701771711965,
+            "median_abs": 0.007935186908984981,
+            "mse": 0.00045051689195283037,
+            "p95_abs": 0.047294554610401655,
+            "p99_abs": 0.06489313283963948,
+            "psnr_db": 33.46288920679659,
+            "sse": 0.7784931892944909
+          }
+        },
+        "14037.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.048587417534900285,
+            "median_abs": 0.0006532251029143215,
+            "mse": 1.733648552640761e-05,
+            "p95_abs": 0.009072553458478964,
+            "p99_abs": 0.01652145311721393,
+            "psnr_db": 47.61038938646769,
+            "sse": 0.02995744698963235
+          }
+        },
+        "143090.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.15473553167465098,
+            "median_abs": 0.0018659561737571773,
+            "mse": 0.00018743096115822014,
+            "p95_abs": 0.023097470926561007,
+            "p99_abs": 0.06598543080575069,
+            "psnr_db": 37.27158667719674,
+            "sse": 0.3238807008814044
+          }
+        },
+        "145086.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.13710896561475783,
+            "median_abs": 0.007254807811058257,
+            "mse": 0.0005833806274535918,
+            "p95_abs": 0.052612376094793634,
+            "p99_abs": 0.07831445113971468,
+            "psnr_db": 32.34047996759876,
+            "sse": 1.0080817242398066
+          }
+        },
+        "147091.jpg": {
+          "mmse": {
+            "count": 1728,
+            "maximum_abs": 0.03634878900826255,
+            "median_abs": 0.002749101821788169,
+            "mse": 5.653778825253927e-05,
+            "p95_abs": 0.01668572542018943,
+            "p99_abs": 0.02464220417751013,
+            "psnr_db": 42.476611850312466,
+            "sse": 0.09769729810038785
+          }
+        }
+      }
+    }
+  ]
+}
