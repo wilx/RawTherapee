@@ -1,0 +1,39 @@
+{
+  "degrees_of_freedom": 3.0,
+  "ecm_iterations_this_run": 30,
+  "elapsed_seconds": 311.8064884580672,
+  "format": "rawtherapee-xtrans-fixed-student-t-ecm-checkpoint-v1",
+  "initial_logical_sha256": "c23e38c836dccdb2eee0aeb1529d8342c2996c227f42a05402a379cdf2959350",
+  "latent_weight_quantiles_0_1_5_50_95_99_100": [
+    0.0001232430041723338,
+    0.0008965442455226688,
+    0.005734308373155021,
+    0.8066749879355885,
+    15.013463255672349,
+    16.535155540039177,
+    17.921859067056417
+  ],
+  "mean_training_log_likelihood": 133.3748446922884,
+  "model": {
+    "component_count": 8,
+    "converged_phase_count": 0,
+    "covariance_condition_maximum": 406595.76654830354,
+    "covariance_floor": 1e-06,
+    "dc_mode": "observed-rgb",
+    "dimension": 51,
+    "effective_count_maximum": 26911.688308203327,
+    "effective_count_median": 11205.686858693522,
+    "effective_count_minimum": 4587.829792808127,
+    "effective_rank_minimum": 51,
+    "iteration_maximum": 50,
+    "iteration_minimum": 50,
+    "logical_sha256": "f0cef4c98c04b9077f7046c48c82a46abb60a6a60872194ec5fa32e25c00e030",
+    "mean_training_lower_bound": 133.3748446922884,
+    "parameter_count": 198414,
+    "patch_size": 7,
+    "phase_count": 18,
+    "seed": 1481067858,
+    "shrinkage": "student-t-nu3",
+    "training_sample_count_per_phase": 102400
+  }
+}
