@@ -1,0 +1,24 @@
+{
+  "format": "rawtherapee-xtrans-tgmr-assets-v1",
+  "generation": {
+    "earring": "source rectangle (3510,1930,140,160), nearest-neighbour 5x",
+    "full": "2584x1726 Lanczos downsample from 7752x5178 TIFF"
+  },
+  "identity": {
+    "raw_sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0",
+    "tgmr_model_sha256": "6279b6a593ef4b595b1aff246182682b60c7eea701373ee2eb9f80cfcb50485c"
+  },
+  "images": {
+    "earring_500": {
+      "bytes": 51805,
+      "filename": "DSCF0771-tgmr-earring-500.png",
+      "sha256": "42ca5ce84f69f08c885b4a42aeaabdef4bbfbde746ccc914121924a4ecfbbeee"
+    },
+    "full_third": {
+      "bytes": 6290019,
+      "filename": "DSCF0771-tgmr-full-third.png",
+      "sha256": "7ed9b44950757f9981ab12723988e9bedccc949ad7b7563ecf638dd36a108fec"
+    }
+  },
+  "source_tiff_sha256": "188d6a8d809d8f7fe2fc3654a4c18e426eb5cedb51659eddd6edccc04c2671d6"
+}

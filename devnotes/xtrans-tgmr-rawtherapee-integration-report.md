@@ -188,9 +188,18 @@ Markesteijn wall time in this small sample.
 
 ## Real-RAW visual observations
 
-The TIFFs and crops are external under `/tmp/xtrans-tgmr-rt/` and are not
-tracked.  The comparison order used below was Markesteijn then TGMR.  There is
-no ground truth, so disagreement alone is not classified as error.
+The full-resolution TIFFs remain external under `/tmp/xtrans-tgmr-rt/`.  The
+canonical DSCF0771 TGMR comparison assets are tracked alongside the earlier
+methods:
+
+- [one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-full-third.png);
+- [500-percent nearest-neighbour earring crop](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-earring-500.png).
+
+Their [separate manifest](images/xtrans-neural/DSCF0771/tgmr-manifest.json)
+binds them to the RAW, TGMR model, and full-resolution source TIFF without
+changing the identities of the earlier comparison manifests.  The comparison
+order used below was Markesteijn then TGMR.  There is no ground truth, so
+disagreement alone is not classified as error.
 
 | RAF/crop | Markesteijn | TGMR observation |
 |---|---|---|
