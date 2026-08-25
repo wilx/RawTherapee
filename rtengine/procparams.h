@@ -1790,6 +1790,7 @@ struct RAWParams {
             TWO_PASS,
             ONE_PASS,
             RAFINAZARI,
+            TGMR,
             FAST,
             MONO,
             NONE

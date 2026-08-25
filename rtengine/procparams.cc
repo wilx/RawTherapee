@@ -3722,6 +3722,7 @@ const std::vector<const char*>& RAWParams::XTransSensor::getMethodStrings()
         "2-pass",
         "1-pass (medium)",
         "rafinazari-adaptive",
+        "tgmr",
         "fast",
         "mono",
         "none"

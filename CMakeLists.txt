@@ -635,6 +635,7 @@ if(BUILD_TESTING)
     add_subdirectory(tests/xtransulri)
     add_subdirectory(tests/xtranstriangulation)
     add_subdirectory(tests/xtransoracle)
+    add_subdirectory(tests/xtranstgmr)
 endif()
 
 include(cmake/AboutThisBuild.cmake)

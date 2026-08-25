@@ -52,6 +52,7 @@
 #include "xtrans_global.h"
 #include "xtrans_mlri.h"
 #include "xtrans_packed.h"
+#include "xtrans_tgmr.h"
 #include "xtrans_triangulation.h"
 #include "xtrans_xveon.h"
 
@@ -1968,6 +1969,54 @@ bool RawImageSource::packed_xtrans_interpolate()
     return true;
 }
 
+bool RawImageSource::tgmr_xtrans_interpolate()
+{
+    const char *const modelPathValue = std::getenv("RT_XTRANS_TGMR_MODEL");
+    const std::string modelPath = modelPathValue ? modelPathValue : "";
+    const TgmrXTransLoadResult loaded = loadCachedTgmrXTransModel(modelPath);
+    if (!loaded) {
+        std::fprintf(
+            stderr,
+            "TGMR X-Trans error [%s]: model=%s: %s; "
+            "falling back to 3-pass (Markesteijn)\n",
+            tgmrXTransErrorCodeName(loaded.code),
+            modelPath.empty() ? "(unset)" : modelPath.c_str(),
+            loaded.message.c_str());
+        return false;
+    }
+
+    int xtrans[6][6];
+    ri->getXtransMatrix(xtrans);
+    const TgmrXTransRunResult run = demosaicTgmrXTrans(
+        rawData, red, green, blue, W, H, xtrans, loaded.model);
+    if (!run) {
+        std::fprintf(
+            stderr,
+            "TGMR X-Trans error [%s]: model=%s: %s; "
+            "falling back to 3-pass (Markesteijn)\n",
+            tgmrXTransErrorCodeName(run.code), modelPath.c_str(),
+            run.message.c_str());
+        return false;
+    }
+
+    const double megapixelsPerSecond = run.elapsedMicroseconds
+        ? static_cast<double>(run.pixelCount) / run.elapsedMicroseconds
+        : 0.0;
+    std::fprintf(
+        stderr,
+        "TGMR X-Trans completed: method=%s artifact=%s contract=K32/S9/q8 "
+        "nu=3 temperature=4 tau=0.0003 dc=observed-rgb tile=128 halo=3 "
+        "boundary=reflect-no-repeat scale=65535 avx2=%s tiles=%llu workers=%u "
+        "workspace_per_worker=%llu elapsed_us=%llu throughput_mp_s=%.6f\n",
+        TGMR_XTRANS_METHOD, tgmrXTransModelDigest(*loaded.model).c_str(),
+        run.avx2 ? "yes" : "no",
+        static_cast<unsigned long long>(run.tileCount), run.workerCount,
+        static_cast<unsigned long long>(run.workingBytesPerWorker),
+        static_cast<unsigned long long>(run.elapsedMicroseconds),
+        megapixelsPerSecond);
+    return true;
+}
+
 bool RawImageSource::mlri_xtrans_interpolate(MlriXTransVariant variant)
 {
     const auto started = std::chrono::steady_clock::now();
@@ -2246,6 +2295,12 @@ void RawImageSource::demosaic(const RAWParams &raw, bool autoContrast, double &c
             }
         } else if (raw.xtranssensor.method == PACKED_XTRANS_ONNX_METHOD) {
             if (!packed_xtrans_interpolate()) {
+                xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
+            }
+        } else if (raw.xtranssensor.method ==
+                   RAWParams::XTransSensor::getMethodString(
+                       RAWParams::XTransSensor::Method::TGMR)) {
+            if (!tgmr_xtrans_interpolate()) {
                 xtrans_interpolate(3, true, options.chunkSizeXT, options.measure);
             }
         } else if (raw.xtranssensor.method == MLRI_XTRANS_TWO_PASS_METHOD ||

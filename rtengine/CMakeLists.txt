@@ -122,6 +122,7 @@ set(RTENGINESOURCEFILES
     xtrans_mlri.cc
     xtrans_packed.cc
     xtrans_rafinazari.cc
+    xtrans_tgmr.cc
     xtrans_triangulation.cc
     xtrans_xveon.cc
     xtrans_demosaic.cc

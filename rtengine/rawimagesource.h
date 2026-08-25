@@ -334,6 +334,7 @@ protected:
     bool demosaicnet_xtrans_interpolate (bool gamma22);
     bool xveon_xtrans_interpolate ();
     bool packed_xtrans_interpolate ();
+    bool tgmr_xtrans_interpolate ();
     bool mlri_xtrans_interpolate (MlriXTransVariant variant);
     bool triangulated_xtrans_interpolate (TriangulatedXTransVariant variant);
     bool global_xtrans_interpolate (GlobalXTransVariant variant);
