@@ -4292,7 +4292,7 @@ TP_RAW_RCD;RCD
 TP_RAW_RCDBILINEAR;RCD+Bilinear
 TP_RAW_RCDVNG4;RCD+VNG4
 TP_RAW_RAFINAZARIADAPTIVE;Rafinazari adaptive (experimental)
-TP_RAW_TGMR;TGMR (experimental)
+TP_RAW_TGMR;Student-t GMR (experimental)
 TP_RAW_RAFINAZARI_SIGMA;Reconstruction Gaussian sigma
 TP_RAW_RAFINAZARI_NEAR_RADIUS;Near-chroma support radius
 TP_RAW_RAFINAZARI_MIDDLE_RADIUS;Middle-chroma support radius

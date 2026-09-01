@@ -57,5 +57,10 @@ clean
 *-tvm-vulkan-*.so
 *-tvm-vulkan-*.so.json
 *.pt
+*.tgpc
+*.tgpc.gz
+*.tgmrc
+*.tgmr
+*.tgmr.json
 .xveon-cache/
 .packedxtrans-cache/

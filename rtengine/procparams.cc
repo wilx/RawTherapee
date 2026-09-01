@@ -263,9 +263,9 @@ void saveFramingParams(
 
     const Glib::ustring group{TOOL_NAME};
 
-    const FramingParamsEdited& edited = pedited->framing;
+    const FramingParamsEdited* edited = pedited ? &pedited->framing : nullptr;
 
-    saveToKeyfile(!pedited || edited.enabled, group, TOOL_ENABLED, params.enabled, keyFile);
+    saveToKeyfile(!edited || edited->enabled, group, TOOL_ENABLED, params.enabled, keyFile);
 
     using FramingMethod = FramingParams::FramingMethod;
     const std::map<FramingMethod, const char*> framingMethodMapping = {
@@ -273,18 +273,18 @@ void saveFramingParams(
         {FramingMethod::BBOX, FRAMING_METHOD_BBOX},
         {FramingMethod::FIXED_SIZE, FRAMING_METHOD_FIXED_SIZE}
     };
-    saveToKeyfile(!pedited || edited.framingMethod, group, FRAMING_METHOD, framingMethodMapping, params.framingMethod, keyFile);
-    saveToKeyfile(!pedited || edited.aspectRatio, group, ASPECT_RATIO, params.aspectRatio, keyFile);
+    saveToKeyfile(!edited || edited->framingMethod, group, FRAMING_METHOD, framingMethodMapping, params.framingMethod, keyFile);
+    saveToKeyfile(!edited || edited->aspectRatio, group, ASPECT_RATIO, params.aspectRatio, keyFile);
     using Orientation = FramingParams::Orientation;
     const std::map<Orientation, const char*> orientationMapping = {
         {Orientation::AS_IMAGE, ORIENT_AS_IMAGE},
         {Orientation::LANDSCAPE, ORIENT_LANDSCAPE},
         {Orientation::PORTRAIT, ORIENT_PORTRAIT},
     };
-    saveToKeyfile(!pedited || edited.orientation, group, ORIENTATION, orientationMapping, params.orientation, keyFile);
-    saveToKeyfile(!pedited || edited.framedWidth, group, FRAMED_WIDTH, params.framedWidth, keyFile);
-    saveToKeyfile(!pedited || edited.framedHeight, group, FRAMED_HEIGHT, params.framedHeight, keyFile);
-    saveToKeyfile(!pedited || edited.allowUpscaling, group, ALLOW_UPSCALING, params.allowUpscaling, keyFile);
+    saveToKeyfile(!edited || edited->orientation, group, ORIENTATION, orientationMapping, params.orientation, keyFile);
+    saveToKeyfile(!edited || edited->framedWidth, group, FRAMED_WIDTH, params.framedWidth, keyFile);
+    saveToKeyfile(!edited || edited->framedHeight, group, FRAMED_HEIGHT, params.framedHeight, keyFile);
+    saveToKeyfile(!edited || edited->allowUpscaling, group, ALLOW_UPSCALING, params.allowUpscaling, keyFile);
 
     using BorderSizing = FramingParams::BorderSizing;
     const std::map<BorderSizing, const char*> borderSizingMapping = {
@@ -292,7 +292,7 @@ void saveFramingParams(
         {BorderSizing::UNIFORM_PERCENTAGE, BORDER_SIZING_UNIFORM_PERCENTAGE},
         {BorderSizing::FIXED_SIZE, BORDER_SIZING_FIXED_SIZE}
     };
-    saveToKeyfile(!pedited || edited.borderSizingMethod, group, BORDER_SIZING_METHOD, borderSizingMapping, params.borderSizingMethod, keyFile);
+    saveToKeyfile(!edited || edited->borderSizingMethod, group, BORDER_SIZING_METHOD, borderSizingMapping, params.borderSizingMethod, keyFile);
     using Basis = FramingParams::Basis;
     const std::map<Basis, const char*> basisMapping = {
         {Basis::AUTO, BASIS_AUTO},
@@ -301,17 +301,17 @@ void saveFramingParams(
         {Basis::LONG, BASIS_LONG},
         {Basis::SHORT, BASIS_SHORT}
     };
-    saveToKeyfile(!pedited || edited.basis, group, BASIS, basisMapping, params.basis, keyFile);
-    saveToKeyfile(!pedited || edited.relativeBorderSize, group, RELATIVE_BORDER_SIZE, params.relativeBorderSize, keyFile);
-    saveToKeyfile(!pedited || edited.minSizeEnabled, group, MIN_SIZE_ENABLED, params.minSizeEnabled, keyFile);
-    saveToKeyfile(!pedited || edited.minWidth, group, MIN_WIDTH, params.minWidth, keyFile);
-    saveToKeyfile(!pedited || edited.minHeight, group, MIN_HEIGHT, params.minHeight, keyFile);
-    saveToKeyfile(!pedited || edited.absWidth, group, ABS_WIDTH, params.absWidth, keyFile);
-    saveToKeyfile(!pedited || edited.absHeight, group, ABS_HEIGHT, params.absHeight, keyFile);
+    saveToKeyfile(!edited || edited->basis, group, BASIS, basisMapping, params.basis, keyFile);
+    saveToKeyfile(!edited || edited->relativeBorderSize, group, RELATIVE_BORDER_SIZE, params.relativeBorderSize, keyFile);
+    saveToKeyfile(!edited || edited->minSizeEnabled, group, MIN_SIZE_ENABLED, params.minSizeEnabled, keyFile);
+    saveToKeyfile(!edited || edited->minWidth, group, MIN_WIDTH, params.minWidth, keyFile);
+    saveToKeyfile(!edited || edited->minHeight, group, MIN_HEIGHT, params.minHeight, keyFile);
+    saveToKeyfile(!edited || edited->absWidth, group, ABS_WIDTH, params.absWidth, keyFile);
+    saveToKeyfile(!edited || edited->absHeight, group, ABS_HEIGHT, params.absHeight, keyFile);
 
-    saveToKeyfile(!pedited || edited.borderRed, group, BORDER_RED, params.borderRed, keyFile);
-    saveToKeyfile(!pedited || edited.borderGreen, group, BORDER_GREEN, params.borderGreen, keyFile);
-    saveToKeyfile(!pedited || edited.borderBlue, group, BORDER_BLUE, params.borderBlue, keyFile);
+    saveToKeyfile(!edited || edited->borderRed, group, BORDER_RED, params.borderRed, keyFile);
+    saveToKeyfile(!edited || edited->borderGreen, group, BORDER_GREEN, params.borderGreen, keyFile);
+    saveToKeyfile(!edited || edited->borderBlue, group, BORDER_BLUE, params.borderBlue, keyFile);
 }
 
 void loadCropGuideParams(

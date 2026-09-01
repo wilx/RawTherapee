@@ -1,0 +1,41 @@
+RawTherapee X-Trans Student-t GMR corpus and model attribution
+================================================================
+
+STATUS: TEMPLATE ONLY -- NOT A REVIEWED REDISTRIBUTION NOTICE
+
+This file becomes installable only after every selected corpus record and the
+resulting model have completed legal and redistribution review. Do not use this
+template as evidence that a corpus or model may be distributed.
+
+Corpus identity
+---------------
+
+Source manifest SHA-256: <CORPUS-V1-JSONL-SHA256>
+TGPC SHA-256: <UNCOMPRESSED-TGPC-SHA256>
+TGPC.GZ SHA-256: <COMPRESSED-TGPC-SHA256>
+Model SHA-256: <TGMR-V2-SHA256>
+Model license: intended CC BY 4.0, pending completed review
+
+Per-source attribution
+----------------------
+
+Generate this section strictly from the reviewed corpus-v1.jsonl records. For
+each CC BY source include source ID, title, author, landing page, license name,
+license URL, and whether RawTherapee transformed the source into linear RGB
+training patches. CC0 and Public Domain Mark sources should also remain listed
+for provenance even where attribution is not legally required.
+
+Review checklist
+----------------
+
+[ ] Exactly 4,000 training, 500 validation, and 500 untouched test sources.
+[ ] Every selected source is CC0, PDM, or CC BY 2.0/3.0/4.0.
+[ ] No NC, ND, SA, unknown, ambiguous, or incompatible source is selected.
+[ ] Author/title/landing page/license URL were reviewed per source.
+[ ] Original bytes and decoded pixels match the frozen hashes.
+[ ] No author, exact decoded image, or reviewed perceptual near-duplicate leaks
+    across train/validation/test.
+[ ] Attribution text satisfies each CC BY version and source-page requirement.
+[ ] The trained model's proposed CC BY 4.0 terms were reviewed for compatibility
+    with RawTherapee distribution.
+[ ] Source, TGPC, gzip, model, and companion-manifest identities are frozen.

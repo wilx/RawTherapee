@@ -1,0 +1,34 @@
+#pragma once
+
+#include "tgmr/corpus.h"
+
+#include <array>
+#include <cstdint>
+#include <string>
+
+namespace tgmr
+{
+
+// These fixed boundaries are part of corpus-v1's auditable coverage contract.
+// They are deliberately simple and operate on normalized, linear RGB patches.
+struct CorpusStatistics final {
+    CorpusInspection inspection;
+    std::array<std::uint64_t, 3> uniqueSources{};
+    std::array<std::array<std::uint64_t, 3>, 3> brightness{};
+    std::array<std::array<std::uint64_t, 3>, 3> chroma{};
+    std::array<std::array<std::uint64_t, 3>, 3> texture{};
+    std::array<double, 3> meanLuminance{};
+    std::array<double, 3> meanChroma{};
+    std::array<double, 3> meanGradient{};
+};
+
+CorpusStatistics analyzeCorpus(const std::string &path);
+std::string canonicalCorpusReportJson(const CorpusStatistics &statistics);
+std::string corpusReportCsv(const CorpusStatistics &statistics);
+std::string corpusReportHtml(const CorpusStatistics &statistics);
+std::string canonicalBalanceJson(
+    const CorpusStatistics &statistics,
+    std::uint64_t requiredTraining = 10'000,
+    std::uint64_t requiredValidationTest = 1'000);
+
+} // namespace tgmr

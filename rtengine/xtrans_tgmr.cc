@@ -31,6 +31,13 @@
 #define RT_TGMR_TARGET_AVX2
 #endif
 
+#if defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
+#include <arm_neon.h>
+#define RT_TGMR_HAS_NEON 1
+#else
+#define RT_TGMR_HAS_NEON 0
+#endif
+
 namespace rtengine
 {
 namespace
@@ -47,9 +54,26 @@ constexpr unsigned GROUPS = COMPONENTS / 8;
 constexpr unsigned TILE = 128;
 constexpr unsigned CHUNK = 512;
 constexpr float SOURCE_SCALE = 65535.f;
-constexpr std::size_t MODEL_BYTES = 6073164;
-constexpr const char *MODEL_SHA256 =
+constexpr std::size_t LEGACY_MODEL_BYTES = 6073164;
+constexpr std::size_t PHASE_PAYLOAD_BYTES = LEGACY_MODEL_BYTES - 36;
+constexpr const char *LEGACY_MODEL_SHA256 =
     "6279b6a593ef4b595b1aff246182682b60c7eea701373ee2eb9f80cfcb50485c";
+constexpr std::size_t V2_HEADER_BYTES = 512;
+constexpr std::size_t V2_DIRECTORY_BYTES = 96;
+constexpr std::size_t V2_PAYLOAD_OFFSET = 640;
+constexpr std::size_t V2_AUTHENTICATION_OFFSET = 352;
+constexpr std::size_t V2_AUTHENTICATION_BYTES = 32;
+constexpr std::size_t MAX_MODEL_BYTES = 64 * 1024 * 1024;
+// Filled by the release build only after the production corpus, attribution
+// review, and canonical trainer run are frozen.  An explicit override may use
+// any structurally valid v2 artifact; installed-data discovery accepts only
+// this reviewed whole-file identity.
+#ifndef RT_TGMR_OFFICIAL_V2_SHA256
+#define RT_TGMR_OFFICIAL_V2_SHA256 ""
+#endif
+constexpr const char *OFFICIAL_V2_SHA256 = RT_TGMR_OFFICIAL_V2_SHA256;
+std::mutex tgmrDataDirectoryMutex;
+std::string tgmrDataDirectory;
 
 class TgmrFailure final : public std::runtime_error
 {
@@ -79,6 +103,13 @@ struct Phase final {
 
 struct ModelData final {
     std::array<Phase, PHASES> phases;
+};
+
+struct ParsedModel final {
+    ModelData data;
+    std::string digest;
+    std::string origin;
+    bool official = false;
 };
 
 struct PreparedPhase final {
@@ -201,10 +232,10 @@ std::vector<unsigned char> readFile(const std::string &path)
                           "cannot seek TGMR model: " + path);
     }
     const std::size_t size = static_cast<std::size_t>(signedSize);
-    if (size != MODEL_BYTES) {
+    if (size < 8 || size > MAX_MODEL_BYTES) {
         std::fclose(file);
         throw TgmrFailure(TgmrXTransErrorCode::SIZE,
-                          "TGMR model size is not the reviewed 6,073,164 bytes");
+                          "TGMR model size is outside the reviewed bounds");
     }
     std::vector<unsigned char> bytes(size);
     const std::size_t count = std::fread(bytes.data(), 1, bytes.size(), file);
@@ -224,33 +255,72 @@ std::string sha256(const std::vector<unsigned char> &bytes)
     return checksum.get_string();
 }
 
-ModelData parseModel(std::vector<unsigned char> bytes)
+std::string sha256(const void *data, std::size_t size)
 {
-    if (sha256(bytes) != MODEL_SHA256) {
-        throw TgmrFailure(TgmrXTransErrorCode::DIGEST,
-                          "TGMR model SHA-256 differs from the reviewed artifact");
-    }
-    Reader reader(std::move(bytes));
-    static const char expectedMagic[8] = {'X', 'T', 'G', 'R', 'R', 'E', 'D', '1'};
-    reader.require(8);
-    if (std::memcmp(reader.bytes.data(), expectedMagic, 8) != 0) {
-        throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "wrong TGMR model magic");
-    }
-    reader.offset = 8;
-    const std::uint32_t version = reader.u32();
-    const std::uint32_t patch = reader.u32();
-    const std::uint32_t phases = reader.u32();
-    const std::uint32_t components = reader.u32();
-    const std::uint32_t support = reader.u32();
-    const std::uint32_t shortlist = reader.u32();
-    const std::uint32_t reserved = reader.u32();
-    if (version != 1 || patch != PATCH || phases != PHASES
-            || components != COMPONENTS || support != SUPPORT
-            || shortlist != SHORTLIST || reserved != 0) {
-        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
-                          "unsupported TGMR model contract");
-    }
+    Glib::Checksum checksum(Glib::Checksum::CHECKSUM_SHA256);
+    checksum.update(static_cast<const guchar *>(data), size);
+    return checksum.get_string();
+}
 
+std::uint16_t readU16(const std::vector<unsigned char> &bytes, std::size_t offset)
+{
+    if (offset > bytes.size() || bytes.size() - offset < 2) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "truncated TGMR v2 header");
+    }
+    return static_cast<std::uint16_t>(bytes[offset])
+        | (static_cast<std::uint16_t>(bytes[offset + 1]) << 8);
+}
+
+std::uint32_t readU32(const std::vector<unsigned char> &bytes, std::size_t offset)
+{
+    if (offset > bytes.size() || bytes.size() - offset < 4) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "truncated TGMR v2 header");
+    }
+    return static_cast<std::uint32_t>(bytes[offset])
+        | (static_cast<std::uint32_t>(bytes[offset + 1]) << 8)
+        | (static_cast<std::uint32_t>(bytes[offset + 2]) << 16)
+        | (static_cast<std::uint32_t>(bytes[offset + 3]) << 24);
+}
+
+std::uint64_t readU64(const std::vector<unsigned char> &bytes, std::size_t offset)
+{
+    if (offset > bytes.size() || bytes.size() - offset < 8) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "truncated TGMR v2 header");
+    }
+    std::uint64_t result = 0;
+    for (unsigned i = 0; i < 8; ++i) {
+        result |= static_cast<std::uint64_t>(bytes[offset + i]) << (8 * i);
+    }
+    return result;
+}
+
+float readF32(const std::vector<unsigned char> &bytes, std::size_t offset)
+{
+    const std::uint32_t bits = readU32(bytes, offset);
+    float result = 0.f;
+    std::memcpy(&result, &bits, sizeof(result));
+    if (!std::isfinite(result)) {
+        throw TgmrFailure(TgmrXTransErrorCode::NONFINITE,
+                          "TGMR v2 header contains a non-finite parameter");
+    }
+    return result;
+}
+
+bool allZero(const std::vector<unsigned char> &bytes, std::size_t offset, std::size_t size)
+{
+    if (offset > bytes.size() || size > bytes.size() - offset) {
+        return false;
+    }
+    for (std::size_t i = 0; i < size; ++i) {
+        if (bytes[offset + i] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+ModelData parsePhasePayload(Reader &reader)
+{
     ModelData model;
     std::array<std::array<unsigned char, AREA>, PHASES> patterns {{}};
     for (unsigned phaseIndex = 0; phaseIndex < PHASES; ++phaseIndex) {
@@ -344,6 +414,147 @@ ModelData parseModel(std::vector<unsigned char> bytes)
                           "noncanonical trailing TGMR model bytes");
     }
     return model;
+}
+
+std::string digestSlice(
+    const std::vector<unsigned char> &bytes,
+    std::size_t offset)
+{
+    if (offset > bytes.size() || bytes.size() - offset < 32) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
+                          "truncated TGMR v2 digest field");
+    }
+    static const char digits[] = "0123456789abcdef";
+    std::string result(64, '0');
+    for (unsigned i = 0; i < 32; ++i) {
+        result[2 * i] = digits[bytes[offset + i] >> 4];
+        result[2 * i + 1] = digits[bytes[offset + i] & 15];
+    }
+    return result;
+}
+
+ParsedModel parseLegacyModel(std::vector<unsigned char> bytes)
+{
+    if (bytes.size() != LEGACY_MODEL_BYTES) {
+        throw TgmrFailure(TgmrXTransErrorCode::SIZE,
+                          "legacy TGMR model size is not 6,073,164 bytes");
+    }
+    const std::string digest = sha256(bytes);
+    if (digest != LEGACY_MODEL_SHA256) {
+        throw TgmrFailure(TgmrXTransErrorCode::DIGEST,
+                          "legacy TGMR model SHA-256 differs from the reviewed research artifact");
+    }
+    Reader reader(std::move(bytes));
+    reader.offset = 8;
+    const std::uint32_t version = reader.u32();
+    const std::uint32_t patch = reader.u32();
+    const std::uint32_t phases = reader.u32();
+    const std::uint32_t components = reader.u32();
+    const std::uint32_t support = reader.u32();
+    const std::uint32_t shortlist = reader.u32();
+    const std::uint32_t reserved = reader.u32();
+    if (version != 1 || patch != PATCH || phases != PHASES
+            || components != COMPONENTS || support != SUPPORT
+            || shortlist != SHORTLIST || reserved != 0) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
+                          "unsupported legacy TGMR model contract");
+    }
+    ParsedModel result;
+    result.data = parsePhasePayload(reader);
+    result.digest = digest;
+    result.origin = "reviewed-research-v1";
+    return result;
+}
+
+ParsedModel parseV2Model(std::vector<unsigned char> bytes)
+{
+    static const char expectedMagic[8] = {'R', 'T', 'T', 'G', 'M', 'R', '2', 0};
+    if (bytes.size() != V2_PAYLOAD_OFFSET + PHASE_PAYLOAD_BYTES) {
+        throw TgmrFailure(TgmrXTransErrorCode::SIZE,
+                          "TGMR v2 file does not contain the frozen K32/S9/q8 payload size");
+    }
+    if (std::memcmp(bytes.data(), expectedMagic, 8) != 0) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "wrong TGMR v2 magic");
+    }
+    if (readU16(bytes, 8) != 2 || readU16(bytes, 10) != 0
+            || readU32(bytes, 12) != V2_HEADER_BYTES
+            || readU32(bytes, 16) != 0x01020304 || readU32(bytes, 20) != 0
+            || readU32(bytes, 24) != 1 || readU32(bytes, 28) == 0
+            || readU32(bytes, 32) != 1 || readU32(bytes, 36) != PATCH
+            || readU32(bytes, 40) != PHASES || readU32(bytes, 44) != COMPONENTS
+            || readU32(bytes, 48) != SUPPORT || readU32(bytes, 52) != SHORTLIST
+            || readU32(bytes, 56) != AREA || readU32(bytes, 60) != 2
+            || readF32(bytes, 64) != 3.f || readF32(bytes, 68) != 4.f
+            || std::fabs(readF32(bytes, 72) - 0.0003f) > 1e-10f
+            || readU32(bytes, 76) != 1 || readU32(bytes, 80) != V2_DIRECTORY_BYTES
+            || readU32(bytes, 84) != 0 || readU64(bytes, 88) != V2_HEADER_BYTES
+            || readU64(bytes, 96) != V2_DIRECTORY_BYTES
+            || readU64(bytes, 104) != V2_PAYLOAD_OFFSET
+            || readU64(bytes, 112) != PHASE_PAYLOAD_BYTES
+            || readU64(bytes, 120) != bytes.size()) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
+                          "unsupported TGMR v2 architecture contract");
+    }
+    static const char schema[] = "rawtherapee-xtrans-tgmr-v2-k32-s9-q8";
+    if (digestSlice(bytes, 288) != sha256(schema, sizeof(schema) - 1)
+            || allZero(bytes, 128, 32) || allZero(bytes, 160, 32)
+            || allZero(bytes, 224, 32) || allZero(bytes, 256, 32)
+            || !allZero(bytes, 320, 32) || !allZero(bytes, 384, 128)) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
+                          "TGMR v2 identity or reserved header fields are invalid");
+    }
+    const std::size_t directory = V2_HEADER_BYTES;
+    if (readU32(bytes, directory) != 1 || readU32(bytes, directory + 4) != 1
+            || readU32(bytes, directory + 8) != 0 || readU32(bytes, directory + 12) != 0
+            || readU64(bytes, directory + 16) != V2_PAYLOAD_OFFSET
+            || readU64(bytes, directory + 24) != PHASE_PAYLOAD_BYTES
+            || readU64(bytes, directory + 32) != 0
+            || !allZero(bytes, directory + 72, 24)
+            || !allZero(bytes, directory + V2_DIRECTORY_BYTES,
+                        V2_PAYLOAD_OFFSET - V2_HEADER_BYTES - V2_DIRECTORY_BYTES)) {
+        throw TgmrFailure(TgmrXTransErrorCode::FORMAT,
+                          "TGMR v2 section directory is noncanonical");
+    }
+    const std::string payloadDigest = sha256(
+        bytes.data() + V2_PAYLOAD_OFFSET, PHASE_PAYLOAD_BYTES);
+    if (payloadDigest != digestSlice(bytes, 192)
+            || payloadDigest != digestSlice(bytes, directory + 40)) {
+        throw TgmrFailure(TgmrXTransErrorCode::DIGEST,
+                          "TGMR v2 phase payload SHA-256 mismatch");
+    }
+    std::vector<unsigned char> authenticated(bytes);
+    std::fill(authenticated.begin() + V2_AUTHENTICATION_OFFSET,
+              authenticated.begin() + V2_AUTHENTICATION_OFFSET + V2_AUTHENTICATION_BYTES, 0);
+    if (sha256(authenticated) != digestSlice(bytes, V2_AUTHENTICATION_OFFSET)) {
+        throw TgmrFailure(TgmrXTransErrorCode::DIGEST,
+                          "TGMR v2 container authentication mismatch");
+    }
+    const std::string fileDigest = sha256(bytes);
+    std::vector<unsigned char> payload(
+        bytes.begin() + V2_PAYLOAD_OFFSET, bytes.end());
+    Reader reader(std::move(payload));
+    ParsedModel result;
+    result.data = parsePhasePayload(reader);
+    result.digest = fileDigest;
+    result.official = OFFICIAL_V2_SHA256[0] != '\0' && fileDigest == OFFICIAL_V2_SHA256;
+    result.origin = result.official ? "official-v2" : "custom-v2";
+    return result;
+}
+
+ParsedModel parseModel(std::vector<unsigned char> bytes)
+{
+    static const char legacyMagic[8] = {'X', 'T', 'G', 'R', 'R', 'E', 'D', '1'};
+    static const char v2Magic[8] = {'R', 'T', 'T', 'G', 'M', 'R', '2', 0};
+    // Preserve the v1 security/error precedence: every file having the exact
+    // legacy byte count is authenticated before any legacy structure is read.
+    if (bytes.size() == LEGACY_MODEL_BYTES
+            || std::memcmp(bytes.data(), legacyMagic, 8) == 0) {
+        return parseLegacyModel(std::move(bytes));
+    }
+    if (std::memcmp(bytes.data(), v2Magic, 8) == 0) {
+        return parseV2Model(std::move(bytes));
+    }
+    throw TgmrFailure(TgmrXTransErrorCode::FORMAT, "wrong TGMR model magic");
 }
 
 PreparedModel prepareModel(const ModelData &model)
@@ -607,6 +818,49 @@ void coarseAvx2(const PreparedPhase &prepared, PixelWork &work)
 }
 #endif
 
+#if RT_TGMR_HAS_NEON
+void coarseNeon(const PreparedPhase &prepared, PixelWork &work)
+{
+    const Phase &phase = *prepared.source;
+    alignas(16) float allScores[COMPONENTS];
+    for (unsigned group = 0; group < GROUPS; ++group) {
+        for (unsigned half = 0; half < 2; ++half) {
+            float32x4_t solved[SUPPORT_AREA];
+            float32x4_t q = vdupq_n_f32(0.f);
+            const unsigned laneOffset = half * 4;
+            for (unsigned row = 0; row < SUPPORT_AREA; ++row) {
+                const unsigned position = phase.coarsePositions[row];
+                float32x4_t value = vsubq_f32(
+                    vdupq_n_f32(work.centered[position]),
+                    vld1q_f32(prepared.coarseMeans.data()
+                        + (group * SUPPORT_AREA + row) * 8 + laneOffset));
+                for (unsigned column = 0; column < row; ++column) {
+                    value = vfmsq_f32(value,
+                        vld1q_f32(prepared.coarseLower.data()
+                            + ((group * SUPPORT_AREA + row) * SUPPORT_AREA + column) * 8
+                            + laneOffset),
+                        solved[column]);
+                }
+                solved[row] = vmulq_f32(value,
+                    vld1q_f32(prepared.coarseInvDiagonal.data()
+                        + (group * SUPPORT_AREA + row) * 8 + laneOffset));
+                q = vfmaq_f32(q, solved[row], solved[row]);
+            }
+            const float32x4_t denominator = vfmaq_n_f32(vdupq_n_f32(1.f), q, 1.f / 3.f);
+            vst1q_f32(allScores + group * 8 + laneOffset,
+                vdivq_f32(vld1q_f32(prepared.coarseScaleAosoa.data()
+                    + group * 8 + laneOffset), denominator));
+        }
+    }
+    std::array<float, SHORTLIST> bestScores;
+    bestScores.fill(-std::numeric_limits<float>::infinity());
+    work.ids.fill(255);
+    for (unsigned component = 0; component < COMPONENTS; ++component) {
+        stableInsert(bestScores, work.ids, allScores[component], component);
+    }
+}
+#endif
+
 inline float positiveWeight(float scale, float quadraticValue)
 {
     const float s = 1.f + quadraticValue / 3.f;
@@ -709,6 +963,70 @@ void fullAvx2Group(
 }
 #endif
 
+#if RT_TGMR_HAS_NEON
+void fullNeonGroup(
+    const PreparedPhase &prepared,
+    std::vector<PixelWork> &work,
+    const Request *requests,
+    unsigned count,
+    unsigned component)
+{
+    const Phase &phase = *prepared.source;
+    unsigned begin = 0;
+    for (; begin + 4 <= count; begin += 4) {
+        float32x4_t residual[AREA];
+        float32x4_t solved[AREA];
+        float32x4_t q = vdupq_n_f32(0.f);
+        alignas(16) float lanes[4];
+        for (unsigned position = 0; position < AREA; ++position) {
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                lanes[lane] = work[requests[begin + lane].pixel].centered[position];
+            }
+            residual[position] = vsubq_f32(vld1q_f32(lanes),
+                vdupq_n_f32(phase.meansObserved[component * AREA + position]));
+            float32x4_t value = residual[position];
+            const float *matrixRow = phase.fullCholesky.data()
+                + (component * AREA + position) * AREA;
+            for (unsigned column = 0; column < position; ++column) {
+                value = vfmsq_n_f32(value, solved[column], matrixRow[column]);
+            }
+            solved[position] = vmulq_n_f32(value,
+                prepared.fullInvDiagonal[component * AREA + position]);
+            q = vfmaq_f32(q, solved[position], solved[position]);
+        }
+        const float32x4_t s = vfmaq_n_f32(vdupq_n_f32(1.f), q, 1.f / 3.f);
+        const float32x4_t s2 = vmulq_f32(s, s);
+        const float32x4_t s4 = vmulq_f32(s2, s2);
+        const float32x4_t denominator = vmulq_f32(vmulq_f32(s4, s2), vsqrtq_f32(s));
+        vst1q_f32(lanes, vdivq_f32(vdupq_n_f32(prepared.fullScale[component]), denominator));
+        for (unsigned lane = 0; lane < 4; ++lane) {
+            const Request &request = requests[begin + lane];
+            work[request.pixel].weights[request.slot] = lanes[lane];
+        }
+        for (unsigned target = 0; target < 2; ++target) {
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                lanes[lane] = phase.meansTarget[component * 2 + target]
+                    + work[requests[begin + lane].pixel].dc;
+            }
+            float32x4_t value = vld1q_f32(lanes);
+            const float *gain = phase.gains.data() + (component * 2 + target) * AREA;
+            for (unsigned position = 0; position < AREA; ++position) {
+                value = vfmaq_n_f32(value, residual[position], gain[position]);
+            }
+            vst1q_f32(lanes, value);
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                const Request &request = requests[begin + lane];
+                work[request.pixel].predictions[request.slot][target] = lanes[lane];
+            }
+        }
+    }
+    for (; begin < count; ++begin) {
+        const Request &request = requests[begin];
+        fullScalarSlot(prepared, work[request.pixel], request.slot);
+    }
+}
+#endif
+
 std::array<float, 3> finishPixel(const PreparedPhase &prepared, const PixelWork &work)
 {
     float total = 0.f;
@@ -748,7 +1066,8 @@ void processChunk(
     unsigned end,
     InputAt inputAt,
     OutputAt outputAt,
-    bool useAvx2)
+    bool useAvx2,
+    bool useNeon)
 {
     const unsigned count = end - begin;
     static thread_local std::vector<std::array<float, AREA>> observations;
@@ -772,18 +1091,26 @@ void processChunk(
             observed[observedPosition] = value / SOURCE_SCALE;
         }
         centerObservation(phase, observed, work[local]);
+        bool coarseDone = false;
 #if RT_TGMR_HAS_TARGET_AVX2
         if (useAvx2) {
             coarseAvx2(phase, work[local]);
-        } else
+            coarseDone = true;
+        }
 #endif
-        {
+#if RT_TGMR_HAS_NEON
+        if (useNeon) {
+            coarseNeon(phase, work[local]);
+            coarseDone = true;
+        }
+#endif
+        if (!coarseDone) {
             coarseScalar(phase, work[local]);
         }
     }
 
-#if RT_TGMR_HAS_TARGET_AVX2
-    if (useAvx2) {
+#if RT_TGMR_HAS_TARGET_AVX2 || RT_TGMR_HAS_NEON
+    if (useAvx2 || useNeon) {
         std::array<unsigned, COMPONENTS> counts {{}};
         for (unsigned local = 0; local < count; ++local) {
             for (unsigned slot = 0; slot < SHORTLIST; ++slot) {
@@ -806,8 +1133,17 @@ void processChunk(
             }
         }
         for (unsigned component = 0; component < COMPONENTS; ++component) {
+#if RT_TGMR_HAS_TARGET_AVX2
+            if (useAvx2) {
             fullAvx2Group(phase, work, requests.data() + offsets[component],
                           counts[component], component);
+                continue;
+            }
+#endif
+#if RT_TGMR_HAS_NEON
+            fullNeonGroup(phase, work, requests.data() + offsets[component],
+                          counts[component], component);
+#endif
         }
     } else
 #endif
@@ -854,14 +1190,18 @@ TgmrXTransRunResult runDemosaic(
 class TgmrXTransModel final
 {
 public:
-    explicit TgmrXTransModel(ModelData input) :
-        data(std::move(input)), prepared(prepareModel(data)), digest(MODEL_SHA256)
+    explicit TgmrXTransModel(ParsedModel input) :
+        data(std::move(input.data)), prepared(prepareModel(data)),
+        digest(std::move(input.digest)), origin(std::move(input.origin)),
+        official(input.official)
     {
     }
 
     ModelData data;
     PreparedModel prepared;
     std::string digest;
+    std::string origin;
+    bool official = false;
 };
 
 namespace
@@ -909,6 +1249,9 @@ TgmrXTransRunResult runDemosaic(
         result.pixelCount = static_cast<std::uint64_t>(width) * height;
         result.tileCount = tiles.size();
         result.avx2 = !forceScalar && cpuHasAvx2Fma();
+#if RT_TGMR_HAS_NEON
+        result.neon = !forceScalar;
+#endif
 #ifdef _OPENMP
         result.workerCount = static_cast<std::uint32_t>(std::max(
             1, std::min<int>(omp_get_max_threads(), static_cast<int>(tiles.size()))));
@@ -949,7 +1292,8 @@ TgmrXTransRunResult runDemosaic(
                         const unsigned end = static_cast<unsigned>(std::min<std::size_t>(
                             coordinates[phase].size(), static_cast<std::size_t>(begin) + CHUNK));
                         processChunk(model.prepared.phases[phase], coordinates[phase],
-                                     begin, end, inputAt, outputAt, result.avx2);
+                                     begin, end, inputAt, outputAt,
+                                     result.avx2, result.neon);
                     }
                 }
             } catch (const TgmrFailure &error) {
@@ -1097,6 +1441,34 @@ TgmrXTransLoadResult loadCachedTgmrXTransModel(const std::string &path)
 const std::string &tgmrXTransModelDigest(const TgmrXTransModel &model)
 {
     return model.digest;
+}
+
+const char *tgmrXTransModelOrigin(const TgmrXTransModel &model)
+{
+    return model.origin.c_str();
+}
+
+bool tgmrXTransModelIsOfficial(const TgmrXTransModel &model)
+{
+    return model.official;
+}
+
+void setTgmrXTransDataDirectory(const std::string &path)
+{
+    std::lock_guard<std::mutex> lock(tgmrDataDirectoryMutex);
+    tgmrDataDirectory = path;
+}
+
+std::string tgmrXTransDefaultModelPath()
+{
+    std::lock_guard<std::mutex> lock(tgmrDataDirectoryMutex);
+    if (tgmrDataDirectory.empty()) {
+        return std::string();
+    }
+    const char separator = tgmrDataDirectory.back() == '/'
+            || tgmrDataDirectory.back() == '\\' ? '\0' : '/';
+    return tgmrDataDirectory + (separator ? std::string(1, separator) : std::string())
+        + "models/xtrans-tgmr-v2.tgmr";
 }
 
 TgmrXTransRunResult demosaicTgmrXTrans(

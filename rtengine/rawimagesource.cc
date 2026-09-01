@@ -1972,7 +1972,10 @@ bool RawImageSource::packed_xtrans_interpolate()
 bool RawImageSource::tgmr_xtrans_interpolate()
 {
     const char *const modelPathValue = std::getenv("RT_XTRANS_TGMR_MODEL");
-    const std::string modelPath = modelPathValue ? modelPathValue : "";
+    const bool explicitOverride = modelPathValue && *modelPathValue;
+    const std::string modelPath = explicitOverride
+        ? std::string(modelPathValue)
+        : tgmrXTransDefaultModelPath();
     const TgmrXTransLoadResult loaded = loadCachedTgmrXTransModel(modelPath);
     if (!loaded) {
         std::fprintf(
@@ -1982,6 +1985,14 @@ bool RawImageSource::tgmr_xtrans_interpolate()
             tgmrXTransErrorCodeName(loaded.code),
             modelPath.empty() ? "(unset)" : modelPath.c_str(),
             loaded.message.c_str());
+        return false;
+    }
+    if (!explicitOverride && !tgmrXTransModelIsOfficial(*loaded.model)) {
+        std::fprintf(
+            stderr,
+            "TGMR X-Trans error [DIGEST]: installed model=%s is not the "
+            "reviewed official artifact; falling back to 3-pass (Markesteijn)\n",
+            modelPath.c_str());
         return false;
     }
 
@@ -2004,12 +2015,14 @@ bool RawImageSource::tgmr_xtrans_interpolate()
         : 0.0;
     std::fprintf(
         stderr,
-        "TGMR X-Trans completed: method=%s artifact=%s contract=K32/S9/q8 "
+        "TGMR X-Trans completed: method=%s artifact=%s origin=%s contract=K32/S9/q8 "
         "nu=3 temperature=4 tau=0.0003 dc=observed-rgb tile=128 halo=3 "
-        "boundary=reflect-no-repeat scale=65535 avx2=%s tiles=%llu workers=%u "
+        "boundary=reflect-no-repeat scale=65535 avx2=%s neon=%s tiles=%llu workers=%u "
         "workspace_per_worker=%llu elapsed_us=%llu throughput_mp_s=%.6f\n",
         TGMR_XTRANS_METHOD, tgmrXTransModelDigest(*loaded.model).c_str(),
+        tgmrXTransModelOrigin(*loaded.model),
         run.avx2 ? "yes" : "no",
+        run.neon ? "yes" : "no",
         static_cast<unsigned long long>(run.tileCount), run.workerCount,
         static_cast<unsigned long long>(run.workingBytesPerWorker),
         static_cast<unsigned long long>(run.elapsedMicroseconds),

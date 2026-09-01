@@ -55,9 +55,13 @@ std::shared_ptr<const rtengine::TgmrXTransModel> loadReviewed()
             std::string("reviewed model failed [")
                 + rtengine::tgmrXTransErrorCodeName(loaded.code) + "]: "
                 + loaded.message);
-    require(rtengine::tgmrXTransModelDigest(*loaded.model) ==
-                "6279b6a593ef4b595b1aff246182682b60c7eea701373ee2eb9f80cfcb50485c",
-            "reviewed TGMR digest changed");
+    const std::string digest = rtengine::tgmrXTransModelDigest(*loaded.model);
+    const std::string origin = rtengine::tgmrXTransModelOrigin(*loaded.model);
+    require(
+        (origin == "reviewed-research-v1"
+            && digest == "6279b6a593ef4b595b1aff246182682b60c7eea701373ee2eb9f80cfcb50485c")
+        || origin == "custom-v2",
+        "reviewed TGMR v1 or compatible custom v2 identity changed");
     const rtengine::TgmrXTransLoadResult cachedFirst =
         rtengine::loadCachedTgmrXTransModel(path);
     const rtengine::TgmrXTransLoadResult cachedSecond =
@@ -208,6 +212,10 @@ int contract()
 {
     require(std::strcmp(rtengine::TGMR_XTRANS_METHOD, "tgmr") == 0,
             "TGMR method identifier changed");
+    rtengine::setTgmrXTransDataDirectory("/tmp/rawtherapee-data");
+    require(rtengine::tgmrXTransDefaultModelPath()
+                == "/tmp/rawtherapee-data/models/xtrans-tgmr-v2.tgmr",
+            "TGMR installed model path changed");
     for (const rtengine::TgmrXTransErrorCode code : {
             rtengine::TgmrXTransErrorCode::NONE,
             rtengine::TgmrXTransErrorCode::IO,

@@ -55,6 +55,7 @@ struct TgmrXTransRunResult final {
     std::uint32_t workerCount = 0;
     std::uint64_t elapsedMicroseconds = 0;
     bool avx2 = false;
+    bool neon = false;
 
     explicit operator bool() const
     {
@@ -70,6 +71,13 @@ TgmrXTransLoadResult loadTgmrXTransModel(const std::string &path);
 TgmrXTransLoadResult loadCachedTgmrXTransModel(const std::string &path);
 
 const std::string &tgmrXTransModelDigest(const TgmrXTransModel &model);
+const char *tgmrXTransModelOrigin(const TgmrXTransModel &model);
+bool tgmrXTransModelIsOfficial(const TgmrXTransModel &model);
+
+// Registered once from rtengine::init().  It allows engine-only and CLI use
+// to find an installed reviewed model without depending on rtgui/config.h.
+void setTgmrXTransDataDirectory(const std::string &path);
+std::string tgmrXTransDefaultModelPath();
 
 TgmrXTransRunResult demosaicTgmrXTrans(
     const array2D<float> &rawData,

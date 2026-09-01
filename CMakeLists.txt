@@ -212,6 +212,74 @@ set(
     "Root of the reviewed Apache TVM 0.25.0 runtime bundle (include/ and lib/)"
 )
 option(WITH_PROF "Build with profiling instrumentation" OFF)
+option(
+    BUILD_TGMR_TRAINER
+    "Build the standalone C++17 X-Trans Student-t GMR corpus/training tool"
+    OFF)
+set(TGMR_OFFICIAL_MODEL "" CACHE FILEPATH
+    "Reviewed TGMR v2 model to install (empty until the licensed production corpus is frozen)")
+set(TGMR_OFFICIAL_MODEL_SHA256 "" CACHE STRING
+    "Required SHA-256 of TGMR_OFFICIAL_MODEL")
+set(TGMR_OFFICIAL_MODEL_MANIFEST "" CACHE FILEPATH
+    "Canonical companion manifest for TGMR_OFFICIAL_MODEL")
+set(TGMR_CORPUS_ATTRIBUTION "" CACHE FILEPATH
+    "Reviewed attribution notice for the TGMR production corpus/model")
+if(TGMR_OFFICIAL_MODEL)
+    foreach(required TGMR_OFFICIAL_MODEL_SHA256 TGMR_OFFICIAL_MODEL_MANIFEST TGMR_CORPUS_ATTRIBUTION)
+        if("${${required}}" STREQUAL "")
+            message(FATAL_ERROR "${required} is required when TGMR_OFFICIAL_MODEL is supplied")
+        endif()
+    endforeach()
+    foreach(required_file "${TGMR_OFFICIAL_MODEL}" "${TGMR_OFFICIAL_MODEL_MANIFEST}" "${TGMR_CORPUS_ATTRIBUTION}")
+        if(NOT EXISTS "${required_file}")
+            message(FATAL_ERROR "Required TGMR release artifact does not exist: ${required_file}")
+        endif()
+    endforeach()
+    file(SHA256 "${TGMR_OFFICIAL_MODEL}" TGMR_OFFICIAL_MODEL_ACTUAL_SHA256)
+    if(NOT TGMR_OFFICIAL_MODEL_ACTUAL_SHA256 STREQUAL TGMR_OFFICIAL_MODEL_SHA256)
+        message(FATAL_ERROR "TGMR official model SHA-256 does not match its reviewed identity")
+    endif()
+    file(SIZE "${TGMR_OFFICIAL_MODEL}" TGMR_OFFICIAL_MODEL_SIZE)
+    if(NOT TGMR_OFFICIAL_MODEL_SIZE EQUAL 6073768)
+        message(FATAL_ERROR "TGMR official model does not have the frozen v2 size")
+    endif()
+    # Bind the release-side attribution file to the identity embedded in the
+    # authenticated TGMR v2 header.  file(READ ... HEX) avoids running the
+    # development trainer during an ordinary RawTherapee configure.
+    file(SHA256 "${TGMR_CORPUS_ATTRIBUTION}" TGMR_CORPUS_ATTRIBUTION_SHA256)
+    file(READ "${TGMR_OFFICIAL_MODEL}" TGMR_MODEL_ATTRIBUTION_SHA256
+        OFFSET 224 LIMIT 32 HEX)
+    if(NOT TGMR_MODEL_ATTRIBUTION_SHA256 STREQUAL TGMR_CORPUS_ATTRIBUTION_SHA256)
+        message(FATAL_ERROR
+            "TGMR corpus attribution notice does not match the model header identity")
+    endif()
+    file(READ "${TGMR_OFFICIAL_MODEL_MANIFEST}" TGMR_OFFICIAL_MODEL_MANIFEST_TEXT)
+    string(FIND "${TGMR_OFFICIAL_MODEL_MANIFEST_TEXT}"
+        "\"artifact_sha256\": \"${TGMR_OFFICIAL_MODEL_SHA256}\""
+        TGMR_MANIFEST_ARTIFACT_POSITION)
+    string(FIND "${TGMR_OFFICIAL_MODEL_MANIFEST_TEXT}"
+        "\"attribution_sha256\": \"${TGMR_CORPUS_ATTRIBUTION_SHA256}\""
+        TGMR_MANIFEST_ATTRIBUTION_POSITION)
+    string(FIND "${TGMR_OFFICIAL_MODEL_MANIFEST_TEXT}"
+        "\"validation\": {"
+        TGMR_MANIFEST_VALIDATION_POSITION)
+    string(FIND "${TGMR_OFFICIAL_MODEL_MANIFEST_TEXT}"
+        "\"split\": \"validation\""
+        TGMR_MANIFEST_VALIDATION_SPLIT_POSITION)
+    string(FIND "${TGMR_OFFICIAL_MODEL_MANIFEST_TEXT}"
+        "\"requested_limit\": 0"
+        TGMR_MANIFEST_VALIDATION_LIMIT_POSITION)
+    if(TGMR_MANIFEST_ARTIFACT_POSITION EQUAL -1
+        OR TGMR_MANIFEST_ATTRIBUTION_POSITION EQUAL -1
+        OR TGMR_MANIFEST_VALIDATION_POSITION EQUAL -1
+        OR TGMR_MANIFEST_VALIDATION_SPLIT_POSITION EQUAL -1
+        OR TGMR_MANIFEST_VALIDATION_LIMIT_POSITION EQUAL -1)
+        message(FATAL_ERROR
+            "TGMR companion manifest lacks reviewed model, attribution, or validation binding")
+    endif()
+    add_compile_definitions(
+        RT_TGMR_OFFICIAL_V2_SHA256="${TGMR_OFFICIAL_MODEL_SHA256}")
+endif()
 option(WITH_SYSTEM_KLT "Build using system KLT library." OFF)
 option(WITH_SYSTEM_LIBRAW "Build using system LibRaw library." OFF)
 option(OPTION_OMP "Build with OpenMP support" ON)
@@ -624,6 +692,10 @@ add_subdirectory(rtengine)
 add_subdirectory(rtgui)
 add_subdirectory(rtdata)
 
+if(BUILD_TGMR_TRAINER)
+    add_subdirectory(tools/tgmr_trainer)
+endif()
+
 if(BUILD_TESTING)
     add_subdirectory(tests/neuralmodel)
     add_subdirectory(tests/xtransalias)
@@ -647,6 +719,14 @@ add_custom_target(
 
 install(FILES AUTHORS.txt DESTINATION "${CREDITSDIR}")
 install(FILES LICENSE DESTINATION "${LICENCEDIR}")
+if(TGMR_OFFICIAL_MODEL)
+    install(FILES "${TGMR_OFFICIAL_MODEL}"
+        DESTINATION "${DATADIR}/models" RENAME xtrans-tgmr-v2.tgmr)
+    install(FILES "${TGMR_OFFICIAL_MODEL_MANIFEST}"
+        DESTINATION "${DATADIR}/models" RENAME xtrans-tgmr-v2.tgmr.json)
+    install(FILES "${TGMR_CORPUS_ATTRIBUTION}"
+        DESTINATION "${DATADIR}/models" RENAME xtrans-tgmr-CORPUS-NOTICE.txt)
+endif()
 install(FILES "${CMAKE_BINARY_DIR}/AboutThisBuild.txt"
         DESTINATION "${CREDITSDIR}")
 install(
