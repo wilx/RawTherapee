@@ -42,7 +42,8 @@ The automatic loader additionally requires the compiled official digest.
   2,500/1,500/600/400, with each source preserving the 80/10/10 split.
 - A standard-library-only preparation program snapshots and authenticates
   catalogs, captures one-time Commons API responses and anonymous Smithsonian
-  Open Data on AWS index/shard snapshots, normalizes all
+  Open Data on AWS index/shard snapshots, preserves the complete consumed
+  Smithsonian metadata bytes for byte-identical offline replay, normalizes all
   four catalogs, fetches originals, assembles C++ classifications plus human
   review, merges canonical JSONL, and creates the release manifest. Open Images
   changing thumbnails are excluded. PASS authenticated Zenodo archive members

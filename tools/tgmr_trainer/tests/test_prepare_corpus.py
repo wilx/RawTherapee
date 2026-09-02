@@ -278,10 +278,11 @@ class PreparationTests(unittest.TestCase):
 
             output = root / "smithsonian-aws.jsonl"
             report = root / "smithsonian-aws-report.json"
+            snapshot_dir = root / "frozen-smithsonian-metadata"
             self.assertEqual(prepare_corpus.main([
                 "collect-smithsonian", str(output), "--unit", "nmnhento",
                 "--prefix", "00", "--index-url", root_index.as_uri(),
-                "--report", str(report),
+                "--snapshot-dir", str(snapshot_dir), "--report", str(report),
             ]), 0)
             records = list(prepare_corpus._jsonl(output))
             self.assertEqual(len(records), 1)
@@ -309,6 +310,30 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(report_value["records"], 1)
             self.assertEqual(report_value["units"][0]["shards"][0]["records"], 2)
             self.assertEqual(report_value["units"][0]["shards"][0]["eligible_records"], 1)
+            self.assertEqual((snapshot_dir / "index.txt").read_bytes(), root_index.read_bytes())
+            self.assertEqual(
+                (snapshot_dir / "nmnhento" / "index.txt").read_bytes(),
+                unit_index.read_bytes(),
+            )
+            self.assertEqual(
+                (snapshot_dir / "nmnhento" / "00.txt").read_bytes(), shard.read_bytes()
+            )
+
+            # Offline replay must use only the frozen bytes, even after the live
+            # fixture paths have changed, and reproduce both artifacts exactly.
+            root_index.write_text("https://example.invalid/changed/index.txt\n", encoding="utf-8")
+            unit_index.write_text("https://example.invalid/changed/ff.txt\n", encoding="utf-8")
+            shard.write_text("{}\n", encoding="utf-8")
+            offline_output = root / "smithsonian-offline.jsonl"
+            offline_report = root / "smithsonian-offline-report.json"
+            self.assertEqual(prepare_corpus.main([
+                "collect-smithsonian", str(offline_output), "--unit", "nmnhento",
+                "--prefix", "00", "--index-url", root_index.as_uri(),
+                "--snapshot-dir", str(snapshot_dir), "--offline-snapshot",
+                "--report", str(offline_report),
+            ]), 0)
+            self.assertEqual(offline_output.read_bytes(), output.read_bytes())
+            self.assertEqual(offline_report.read_bytes(), report.read_bytes())
 
     def test_v2_archive_member_reconstruction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

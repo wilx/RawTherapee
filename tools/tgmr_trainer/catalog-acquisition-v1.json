@@ -20,7 +20,7 @@
       "candidate_count": 2000,
       "landing_page": "https://www.si.edu/openaccess",
       "metadata_index": "https://smithsonian-open-access.s3-us-west-2.amazonaws.com/metadata/edan/index.txt",
-      "notes": "Collect explicitly selected unit/shard snapshots with collect-smithsonian; require both metadata_usage.access and selected media usage.access to equal CC0; prefer High-resolution JPEG.",
+      "notes": "Collect and preserve explicitly selected unit/shard bytes with collect-smithsonian --snapshot-dir; require byte-identical offline replay, both metadata_usage.access and selected media usage.access to equal CC0, and prefer High-resolution JPEG.",
       "selected_count": 400
     },
     "wikimedia-commons": {

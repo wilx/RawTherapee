@@ -548,24 +548,43 @@ def _smithsonian_record(response: dict[str, object]) -> dict[str, object] | None
     }
 
 
-def _read_remote_bytes(url: str) -> tuple[bytes, dict[str, object]]:
-    request = urllib.request.Request(
-        require_url(url, "remote catalog URL"),
-        headers={"User-Agent": "RawTherapee-TGMR-catalog-snapshot/1"},
+def _read_catalog_bytes(
+    url: str, *, snapshot_path: Path | None = None,
+    snapshot_name: str | None = None, offline: bool = False, force: bool = False,
+) -> tuple[bytes, dict[str, object]]:
+    require_url(url, "remote catalog URL")
+    if offline:
+        if snapshot_path is None or not snapshot_path.is_file():
+            raise CorpusPreparationError(f"missing offline catalog snapshot: {snapshot_path}")
+        payload = snapshot_path.read_bytes()
+    else:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "RawTherapee-TGMR-catalog-snapshot/1"},
+        )
+        chunks = []
+        with urllib.request.urlopen(request, timeout=120) as response:
+            while block := response.read(CHUNK):
+                chunks.append(block)
+        payload = b"".join(chunks)
+        if snapshot_path is not None:
+            snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_bytes(snapshot_path, payload, force)
+    identity: dict[str, object] = {
+        "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest(), "url": url,
+    }
+    if snapshot_name is not None:
+        identity["snapshot_file"] = snapshot_name
+    return payload, identity
+
+
+def _catalog_index(
+    url: str, *, snapshot_path: Path | None = None,
+    snapshot_name: str | None = None, offline: bool = False, force: bool = False,
+) -> tuple[list[str], dict[str, object]]:
+    payload, identity = _read_catalog_bytes(
+        url, snapshot_path=snapshot_path, snapshot_name=snapshot_name,
+        offline=offline, force=force,
     )
-    digest = hashlib.sha256()
-    size = 0
-    chunks = []
-    with urllib.request.urlopen(request, timeout=120) as response:
-        while block := response.read(CHUNK):
-            chunks.append(block)
-            digest.update(block)
-            size += len(block)
-    return b"".join(chunks), {"bytes": size, "sha256": digest.hexdigest(), "url": url}
-
-
-def _remote_index(url: str) -> tuple[list[str], dict[str, object]]:
-    payload, identity = _read_remote_bytes(url)
     try:
         text = payload.decode("utf-8")
     except UnicodeDecodeError as error:
@@ -587,40 +606,74 @@ def _smithsonian_unit(index_url: str) -> str:
 
 def _scan_smithsonian_shard(
     url: str, visitor: Callable[[dict[str, object]], None],
+    *, snapshot_path: Path | None = None, snapshot_name: str | None = None,
+    offline: bool = False, force: bool = False,
 ) -> dict[str, object]:
-    request = urllib.request.Request(
-        require_url(url, "Smithsonian shard URL"),
-        headers={"User-Agent": "RawTherapee-TGMR-catalog-snapshot/1"},
-    )
+    require_url(url, "Smithsonian shard URL")
+    if offline:
+        if snapshot_path is None or not snapshot_path.is_file():
+            raise CorpusPreparationError(f"missing offline Smithsonian shard: {snapshot_path}")
+        source = snapshot_path.open("rb")
+    else:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "RawTherapee-TGMR-catalog-snapshot/1"},
+        )
+        source = urllib.request.urlopen(request, timeout=120)
+    temporary = None
+    snapshot_stream = None
+    if snapshot_path is not None and not offline:
+        if snapshot_path.exists() and not force:
+            source.close()
+            raise CorpusPreparationError(f"refusing to replace output: {snapshot_path}")
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = snapshot_path.with_name(snapshot_path.name + ".tmp")
+        snapshot_stream = temporary.open("wb")
     digest = hashlib.sha256()
     size = 0
     records = 0
     eligible = 0
-    with urllib.request.urlopen(request, timeout=120) as response:
-        for number, raw_line in enumerate(response, 1):
-            digest.update(raw_line)
-            size += len(raw_line)
-            if not raw_line.strip():
-                continue
-            records += 1
-            try:
-                value = json.loads(raw_line)
-            except (UnicodeDecodeError, json.JSONDecodeError) as error:
-                raise CorpusPreparationError(
-                    f"malformed Smithsonian JSON record at {url}:{number}"
-                ) from error
-            if not isinstance(value, dict):
-                raise CorpusPreparationError(
-                    f"non-object Smithsonian JSON record at {url}:{number}"
-                )
-            normalized = _smithsonian_record(value)
-            if normalized is not None:
-                eligible += 1
-                visitor(normalized)
-    return {
+    try:
+        with source:
+            for number, raw_line in enumerate(source, 1):
+                if snapshot_stream is not None:
+                    snapshot_stream.write(raw_line)
+                digest.update(raw_line)
+                size += len(raw_line)
+                if not raw_line.strip():
+                    continue
+                records += 1
+                try:
+                    value = json.loads(raw_line)
+                except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                    raise CorpusPreparationError(
+                        f"malformed Smithsonian JSON record at {url}:{number}"
+                    ) from error
+                if not isinstance(value, dict):
+                    raise CorpusPreparationError(
+                        f"non-object Smithsonian JSON record at {url}:{number}"
+                    )
+                normalized = _smithsonian_record(value)
+                if normalized is not None:
+                    eligible += 1
+                    visitor(normalized)
+        if snapshot_stream is not None:
+            snapshot_stream.flush()
+            os.fsync(snapshot_stream.fileno())
+            snapshot_stream.close()
+            snapshot_stream = None
+            os.replace(temporary, snapshot_path)
+    finally:
+        if snapshot_stream is not None:
+            snapshot_stream.close()
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    identity: dict[str, object] = {
         "bytes": size, "eligible_records": eligible, "records": records,
         "sha256": digest.hexdigest(), "url": url,
     }
+    if snapshot_name is not None:
+        identity["snapshot_file"] = snapshot_name
+    return identity
 
 
 def collect_smithsonian_aws(arguments: argparse.Namespace) -> int:
@@ -634,7 +687,17 @@ def collect_smithsonian_aws(arguments: argparse.Namespace) -> int:
     if any(not re.fullmatch(r"[0-9a-f]{2}", prefix) for prefix in prefixes):
         raise CorpusPreparationError("--prefix values must be two lowercase hexadecimal digits")
 
-    unit_index_urls, root_identity = _remote_index(arguments.index_url)
+    snapshot_root = arguments.snapshot_dir
+    if arguments.offline_snapshot and snapshot_root is None:
+        raise CorpusPreparationError("--offline-snapshot requires --snapshot-dir")
+    if arguments.offline_snapshot and not snapshot_root.is_dir():
+        raise CorpusPreparationError(f"offline snapshot directory is missing: {snapshot_root}")
+    root_snapshot = snapshot_root / "index.txt" if snapshot_root is not None else None
+    unit_index_urls, root_identity = _catalog_index(
+        arguments.index_url, snapshot_path=root_snapshot,
+        snapshot_name="index.txt" if snapshot_root is not None else None,
+        offline=arguments.offline_snapshot, force=arguments.force,
+    )
     available = {_smithsonian_unit(url): url for url in unit_index_urls}
     if len(available) != len(unit_index_urls):
         raise CorpusPreparationError("Smithsonian root index contains duplicate unit names")
@@ -648,7 +711,12 @@ def collect_smithsonian_aws(arguments: argparse.Namespace) -> int:
     seen_ids: set[str] = set()
     unit_reports = []
     for unit in sorted(requested_units):
-        shard_urls, unit_identity = _remote_index(available[unit])
+        unit_snapshot = snapshot_root / unit / "index.txt" if snapshot_root is not None else None
+        shard_urls, unit_identity = _catalog_index(
+            available[unit], snapshot_path=unit_snapshot,
+            snapshot_name=f"{unit}/index.txt" if snapshot_root is not None else None,
+            offline=arguments.offline_snapshot, force=arguments.force,
+        )
         selected_shards = []
         for url in shard_urls:
             name = Path(urllib.parse.urlparse(url).path).name
@@ -674,9 +742,15 @@ def collect_smithsonian_aws(arguments: argparse.Namespace) -> int:
             output_records.append(record)
             emitted += 1
 
-        shard_reports = [
-            _scan_smithsonian_shard(url, add_record) for url in selected_shards
-        ]
+        shard_reports = []
+        for url in selected_shards:
+            name = Path(urllib.parse.urlparse(url).path).name.casefold()
+            shard_snapshot = snapshot_root / unit / name if snapshot_root is not None else None
+            shard_reports.append(_scan_smithsonian_shard(
+                url, add_record, snapshot_path=shard_snapshot,
+                snapshot_name=f"{unit}/{name}" if snapshot_root is not None else None,
+                offline=arguments.offline_snapshot, force=arguments.force,
+            ))
         unit_reports.append({
             "emitted_records": emitted,
             "index": unit_identity,
@@ -1073,6 +1147,8 @@ def parser() -> argparse.ArgumentParser:
     shard_selection.add_argument("--all-shards", action="store_true")
     smithsonian_parser.add_argument("--per-unit-limit", type=int)
     smithsonian_parser.add_argument("--index-url", default=SMITHSONIAN_AWS_INDEX)
+    smithsonian_parser.add_argument("--snapshot-dir", type=Path)
+    smithsonian_parser.add_argument("--offline-snapshot", action="store_true")
     smithsonian_parser.add_argument("--report", type=Path)
     smithsonian_parser.add_argument("--force", action="store_true")
     smithsonian_parser.set_defaults(function=collect_smithsonian_aws)

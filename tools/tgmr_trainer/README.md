@@ -153,6 +153,7 @@ python3 "$PREP" collect-smithsonian smithsonian-aws.jsonl \
     --unit chndm --unit fsg --unit nmah --unit nmnhbirds --unit nmnhbotany \
     --unit nmnhento --unit nmnhminsci --unit nmnhpaleo --unit npm --unit saam \
     --prefix 00 --prefix 01 --prefix 02 --prefix 03 --per-unit-limit 200 \
+    --snapshot-dir smithsonian-aws-metadata \
     --report smithsonian-aws-report.json
 
 python3 "$PREP" normalize openimages oi.csv oi-candidates.jsonl \
@@ -217,7 +218,10 @@ python3 "$PREP" release-manifest corpus-v1.jsonl tgmr-corpus-v1.tgpc \
 bucket. It streams every chosen shard, records SHA-256 and byte size for the
 root index, unit indexes, and shards in the report, and emits only compact
 eligible records. `--all-shards` may replace the explicit `--prefix` list for a
-complete unit scan. The REST command remains available as
+complete unit scan. `--snapshot-dir` preserves every upstream byte under stable
+relative names. A later run with the same arguments plus `--offline-snapshot`
+must reproduce the compact JSONL and report byte-for-byte without network
+access. The REST command remains available as
 `collect-smithsonian-api` for diagnostics involving an explicit record-ID list;
 it is not part of the canonical corpus recipe.
 
