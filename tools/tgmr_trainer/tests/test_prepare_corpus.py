@@ -174,7 +174,7 @@ class PreparationTests(unittest.TestCase):
             metadata.write_text(
                 ",unickname,datetaken,licensename,hash,latitude,longitude\n"
                 "3,example,2020-01-01,Attribution License,"
-                "21657882a4c879e3d08bf7eb59974515,,\n",
+                "21657882a4c879e3d08bf7eb5997451,,\n",
                 encoding="utf-8",
             )
             urls = root / "pass-urls.txt"
@@ -187,6 +187,11 @@ class PreparationTests(unittest.TestCase):
             pass_value = json.loads(pass_output.read_text())
             self.assertEqual(pass_value["license"], "CC-BY-4.0")
             self.assertEqual(pass_value["author_id"], "flickr-user:example")
+            self.assertEqual(
+                pass_value["upstream_source_id"],
+                "21657882a4c879e3d08bf7eb5997451",
+            )
+            self.assertIsNone(pass_value["advertised_checksum"])
 
             commons_snapshot = root / "commons.jsonl"
             commons_snapshot.write_text(json.dumps({

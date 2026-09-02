@@ -102,6 +102,9 @@ no-obvious-minors review.
 Open Images uses `OriginalURL` and its advertised checksum; its changing
 thumbnail URL is never canonical. PASS uses the official individual URL and
 may name an authenticated Zenodo archive/member as a byte-identical fallback.
+PASS's metadata `hash` is a variable-length hexadecimal source/filename
+identity, not an image-content MD5; downloaded originals receive a local
+SHA-256 before they become corpus inputs.
 Commons freezes the upload revision, original URL, API SHA-1, and local SHA-256.
 Smithsonian freezes exact anonymous Open Data on AWS index and metadata-shard
 bytes, then selects a named high-resolution JPEG rendition. Both the record's

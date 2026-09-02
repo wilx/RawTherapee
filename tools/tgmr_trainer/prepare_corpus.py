@@ -273,8 +273,16 @@ def normalize_pass(
             if index >= len(urls):
                 raise CorpusPreparationError("PASS URL list is shorter than metadata CSV")
             identity = clean_text(row.get("hash"), "")
-            if not re.fullmatch(r"[0-9a-f]{32}", identity):
-                raise CorpusPreparationError("PASS hash is not a lowercase MD5 identity")
+            # PASS calls this column ``hash``, but it is the hexadecimal
+            # source/filename identity used to join pass_metadata.csv to the
+            # image URL list.  It is not a checksum of the downloaded image:
+            # the published catalog contains identities from 23 to 32 digits,
+            # and their values do not match the image MD5.  Authenticate the
+            # actual image bytes with our SHA-256 after retrieval instead.
+            if not re.fullmatch(r"[0-9a-f]{23,32}", identity):
+                raise CorpusPreparationError(
+                    "PASS hash is not a lowercase hexadecimal source identity"
+                )
             author = clean_text(row.get("unickname"), "unknown")
             original_url = require_url(urls[index], "PASS URL")
             author_url = "https://www.flickr.com/people/" + author
@@ -287,7 +295,7 @@ def normalize_pass(
                 author_id=normalized_author_id(author_url, author, "pass-author"),
                 author_url=author_url,
                 title=identity, license_name="CC-BY-4.0",
-                advertised_checksum=f"md5:{identity}",
+                advertised_checksum=None,
                 flickr_id=flickr_photo_id(original_url),
                 rights_evidence_url="https://robots.ox.ac.uk/~vgg/data/pass/",
                 archive_fallbacks=archives.get(identity, []),

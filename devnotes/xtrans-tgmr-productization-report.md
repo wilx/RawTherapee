@@ -46,8 +46,11 @@ The automatic loader additionally requires the compiled official digest.
   Smithsonian metadata bytes for byte-identical offline replay, normalizes all
   four catalogs, fetches originals, assembles C++ classifications plus human
   review, merges canonical JSONL, and creates the release manifest. Open Images
-  changing thumbnails are excluded. PASS authenticated Zenodo archive members
-  can serve as byte-identical fallback sources.
+  changing thumbnails are excluded. PASS's variable-length hexadecimal `hash`
+  field is treated as its source/filename identity rather than incorrectly as
+  an MD5; retrieved image bytes are authenticated with RawTherapee SHA-256.
+  PASS authenticated Zenodo archive members can serve as byte-identical
+  fallback sources.
 - Normalized author groups are assigned to one split before selection and are
   capped at five images. Compressed/decoded hashes, normalized Flickr IDs,
   64-bit dHash, and deterministic DCT pHash reject exact and near duplicates.
@@ -223,6 +226,38 @@ Before freeze:
 
 These are external data-selection and review tasks. Passing code tests cannot
 substitute for them.
+
+## PASS live acquisition pilot
+
+A live PASS pilot was run against the official catalog artifacts on 2026-09-02.
+The external pilot data remain under `~/TGPC/pilot-pass` and are not tracked in
+Git.
+
+- `pass_metadata.csv`: 152,590,171 bytes, 1,439,588 records, SHA-256
+  `8b6fde80b48326bda9da0a7c48f92146a58a847f76a1dc40603b7e4f73f5e798`.
+  Its published Zenodo MD5 `0b033707ea49365a5ffdd14615825511`
+  also matched.
+- `pass_urls.txt`: 158,356,435 bytes, 1,439,588 URLs, SHA-256
+  `cc692c3e7094b7e51e218c8bc2e351acdbb419e861976be10472f16ba872566b`.
+- The metadata and URL lists have exactly equal row counts. The current URLs
+  resolve to the stable Multimedia Commons S3 host.
+- A sequential 10-image fetch succeeded 10/10 with distinct compressed and
+  decoded hashes. A second deterministic sample selected 20 records evenly
+  over catalog indices 0 through 1,439,587 and also succeeded 20/20.
+- Classification showed that all 20 distributed images are JPEGs with a long
+  side no greater than 500 pixels: dimensions ranged from 280x479 through
+  500x434, and areas ranged from 129,500 through 217,000 pixels. Consequently,
+  0/20 meet the frozen shortest-side >=512 and area >=0.75-megapixel gate.
+- The sample did provide diverse measurable content: linear luminance means
+  ranged from 0.0175 to 0.4023 and chroma-ratio means from 0.0 to 2.6549.
+
+The pilot therefore passes acquisition availability, licensing metadata,
+normalization, authentication, and C++ classification, but it **fails the
+production resolution gate structurally**. PASS remains useful for tooling and
+lower-resolution research, but cannot supply its planned 1,500 production
+sources without relaxing an already frozen quality rule. Under the corpus plan,
+the correct response is to expand or replace the PASS source allocation rather
+than upscale its images or silently lower the threshold.
 
 ## Incomplete plan items
 
