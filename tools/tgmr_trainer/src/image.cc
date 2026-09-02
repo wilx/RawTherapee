@@ -457,6 +457,8 @@ ImageClassification classifyImage(const LinearImage &image)
         result.channelMeans[1] += g;
         result.channelMeans[2] += b;
         const double y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        ++result.luminanceHistogram[std::min<std::size_t>(15,
+            static_cast<std::size_t>(y * 16.0))];
         sampledLuminance.push_back(y);
         luminanceSum += y;
         luminanceSquared += y * y;
@@ -467,6 +469,8 @@ ImageClassification classifyImage(const LinearImage &image)
                             + (b - r) * (b - r)) / (y + 1e-4);
         const double sat = maximum > 0.0 ? chromaValue / maximum : 0.0;
         saturation += sat;
+        ++result.saturationHistogram[std::min<std::size_t>(7,
+            static_cast<std::size_t>(sat * 8.0))];
         if (chromaValue > 1e-12) {
             double hue = 0.0;
             if (maximum == r) hue = (g - b) / chromaValue;
@@ -475,6 +479,11 @@ ImageClassification classifyImage(const LinearImage &image)
             hue *= PI / 3.0;
             hueX += std::cos(hue) * sat;
             hueY += std::sin(hue) * sat;
+            double normalizedHue = hue;
+            while (normalizedHue < 0.0) normalizedHue += 2.0 * PI;
+            while (normalizedHue >= 2.0 * PI) normalizedHue -= 2.0 * PI;
+            ++result.hueHistogram[std::min<std::size_t>(11,
+                static_cast<std::size_t>(normalizedHue * 6.0 / PI))];
         }
         black += maximum <= 1.0 / 65535.0;
         white += maximum >= 1.0 - 1.0 / 65535.0;
@@ -558,32 +567,95 @@ ImageClassification classifyImage(const LinearImage &image)
     std::ostringstream hashText;
     hashText << std::hex << std::setfill('0') << std::setw(16) << hash;
     result.perceptualHash = hashText.str();
+
+    // Deterministic 64-bit DCT pHash.  Sampling at cell centers avoids image
+    // resampling dependencies and gives the corpus selector a signature whose
+    // failure modes differ from the historical horizontal dHash.
+    std::array<double, 32 * 32> sample{};
+    for (unsigned y = 0; y < 32; ++y) {
+        const std::size_t yy = std::min<std::size_t>(image.height - 1,
+            (2 * y + 1) * image.height / 64);
+        for (unsigned x = 0; x < 32; ++x) {
+            const std::size_t xx = std::min<std::size_t>(image.width - 1,
+                (2 * x + 1) * image.width / 64);
+            sample[y * 32 + x] = yAt(xx, yy);
+        }
+    }
+    std::array<double, 64> dct{};
+    for (unsigned v = 0; v < 8; ++v) {
+        for (unsigned u = 0; u < 8; ++u) {
+            double coefficient = 0.0;
+            for (unsigned y = 0; y < 32; ++y) {
+                const double cy = std::cos(PI * (2.0 * y + 1.0) * v / 64.0);
+                for (unsigned x = 0; x < 32; ++x) {
+                    coefficient += sample[y * 32 + x] * cy
+                        * std::cos(PI * (2.0 * x + 1.0) * u / 64.0);
+                }
+            }
+            dct[v * 8 + u] = coefficient;
+        }
+    }
+    std::array<double, 63> nonDc{};
+    std::copy(dct.begin() + 1, dct.end(), nonDc.begin());
+    std::nth_element(nonDc.begin(), nonDc.begin() + nonDc.size() / 2, nonDc.end());
+    const double median = nonDc[nonDc.size() / 2];
+    std::uint64_t pHash = 0;
+    for (unsigned index = 0; index < dct.size(); ++index) {
+        if (dct[index] > median) pHash |= std::uint64_t(1) << index;
+    }
+    std::ostringstream pHashText;
+    pHashText << std::hex << std::setfill('0') << std::setw(16) << pHash;
+    result.pHash = pHashText.str();
     return result;
 }
 
 std::string canonicalClassificationJson(
     const LinearImage &image,
     const ImageClassification &classification,
-    const std::string &sourceId)
+    const std::string &sourceId,
+    const std::string &cacheFilename)
 {
     std::ostringstream output;
-    output << std::fixed << std::setprecision(10)
-        << "{\"classification\":{"
+    output << std::fixed << std::setprecision(10) << '{';
+    if (!cacheFilename.empty()) {
+        output << "\"cache_filename\":\"" << cacheFilename << "\",";
+    }
+    output << "\"classification\":{"
         << "\"channel_means\":[" << classification.channelMeans[0] << ','
         << classification.channelMeans[1] << ',' << classification.channelMeans[2] << "],"
         << "\"chroma_ratio_mean\":" << classification.chromaRatioMean << ','
         << "\"clipped_black_fraction\":" << classification.clippedBlackFraction << ','
         << "\"clipped_white_fraction\":" << classification.clippedWhiteFraction << ','
+        << "\"dhash\":\"" << classification.perceptualHash << "\","
         << "\"gradient_rms\":" << classification.gradientRms << ','
         << "\"hue_degrees\":" << classification.hueDegrees << ','
+        << "\"hue_histogram\":[";
+    for (std::size_t index = 0; index < classification.hueHistogram.size(); ++index) {
+        if (index) output << ',';
+        output << classification.hueHistogram[index];
+    }
+    output << "],"
         << "\"jpeg_blockiness\":" << classification.jpegBlockiness << ','
         << "\"laplacian_rms\":" << classification.laplacianRms << ','
         << "\"local_contrast\":" << classification.localContrast << ','
+        << "\"luminance_histogram\":[";
+    for (std::size_t index = 0; index < classification.luminanceHistogram.size(); ++index) {
+        if (index) output << ',';
+        output << classification.luminanceHistogram[index];
+    }
+    output << "],"
         << "\"luminance_mean\":" << classification.luminanceMean << ','
         << "\"luminance_p01\":" << classification.luminanceP01 << ','
         << "\"luminance_p99\":" << classification.luminanceP99 << ','
         << "\"luminance_stddev\":" << classification.luminanceStddev << ','
         << "\"perceptual_hash\":\"" << classification.perceptualHash << "\","
+        << "\"phash\":\"" << classification.pHash << "\","
+        << "\"saturation_histogram\":[";
+    for (std::size_t index = 0; index < classification.saturationHistogram.size(); ++index) {
+        if (index) output << ',';
+        output << classification.saturationHistogram[index];
+    }
+    output << "],"
         << "\"saturation_mean\":" << classification.saturationMean << "},"
         << "\"decoded_pixel_sha256\":\"" << classification.decodedPixelSha256 << "\","
         << "\"file_type\":\"" << image.fileType << "\","

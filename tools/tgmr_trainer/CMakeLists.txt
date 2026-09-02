@@ -30,6 +30,7 @@ add_library(rt_tgmr_tooling STATIC
     src/model_v2.cc
     src/patch_selection.cc
     src/sha256.cc
+    src/source_selection.cc
     src/training.cc
     src/validation.cc
     src/xtrans_training.cc
@@ -81,6 +82,15 @@ if(BUILD_TESTING)
     add_test(NAME tgmr.trainer.tooling COMMAND rt-tgmr-trainer-tests)
     set_tests_properties(tgmr.trainer.tooling PROPERTIES
         LABELS "tgmr;trainer;corpus" TIMEOUT 60)
+    find_package(Python3 QUIET COMPONENTS Interpreter)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME tgmr.trainer.python-corpus
+            COMMAND ${Python3_EXECUTABLE} -m unittest discover
+                -s tools/tgmr_trainer/tests -p "test_*.py")
+        set_tests_properties(tgmr.trainer.python-corpus PROPERTIES
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..
+            LABELS "tgmr;trainer;corpus" TIMEOUT 60)
+    endif()
 endif()
 
 install(TARGETS rt-tgmr-train RUNTIME DESTINATION bin OPTIONAL)

@@ -10,11 +10,24 @@ template as evidence that a corpus or model may be distributed.
 Corpus identity
 ---------------
 
+Corpus release: tgmr-corpus-v1
 Source manifest SHA-256: <CORPUS-V1-JSONL-SHA256>
 TGPC SHA-256: <UNCOMPRESSED-TGPC-SHA256>
 TGPC.GZ SHA-256: <COMPRESSED-TGPC-SHA256>
 Model SHA-256: <TGMR-V2-SHA256>
 Model license: intended CC BY 4.0, pending completed review
+
+Source composition
+------------------
+
+Open Images V7: 2,500 sources (2,000 train / 250 validation / 250 test)
+PASS: 1,500 sources (1,200 train / 150 validation / 150 test)
+Wikimedia Commons: 600 sources (480 train / 60 validation / 60 test)
+Smithsonian Open Access: 400 sources (320 train / 40 validation / 40 test)
+
+The final notice must identify the exact authenticated catalog snapshots and
+their SHA-256 values. Catalog metadata is provenance evidence rather than a
+substitute for the per-item rights review recorded by source-manifest schema v2.
 
 Per-source attribution
 ----------------------
@@ -29,13 +42,26 @@ Review checklist
 ----------------
 
 [ ] Exactly 4,000 training, 500 validation, and 500 untouched test sources.
+[ ] Exact per-catalog and per-split quotas above are satisfied.
 [ ] Every selected source is CC0, PDM, or CC BY 2.0/3.0/4.0.
 [ ] No NC, ND, SA, unknown, ambiguous, or incompatible source is selected.
-[ ] Author/title/landing page/license URL were reviewed per source.
+[ ] Smithsonian selections have explicit CC0, not merely a no-known-restriction
+    designation.
+[ ] Author/title/landing page/license URL and frozen rights evidence were
+    reviewed per source.
+[ ] People sources contain no obvious minors or sensitive medical, sexual, or
+    exploitative situations, and their review state is recorded.
 [ ] Original bytes and decoded pixels match the frozen hashes.
-[ ] No author, exact decoded image, or reviewed perceptual near-duplicate leaks
-    across train/validation/test.
+[ ] No normalized author contributes more than five selected sources.
+[ ] Normalized author groups never cross train/validation/test.
+[ ] Compressed hashes, decoded hashes, Flickr IDs, dHash, DCT pHash, and manual
+    borderline-cluster review found no duplicate leakage.
+[ ] Each split contains the intended 15% controlled people population.
+[ ] Signal-statistics and guardrail-category reports were reviewed.
 [ ] Attribution text satisfies each CC BY version and source-page requirement.
 [ ] The trained model's proposed CC BY 4.0 terms were reviewed for compatibility
     with RawTherapee distribution.
 [ ] Source, TGPC, gzip, model, and companion-manifest identities are frozen.
+[ ] The identical TGPC.GZ bytes were published to Zenodo and the named
+    RawTherapee/GitHub release; DOI, URL, sizes, and hashes match the release
+    manifest.

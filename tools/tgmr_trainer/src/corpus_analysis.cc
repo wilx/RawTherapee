@@ -5,11 +5,19 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include <stdexcept>
+#include <vector>
 
 namespace tgmr
 {
 namespace
 {
+
+struct PatchMetrics final {
+    double luminance = 0.0;
+    double chroma = 0.0;
+    double gradient = 0.0;
+};
 
 unsigned bucket(double value, double first, double second)
 {
@@ -51,11 +59,58 @@ void htmlRows(
     }
 }
 
-} // namespace
+PatchMetrics metrics(const PatchRecord &record)
+{
+    PatchMetrics result;
+    double gradientEnergy = 0.0;
+    for (unsigned y = 0; y < 7; ++y) {
+        for (unsigned x = 0; x < 7; ++x) {
+            const std::size_t index = y * 7 + x;
+            const double r = record.rgb[index] / 65535.0;
+            const double g = record.rgb[49 + index] / 65535.0;
+            const double b = record.rgb[98 + index] / 65535.0;
+            const double luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            result.luminance += luma;
+            result.chroma += std::max({r, g, b}) - std::min({r, g, b});
+            auto priorLuma = [&](std::size_t previous) {
+                return 0.2126 * record.rgb[previous] / 65535.0
+                    + 0.7152 * record.rgb[49 + previous] / 65535.0
+                    + 0.0722 * record.rgb[98 + previous] / 65535.0;
+            };
+            if (x != 0) {
+                const double difference = luma - priorLuma(index - 1);
+                gradientEnergy += difference * difference;
+            }
+            if (y != 0) {
+                const double difference = luma - priorLuma(index - 7);
+                gradientEnergy += difference * difference;
+            }
+        }
+    }
+    result.luminance /= 49.0;
+    result.chroma /= 49.0;
+    result.gradient = std::sqrt(gradientEnergy / 84.0);
+    return result;
+}
 
-CorpusStatistics analyzeCorpus(const std::string &path)
+double quantile(std::vector<double> values, double fraction)
+{
+    if (values.empty()) throw std::runtime_error("cannot derive strata without training patches");
+    const std::size_t index = static_cast<std::size_t>(fraction * (values.size() - 1));
+    std::nth_element(values.begin(), values.begin() + index, values.end());
+    return values[index];
+}
+
+CorpusStatistics analyzeWithThresholds(
+    const std::string &path,
+    const std::array<double, 2> &brightnessThresholds,
+    const std::array<double, 2> &chromaThresholds,
+    const std::array<double, 2> &textureThresholds)
 {
     CorpusStatistics result;
+    result.brightnessThresholds = brightnessThresholds;
+    result.chromaThresholds = chromaThresholds;
+    result.textureThresholds = textureThresholds;
     std::array<std::set<std::array<std::uint8_t, 32>>, 3> sources;
     std::array<std::uint64_t, 3> counts{};
     result.inspection = inspectCorpus(path,
@@ -63,47 +118,16 @@ CorpusStatistics analyzeCorpus(const std::string &path)
             const unsigned split = static_cast<unsigned>(record.split) - 1;
             sources[split].insert(record.sourceIdSha256);
             ++counts[split];
-            double lumaMean = 0.0;
-            double chromaMean = 0.0;
-            double gradientEnergy = 0.0;
-            for (unsigned y = 0; y < 7; ++y) {
-                for (unsigned x = 0; x < 7; ++x) {
-                    const std::size_t index = y * 7 + x;
-                    const double r = record.rgb[index] / 65535.0;
-                    const double g = record.rgb[49 + index] / 65535.0;
-                    const double b = record.rgb[98 + index] / 65535.0;
-                    const double luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                    lumaMean += luma;
-                    chromaMean += std::max({r, g, b}) - std::min({r, g, b});
-                    if (x != 0) {
-                        const std::size_t previous = index - 1;
-                        const double previousLuma =
-                            0.2126 * record.rgb[previous] / 65535.0
-                            + 0.7152 * record.rgb[49 + previous] / 65535.0
-                            + 0.0722 * record.rgb[98 + previous] / 65535.0;
-                        const double difference = luma - previousLuma;
-                        gradientEnergy += difference * difference;
-                    }
-                    if (y != 0) {
-                        const std::size_t previous = index - 7;
-                        const double previousLuma =
-                            0.2126 * record.rgb[previous] / 65535.0
-                            + 0.7152 * record.rgb[49 + previous] / 65535.0
-                            + 0.0722 * record.rgb[98 + previous] / 65535.0;
-                        const double difference = luma - previousLuma;
-                        gradientEnergy += difference * difference;
-                    }
-                }
-            }
-            lumaMean /= 49.0;
-            chromaMean /= 49.0;
-            const double gradient = std::sqrt(gradientEnergy / 84.0);
-            ++result.brightness[split][bucket(lumaMean, 0.08, 0.65)];
-            ++result.chroma[split][bucket(chromaMean, 0.03, 0.15)];
-            ++result.texture[split][bucket(gradient, 0.01, 0.05)];
-            result.meanLuminance[split] += lumaMean;
-            result.meanChroma[split] += chromaMean;
-            result.meanGradient[split] += gradient;
+            const PatchMetrics value = metrics(record);
+            ++result.brightness[split][bucket(
+                value.luminance, brightnessThresholds[0], brightnessThresholds[1])];
+            ++result.chroma[split][bucket(
+                value.chroma, chromaThresholds[0], chromaThresholds[1])];
+            ++result.texture[split][bucket(
+                value.gradient, textureThresholds[0], textureThresholds[1])];
+            result.meanLuminance[split] += value.luminance;
+            result.meanChroma[split] += value.chroma;
+            result.meanGradient[split] += value.gradient;
         });
     for (unsigned split = 0; split < 3; ++split) {
         result.uniqueSources[split] = sources[split].size();
@@ -114,6 +138,31 @@ CorpusStatistics analyzeCorpus(const std::string &path)
         }
     }
     return result;
+}
+
+} // namespace
+
+CorpusStatistics analyzeCorpus(const std::string &path)
+{
+    return analyzeWithThresholds(path, {{0.08,0.65}}, {{0.03,0.15}}, {{0.01,0.05}});
+}
+
+CorpusStatistics analyzeCorpusTrainingTertiles(const std::string &path)
+{
+    std::vector<double> brightness;
+    std::vector<double> chroma;
+    std::vector<double> texture;
+    inspectCorpus(path, [&](const PatchRecord &record, std::uint64_t) {
+        if (record.split != CorpusSplit::TRAIN) return;
+        const PatchMetrics value = metrics(record);
+        brightness.push_back(value.luminance);
+        chroma.push_back(value.chroma);
+        texture.push_back(value.gradient);
+    });
+    return analyzeWithThresholds(path,
+        {{quantile(brightness, 1.0 / 3.0), quantile(brightness, 2.0 / 3.0)}},
+        {{quantile(chroma, 1.0 / 3.0), quantile(chroma, 2.0 / 3.0)}},
+        {{quantile(texture, 1.0 / 3.0), quantile(texture, 2.0 / 3.0)}});
 }
 
 std::string canonicalCorpusReportJson(const CorpusStatistics &statistics)
@@ -137,9 +186,12 @@ std::string canonicalCorpusReportJson(const CorpusStatistics &statistics)
         << hex(statistics.inspection.header.payloadSha256) << "\",\n"
         << "  \"record_count\": " << statistics.inspection.header.recordCount << ",\n"
         << "  \"strata\": {\n"
-        << "    \"brightness\": [\"<0.08\", \"0.08..0.65\", \">=0.65\"],\n"
-        << "    \"chroma\": [\"<0.03\", \"0.03..0.15\", \">=0.15\"],\n"
-        << "    \"texture_gradient_rms\": [\"<0.01\", \"0.01..0.05\", \">=0.05\"]\n"
+        << "    \"brightness\": [" << statistics.brightnessThresholds[0] << ", "
+        << statistics.brightnessThresholds[1] << "],\n"
+        << "    \"chroma\": [" << statistics.chromaThresholds[0] << ", "
+        << statistics.chromaThresholds[1] << "],\n"
+        << "    \"texture_gradient_rms\": [" << statistics.textureThresholds[0]
+        << ", " << statistics.textureThresholds[1] << "]\n"
         << "  },\n"
         << "  \"texture_counts\": ";
     jsonCounts(output, statistics.texture, "  ");

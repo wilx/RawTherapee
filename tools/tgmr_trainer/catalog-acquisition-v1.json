@@ -1,0 +1,37 @@
+{
+  "catalogs": {
+    "openimages-v7": {
+      "candidate_count": 10000,
+      "image_information_snapshot": "https://storage.googleapis.com/openimages/v6/oidv6-train-images-with-labels-with-rotation.csv",
+      "landing_page": "https://storage.googleapis.com/openimages/web/download_v7.html",
+      "notes": "Use OriginalURL and OriginalMD5. Never use Thumbnail300KURL as canonical bytes.",
+      "selected_count": 2500
+    },
+    "pass-v3": {
+      "candidate_count": 6000,
+      "landing_page": "https://robots.ox.ac.uk/~vgg/data/pass/",
+      "metadata": "https://zenodo.org/api/records/6615455/files/pass_metadata.csv/content",
+      "selected_count": 1500,
+      "urls": "https://www.robots.ox.ac.uk/~vgg/research/pass/pass_urls.txt",
+      "zenodo_record": "https://zenodo.org/records/6615455"
+    },
+    "smithsonian-open-access": {
+      "anonymous_access": "HTTPS or S3 --no-sign-request; no account or API key required",
+      "candidate_count": 2000,
+      "landing_page": "https://www.si.edu/openaccess",
+      "metadata_index": "https://smithsonian-open-access.s3-us-west-2.amazonaws.com/metadata/edan/index.txt",
+      "notes": "Collect explicitly selected unit/shard snapshots with collect-smithsonian; require both metadata_usage.access and selected media usage.access to equal CC0; prefer High-resolution JPEG.",
+      "selected_count": 400
+    },
+    "wikimedia-commons": {
+      "candidate_count": 3000,
+      "landing_page": "https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia",
+      "notes": "Collect reviewed File titles with collect-commons and verify every resulting file page and revision.",
+      "selected_count": 600
+    }
+  },
+  "format": "rawtherapee-tgmr-catalog-acquisition-v1",
+  "release": "tgmr-corpus-v1",
+  "total_candidates": 21000,
+  "total_selected": 5000
+}

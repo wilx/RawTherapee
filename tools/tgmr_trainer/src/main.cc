@@ -41,13 +41,19 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train corpus validate-manifest MANIFEST\n"
         << "  rt-tgmr-train corpus matrices\n"
         << "  rt-tgmr-train corpus classify-file SOURCE-ID IMAGE\n"
-        << "  rt-tgmr-train corpus classify MANIFEST CACHE OUTPUT.jsonl [--force]\n"
+        << "  rt-tgmr-train corpus classify INPUT CACHE OUTPUT.jsonl"
+           " [--candidates|--all] [--force]\n"
+        << "  rt-tgmr-train corpus select CANDIDATES.jsonl RECIPE.json OUTPUT.jsonl"
+           " [--force]\n"
         << "  rt-tgmr-train corpus propose-patches MANIFEST CACHE OUTPUT.jsonl [--force]\n"
+        << "  rt-tgmr-train corpus finalize MANIFEST CACHE OUTPUT.jsonl [--force]\n"
         << "  rt-tgmr-train corpus pack MANIFEST CACHE OUTPUT.tgpc"
            " [--noise none|sensor-v1] [--force]\n"
         << "  rt-tgmr-train corpus inspect FILE\n"
-        << "  rt-tgmr-train corpus balance FILE [--training-min N] [--eval-min N]\n"
-        << "  rt-tgmr-train corpus report FILE [--json P] [--csv P] [--html P] [--force]\n"
+        << "  rt-tgmr-train corpus balance FILE [--training-min N] [--eval-min N]"
+           " [--fixed-v1-thresholds]\n"
+        << "  rt-tgmr-train corpus report FILE [--sources]"
+           " [--fixed-v1-thresholds] [--json P] [--csv P] [--html P] [--force]\n"
         << "  rt-tgmr-train corpus gzip INPUT.tgpc OUTPUT.tgpc.gz [--level N] [--force]\n"
         << "  rt-tgmr-train export --legacy-v1 INPUT OUTPUT --corpus-sha256 HEX\n"
         << "      --configuration-sha256 HEX --attribution-sha256 HEX\n"
@@ -680,6 +686,60 @@ int exportCommand(int argc, char **argv)
     return 0;
 }
 
+std::vector<tgmr::SourceRecord> finalizedSources(
+    std::vector<tgmr::SourceRecord> records,
+    const std::string &cacheDirectory)
+{
+    static const double exposures[] = {-2.0,-1.5,-1.0,-0.5,0.5,1.0,1.5,2.0};
+    static const std::array<std::array<double, 3>, 6> whiteBalances{{
+        {{2.0,1.0,0.5}}, {{0.5,1.0,2.0}},
+        {{1.5,0.75,0.888888888889}}, {{0.666666666667,1.333333333333,1.125}},
+        {{1.25,0.8,1.0}}, {{0.8,1.25,1.0}},
+    }};
+    for (auto &record : records) {
+        if (!record.selected) continue;
+        const std::filesystem::path path = std::filesystem::path(cacheDirectory)
+            / record.cacheFilename;
+        if (tgmr::hex(tgmr::sha256File(path.string())) != record.sha256) {
+            throw std::runtime_error("source changed before patch finalization: "
+                                     + record.sourceId);
+        }
+        const auto image = tgmr::loadLinearImage(path.string());
+        const std::size_t count = record.split == tgmr::CorpusSplit::TRAIN ? 256 : 128;
+        const auto proposals = tgmr::proposePatches(
+            image, record.patchSamplingSeed, count);
+        record.patches.clear();
+        record.patches.reserve(proposals.size());
+        const auto selector = tgmr::sha256(record.sourceId.data(), record.sourceId.size());
+        for (std::size_t index = 0; index < proposals.size(); ++index) {
+            const auto &proposal = proposals[index];
+            const bool identity = index % 4 == 0;
+            const unsigned choice = (selector[index % selector.size()] + index) & 255U;
+            tgmr::PatchSelection patch;
+            patch.x = proposal.x;
+            patch.y = proposal.y;
+            patch.coverage = proposal.coverage;
+            patch.coverageClass = proposal.coverageClass;
+            patch.augmentationKind = identity ? 0 : 1;
+            patch.exposureStopsQ8 = static_cast<std::int16_t>(std::llround(
+                (identity ? 0.0 : exposures[choice % 8]) * 256.0));
+            const auto whiteBalance = identity
+                ? std::array<double, 3>{{1.0,1.0,1.0}}
+                : whiteBalances[(choice / 8) % whiteBalances.size()];
+            for (unsigned channel = 0; channel < 3; ++channel) {
+                patch.whiteBalanceQ12[channel] = static_cast<std::uint16_t>(
+                    std::llround(whiteBalance[channel] * 4096.0));
+            }
+            patch.matrixId = identity ? 0
+                : record.split == tgmr::CorpusSplit::TRAIN ? 1 + choice % 4
+                : 101 + choice % 2;
+            patch.sequence = static_cast<std::uint16_t>(index);
+            record.patches.push_back(patch);
+        }
+    }
+    return records;
+}
+
 int corpusCommand(int argc, char **argv)
 {
     if (argc < 3) {
@@ -731,13 +791,43 @@ int corpusCommand(int argc, char **argv)
         return 0;
     }
     if (command == "classify") {
+        if (argc < 6 || argc > 8) {
+            throw std::runtime_error(
+                "corpus classify requires INPUT CACHE OUTPUT"
+                " [--candidates|--all] [--force]");
+        }
+        bool force = false;
+        bool includeUnselected = false;
+        bool candidates = false;
+        for (int index = 6; index < argc; ++index) {
+            const std::string option = argv[index];
+            if (option == "--force") force = true;
+            else if (option == "--all") includeUnselected = true;
+            else if (option == "--candidates") candidates = true;
+            else throw std::runtime_error("unknown corpus classify option: " + option);
+        }
+        if (candidates) {
+            if (includeUnselected) {
+                throw std::runtime_error("--candidates and --all are mutually exclusive");
+            }
+            tgmr::classifyFetchedCandidates(argv[3], argv[4], argv[5], force);
+        } else {
+            tgmr::classifySources(tgmr::readSourceManifest(argv[3]), argv[4], argv[5],
+                                  force, includeUnselected);
+        }
+        std::cout << "classification complete: " << argv[5] << '\n';
+        return 0;
+    }
+    if (command == "select") {
         if (argc < 6 || argc > 7) {
-            throw std::runtime_error("corpus classify requires MANIFEST CACHE OUTPUT [--force]");
+            throw std::runtime_error(
+                "corpus select requires CANDIDATES RECIPE OUTPUT [--force]");
         }
         const bool force = argc == 7 && std::string(argv[6]) == "--force";
-        if (argc == 7 && !force) throw std::runtime_error("unknown corpus classify option");
-        tgmr::classifySources(tgmr::readSourceManifest(argv[3]), argv[4], argv[5], force);
-        std::cout << "classification complete: " << argv[5] << '\n';
+        if (argc == 7 && !force) throw std::runtime_error("unknown corpus select option");
+        const auto records = tgmr::readSourceManifest(argv[3]);
+        std::cout << tgmr::selectProductionSources(
+            records, argv[4], argv[5], force);
         return 0;
     }
     if (command == "propose-patches") {
@@ -796,6 +886,21 @@ int corpusCommand(int argc, char **argv)
             output << "],\"source_id\":\"" << record.sourceId << "\"}\n";
         }
         writeTextAtomic(argv[5], output.str(), force);
+        return 0;
+    }
+    if (command == "finalize") {
+        if (argc < 6 || argc > 7) {
+            throw std::runtime_error(
+                "corpus finalize requires MANIFEST CACHE OUTPUT [--force]");
+        }
+        const bool force = argc == 7 && std::string(argv[6]) == "--force";
+        if (argc == 7 && !force) throw std::runtime_error("unknown corpus finalize option");
+        auto records = finalizedSources(tgmr::readSourceManifest(argv[3]), argv[4]);
+        tgmr::writeSourceManifestV2(records, argv[5], force);
+        // Re-read the emitted bytes before applying the complete production
+        // contract, so serialization omissions cannot escape the gate.
+        tgmr::validateProductionManifest(tgmr::readSourceManifest(argv[5]));
+        std::cout << "finalized production manifest: " << argv[5] << '\n';
         return 0;
     }
     if (command == "pack") {
@@ -859,17 +964,22 @@ int corpusCommand(int argc, char **argv)
         if (argc < 4) throw std::runtime_error("corpus balance requires one TGPC path");
         std::uint64_t training = 10'000;
         std::uint64_t evaluation = 1'000;
+        bool fixedThresholds = false;
         for (int index = 4; index < argc; ++index) {
             const std::string option = argv[index];
             if (option == "--training-min" && index + 1 < argc) {
                 training = std::stoull(argv[++index]);
             } else if (option == "--eval-min" && index + 1 < argc) {
                 evaluation = std::stoull(argv[++index]);
+            } else if (option == "--fixed-v1-thresholds") {
+                fixedThresholds = true;
             } else {
                 throw std::runtime_error("unknown corpus balance option: " + option);
             }
         }
-        const auto statistics = tgmr::analyzeCorpus(argv[3]);
+        const auto statistics = fixedThresholds
+            ? tgmr::analyzeCorpus(argv[3])
+            : tgmr::analyzeCorpusTrainingTertiles(argv[3]);
         std::cout << tgmr::canonicalBalanceJson(statistics, training, evaluation);
         return 0;
     }
@@ -879,6 +989,8 @@ int corpusCommand(int argc, char **argv)
         std::string csvPath;
         std::string htmlPath;
         bool force = false;
+        bool sources = false;
+        bool fixedThresholds = false;
         for (int index = 4; index < argc; ++index) {
             const std::string option = argv[index];
             auto value = [&]() -> std::string {
@@ -888,17 +1000,33 @@ int corpusCommand(int argc, char **argv)
             if (option == "--json") jsonPath = value();
             else if (option == "--csv") csvPath = value();
             else if (option == "--html") htmlPath = value();
+            else if (option == "--sources") sources = true;
+            else if (option == "--fixed-v1-thresholds") fixedThresholds = true;
             else if (option == "--force") force = true;
             else throw std::runtime_error("unknown corpus report option: " + option);
         }
-        const auto statistics = tgmr::analyzeCorpus(argv[3]);
-        const std::string json = tgmr::canonicalCorpusReportJson(statistics);
+        std::string json;
+        std::string csv;
+        std::string html;
+        if (sources) {
+            const auto records = tgmr::readSourceManifest(argv[3]);
+            json = tgmr::canonicalSourceReportJson(records);
+            csv = tgmr::sourceReportCsv(records);
+            html = tgmr::sourceReportHtml(records);
+        } else {
+            const auto statistics = fixedThresholds
+                ? tgmr::analyzeCorpus(argv[3])
+                : tgmr::analyzeCorpusTrainingTertiles(argv[3]);
+            json = tgmr::canonicalCorpusReportJson(statistics);
+            csv = tgmr::corpusReportCsv(statistics);
+            html = tgmr::corpusReportHtml(statistics);
+        }
         if (jsonPath.empty() && csvPath.empty() && htmlPath.empty()) {
             std::cout << json;
         } else {
             if (!jsonPath.empty()) writeTextAtomic(jsonPath, json, force);
-            if (!csvPath.empty()) writeTextAtomic(csvPath, tgmr::corpusReportCsv(statistics), force);
-            if (!htmlPath.empty()) writeTextAtomic(htmlPath, tgmr::corpusReportHtml(statistics), force);
+            if (!csvPath.empty()) writeTextAtomic(csvPath, csv, force);
+            if (!htmlPath.empty()) writeTextAtomic(htmlPath, html, force);
         }
         return 0;
     }

@@ -35,7 +35,13 @@ struct ImageClassification final {
     double laplacianRms = 0.0;
     double localContrast = 0.0;
     double jpegBlockiness = 0.0;
+    std::array<std::uint64_t, 16> luminanceHistogram{};
+    std::array<std::uint64_t, 12> hueHistogram{};
+    std::array<std::uint64_t, 8> saturationHistogram{};
+    // v1 called the 64-bit difference hash perceptual_hash.  Keep that field
+    // for compatibility while naming both signatures explicitly in v2.
     std::string perceptualHash;
+    std::string pHash;
     std::string decodedPixelSha256;
 };
 
@@ -44,6 +50,7 @@ ImageClassification classifyImage(const LinearImage &image);
 std::string canonicalClassificationJson(
     const LinearImage &image,
     const ImageClassification &classification,
-    const std::string &sourceId);
+    const std::string &sourceId,
+    const std::string &cacheFilename = std::string());
 
 } // namespace tgmr

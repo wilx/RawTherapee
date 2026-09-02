@@ -20,9 +20,13 @@ struct CorpusStatistics final {
     std::array<double, 3> meanLuminance{};
     std::array<double, 3> meanChroma{};
     std::array<double, 3> meanGradient{};
+    std::array<double, 2> brightnessThresholds{{0.08,0.65}};
+    std::array<double, 2> chromaThresholds{{0.03,0.15}};
+    std::array<double, 2> textureThresholds{{0.01,0.05}};
 };
 
 CorpusStatistics analyzeCorpus(const std::string &path);
+CorpusStatistics analyzeCorpusTrainingTertiles(const std::string &path);
 std::string canonicalCorpusReportJson(const CorpusStatistics &statistics);
 std::string corpusReportCsv(const CorpusStatistics &statistics);
 std::string corpusReportHtml(const CorpusStatistics &statistics);

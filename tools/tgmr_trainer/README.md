@@ -73,17 +73,40 @@ schedule GPU work.
 ## Source manifest and reconstruction
 
 The reviewed source list is a JSON Lines file governed by
-[`corpus-v1.schema.json`](corpus-v1.schema.json). Each line is one source, and
-line order is part of the corpus identity. Selected sources may use only CC0,
-Public Domain Mark, or CC BY 2.0/3.0/4.0. Authors, decoded identities, and
-perceptual identities may not cross train/validation/test boundaries.
+[`corpus-source-manifest-v2.schema.json`](corpus-source-manifest-v2.schema.json).
+The original [`corpus-v1.schema.json`](corpus-v1.schema.json) remains readable
+for development fixtures. Each line is one source and line order is part of the
+corpus identity. V2 additionally freezes the catalog snapshot, upstream source
+and author identities, rights evidence, archive-member fallbacks, content tags,
+people review, selection state, dHash, DCT pHash, and image histograms.
 
-The intended source population is 4,000 training, 500 validation, and 500 test
-images. Open Images V7 is the primary catalog. Its image metadata supplies the
-original URL, landing page, author, title, license, dimensions, rotation, and
-advertised MD5. Wikimedia Commons may fill deficient strata, but every Commons
-file needs an individual landing-page and license review. Changing thumbnails
-are not authenticated substitutes for an unavailable original.
+The frozen production mix is:
+
+| Catalog | Candidate pool | Train | Validation | Test |
+| --- | ---: | ---: | ---: | ---: |
+| Open Images V7 | 10,000 | 2,000 | 250 | 250 |
+| PASS | 6,000 | 1,200 | 150 | 150 |
+| Wikimedia Commons | 3,000 | 480 | 60 | 60 |
+| Smithsonian Open Access | 2,000 | 320 | 40 | 40 |
+
+Catalog locations and immutable-snapshot procedure are recorded in
+[`catalog-acquisition-v1.json`](catalog-acquisition-v1.json); selection policy
+and exact quotas are frozen in
+[`corpus-selection-v1.json`](corpus-selection-v1.json). Catalog metadata is
+evidence, not automatic permission. Every selected record must have an approved
+rights review and may use only CC0, Public Domain Mark, or CC BY 2.0/3.0/4.0.
+NC, ND, SA, unknown, ambiguous, and Smithsonian records lacking explicit CC0
+are rejected. People records additionally require an explicit non-sensitive,
+no-obvious-minors review.
+
+Open Images uses `OriginalURL` and its advertised checksum; its changing
+thumbnail URL is never canonical. PASS uses the official individual URL and
+may name an authenticated Zenodo archive/member as a byte-identical fallback.
+Commons freezes the upload revision, original URL, API SHA-1, and local SHA-256.
+Smithsonian freezes exact anonymous Open Data on AWS index and metadata-shard
+bytes, then selects a named high-resolution JPEG rendition. Both the record's
+metadata usage and the selected image's media usage must be exactly CC0. No
+Smithsonian REST API key or AWS account is required.
 
 Reconstruct or audit the exact listed originals without third-party Python
 modules:
@@ -99,23 +122,81 @@ python3 tools/tgmr_trainer/reconstruct_corpus.py \
 
 The downloader reads in manifest order, writes `.part` files, retries transient
 failures, publishes only bytes having the frozen SHA-256, and never silently
-substitutes a changed fallback. Original reconstruction is best effort because
-third-party URLs can disappear. The authenticated TGPC patch corpus is the
-durable training input.
+substitutes a changed fallback. V2 also authenticates complete PASS archives
+and the selected archive member before publishing it under the source's frozen
+identity. Original reconstruction is best effort because third-party URLs can
+disappear. The authenticated TGPC patch corpus is the durable training input.
 
 ## Corpus workflow
+
+The catalog preparation program uses only the Python standard library. Network
+APIs are allowed only while creating a frozen snapshot; canonical rebuilds
+consume the snapshot bytes and their pinned SHA-256, never a live API result.
 
 ```sh
 TOOL=/tmp/rt-tgmr-trainer/rt-tgmr-train
 CACHE=/data/tgmr/source-cache
+PREP=tools/tgmr_trainer/prepare_corpus.py
 
-"$TOOL" corpus verify-sources corpus-v1.jsonl "$CACHE"
-# Bootstrap one candidate record before the final manifest exists.
-"$TOOL" corpus classify-file openimages:IMAGE_ID "$CACHE/IMAGE_ID.jpg"
-"$TOOL" corpus classify corpus-v1.jsonl "$CACHE" classifications.jsonl
-"$TOOL" corpus propose-patches corpus-v1.jsonl "$CACHE" proposals.jsonl
-# Review and merge classifications/proposals into the final canonical JSONL.
+# Download and authenticate the four catalog snapshots. The reviewed release
+# records their actual SHA-256 values; examples omit them because this tree does
+# not contain the external snapshots.
+python3 "$PREP" snapshot OPEN_IMAGES_METADATA_URL oi.csv
+python3 "$PREP" snapshot PASS_METADATA_URL pass.csv
+python3 "$PREP" snapshot PASS_URL_LIST pass-urls.txt
+
+# Commons identifier lists are curated inputs. Smithsonian is collected from
+# explicitly selected units and hexadecimal metadata shards in its public AWS
+# bucket. Both commands freeze their live inputs; normalization is offline.
+python3 "$PREP" collect-commons commons-file-titles.txt commons-api.jsonl
+python3 "$PREP" collect-smithsonian smithsonian-aws.jsonl \
+    --unit chndm --unit fsg --unit nmah --unit nmnhbirds --unit nmnhbotany \
+    --unit nmnhento --unit nmnhminsci --unit nmnhpaleo --unit npm --unit saam \
+    --prefix 00 --prefix 01 --prefix 02 --prefix 03 --per-unit-limit 200 \
+    --report smithsonian-aws-report.json
+
+python3 "$PREP" normalize openimages oi.csv oi-candidates.jsonl \
+    --revision OPEN_IMAGES_REVISION --snapshot-sha256 SHA256 --limit 10000
+python3 "$PREP" normalize pass pass.csv pass-candidates.jsonl \
+    --revision PASS_REVISION --snapshot-sha256 SHA256 --urls pass-urls.txt \
+    --archive-index pass-archive-members.json --limit 6000
+python3 "$PREP" normalize commons commons-api.jsonl commons-candidates.jsonl \
+    --revision COMMONS_SNAPSHOT_REVISION --snapshot-sha256 SHA256 --limit 3000
+python3 "$PREP" normalize smithsonian smithsonian-aws.jsonl \
+    smithsonian-candidates.jsonl --revision SMITHSONIAN_SNAPSHOT_REVISION \
+    --snapshot-sha256 SHA256 --limit 2000
+python3 "$PREP" merge candidates.jsonl oi-candidates.jsonl \
+    pass-candidates.jsonl commons-candidates.jsonl smithsonian-candidates.jsonl
+
+# Download originals, preserving authenticated cache names and a machine-
+# readable availability report. Classification is performed by the C++ tool.
+python3 "$PREP" fetch candidates.jsonl "$CACHE" fetched.jsonl \
+    --retry 2 --report fetch-report.json
+"$TOOL" corpus classify fetched.jsonl "$CACHE" classifications.jsonl \
+    --candidates
+
+# Human review records bind rights evidence, content tags, and the controlled
+# people review. They may also provide normalized_author_id when one person is
+# represented differently in multiple catalogs. Assembly refuses mismatched
+# source/cache identities.
+python3 "$PREP" assemble fetched.jsonl classifications.jsonl "$CACHE" \
+    reviewed-candidates.jsonl --reviews reviews.jsonl
+"$TOOL" corpus report reviewed-candidates.jsonl --sources \
+    --json candidate-statistics.json --csv candidate-statistics.csv \
+    --html candidate-statistics.html
+
+# Selection assigns whole normalized-author groups to one split, enforces exact
+# per-catalog quotas and the author cap, rejects exact/perceptual duplicates,
+# and balances the 27 training-derived brightness/chroma/texture cells.
+"$TOOL" corpus select reviewed-candidates.jsonl \
+    tools/tgmr_trainer/corpus-selection-v1.json selected-sources.jsonl \
+    > selection-report.json
+
+# Finalization creates 256 train or 128 validation/test fixed coordinates per
+# source, with 75% spatial and 25% coverage samples and frozen augmentations.
+"$TOOL" corpus finalize selected-sources.jsonl "$CACHE" corpus-v1.jsonl
 "$TOOL" corpus validate-manifest corpus-v1.jsonl
+"$TOOL" corpus verify-sources corpus-v1.jsonl "$CACHE"
 "$TOOL" corpus pack corpus-v1.jsonl "$CACHE" tgmr-corpus-v1.tgpc
 "$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
     tgmr-corpus-v1-sensor-noise.tgpc --noise sensor-v1
@@ -125,7 +206,37 @@ CACHE=/data/tgmr/source-cache
 "$TOOL" corpus report tgmr-corpus-v1.tgpc.gz \
     --json corpus-statistics.json --csv corpus-statistics.csv \
     --html corpus-statistics.html
+
+python3 "$PREP" release-manifest corpus-v1.jsonl tgmr-corpus-v1.tgpc \
+    tgmr-corpus-v1.tgpc.gz CORPUS-NOTICE.txt corpus-statistics.json \
+    rights-report.json tgmr-corpus-v1.release.json \
+    --zenodo-doi DOI --github-release-url URL
 ```
+
+`collect-smithsonian` uses standard-library HTTPS directly against the public
+bucket. It streams every chosen shard, records SHA-256 and byte size for the
+root index, unit indexes, and shards in the report, and emits only compact
+eligible records. `--all-shards` may replace the explicit `--prefix` list for a
+complete unit scan. The REST command remains available as
+`collect-smithsonian-api` for diagnostics involving an explicit record-ID list;
+it is not part of the canonical corpus recipe.
+
+The stdout from each `snapshot`, `collect-*`, `normalize`, `fetch`, `select`,
+`balance`, and `release-manifest` command is canonical JSON and should be saved
+with the release audit. A PASS archive-index JSONL line contains `hash`, `url`,
+`sha256`, `member`, and `member_sha256`; extraction rejects absolute paths,
+parent traversal, changed archives, and changed members.
+
+Human review input is canonical JSONL. A typical line is:
+
+```json
+{"content_tags":["people","skin-hair-clothing"],"format":"rawtherapee-tgmr-source-review-v1","normalized_author_id":"flickr-user:stable-identity","people_review_status":"approved-no-minors-or-sensitive-content","rights_evidence_revision":"reviewed-upload-revision","rights_evidence_sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","rights_evidence_url":"https://example.invalid/source-rights-page","rights_review_status":"approved","source_id":"openimages-v7:source-id"}
+```
+
+`normalized_author_id` is optional, but it is required when catalog metadata
+uses different identifiers for the same author. The preparation tool already
+normalizes recognizable Flickr profile identities shared by Open Images and
+PASS; manual review resolves remaining cross-catalog aliases.
 
 The packer decodes and color-manages into linear sRGB, then applies frozen
 exposure, white-balance, and train/evaluation-separated Fujifilm camera-matrix
@@ -144,19 +255,28 @@ and 64 codes at saturation for the signal term. The TGPC configuration digest
 and per-record augmentation kind distinguish the recipes. This is a validation
 candidate, not a claim about a particular camera's calibrated noise model.
 
-`corpus classify-file` is the intake/bootstrap form: it accepts a stable source
-ID and one downloaded image and emits decoded dimensions, orientation, ICC and
-pixel identities, plus the complete classification object needed by a source
-manifest record. It deliberately does not invent licensing, author, URL, or
-split metadata. `corpus classify` is the authenticated batch form used after
-those source records have been reviewed and merged.
+`corpus classify-file` remains a useful intake/debugging form for one image.
+`corpus classify --candidates` is the canonical batch path: it authenticates
+the Python fetch output, decodes every available candidate, and produces the
+classification input for assembly. `--all` classifies selected and unselected
+records from an already assembled V2 manifest.
 
 `corpus balance` reports the declared low/middle/high brightness, chroma, and
-texture strata. `corpus report` emits canonical JSON, CSV, and a self-contained
-HTML report. The 5,000-image freeze additionally requires license review,
-near-duplicate review, all minimum stratum counts, and the 250/500/1000/2000/4000
-source-count learning curve; the tool does not pretend that a syntactically
-valid manifest proves those external judgments.
+texture strata using cut points derived only from training patches. The old
+fixed research thresholds remain available as `--fixed-v1-thresholds`.
+`corpus report --sources` emits source/catalog/license/rights/tag and histogram
+statistics before packing; ordinary `corpus report` emits canonical TGPC JSON,
+CSV, and self-contained HTML. Final release files are published outside Git as
+identical `.tgpc.gz` bytes on Zenodo and a RawTherapee/GitHub release. The Git
+tree retains their manifest, DOI/URL, hashes, source JSONL, URL/checksum list,
+statistics, and attribution notice.
+
+Selection deliberately fails if the reviewed pool cannot satisfy a catalog,
+split, people, author, quality, or deduplication constraint. The remedy is to
+expand the corresponding candidate source, never to relax licensing or reuse
+duplicates. Manual inspection remains required for rights evidence, borderline
+near-duplicate clusters, controlled people content, and guardrail categories.
+The program cannot turn a syntactically valid manifest into a legal conclusion.
 
 ## Fitting, checkpoints, export, and benchmark
 

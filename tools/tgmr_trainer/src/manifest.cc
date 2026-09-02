@@ -238,6 +238,7 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
     std::map<std::string, CorpusSplit> authorSplits;
     std::map<std::string, CorpusSplit> contentSplits;
     std::map<std::string, CorpusSplit> perceptualSplits;
+    std::map<std::string, CorpusSplit> pHashSplits;
     std::string line;
     std::uint64_t lineNumber = 0;
     while (std::getline(stream, line)) {
@@ -250,18 +251,29 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                                      + std::to_string(lineNumber));
         }
         try {
-            requireFields(root, {
+            const std::string format = text(root, "format");
+            const bool version2 = format == "rawtherapee-tgmr-corpus-source-manifest-v2";
+            if (!version2 && format != "rawtherapee-tgmr-corpus-source-manifest-v1") {
+                throw std::runtime_error("wrong source manifest format");
+            }
+            std::set<std::string> recordFields{
                 "format", "source_id", "split", "selected", "selection_status",
                 "original_url", "fallback_urls", "landing_page", "author", "title",
                 "license", "license_url", "advertised_checksum", "sha256",
                 "decoded_pixel_sha256", "cache_filename", "file_type", "width",
                 "height", "orientation", "icc_identity", "classification",
                 "patch_sampling_seed", "patch_coordinates",
-            }, "source manifest record");
-            if (text(root, "format") != "rawtherapee-tgmr-corpus-source-manifest-v1") {
-                throw std::runtime_error("wrong source manifest format");
+            };
+            if (version2) {
+                recordFields.insert({
+                    "archive_fallbacks", "author_id", "author_url", "catalog",
+                    "content_tags", "people_review_status", "rights",
+                    "upstream_flickr_id", "upstream_source_id",
+                });
             }
+            requireFields(root, recordFields, "source manifest record");
             SourceRecord record;
+            record.manifestV2 = version2;
             record.sourceId = text(root, "source_id");
             if (!std::all_of(record.sourceId.begin(), record.sourceId.end(),
                     [](unsigned char value) {
@@ -270,16 +282,32 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                     })) {
                 throw std::runtime_error("source_id contains nonportable characters");
             }
-            record.split = split(text(root, "split"));
+            const std::string splitName = text(root, "split");
+            record.splitAssigned = splitName != "unassigned";
+            if (!record.splitAssigned && !version2) {
+                throw std::runtime_error("v1 source cannot have an unassigned split");
+            }
+            record.split = record.splitAssigned ? split(splitName) : CorpusSplit::TRAIN;
             const cJSON *selected = field(root, "selected");
             if (!cJSON_IsBool(selected)) throw std::runtime_error("selected must be Boolean");
             record.selected = cJSON_IsTrue(selected);
+            if (record.selected && !record.splitAssigned) {
+                throw std::runtime_error("selected source cannot have an unassigned split");
+            }
             record.selectionStatus = text(root, "selection_status");
+            const cJSON *advertised = field(root, "advertised_checksum");
+            if (cJSON_IsString(advertised) && advertised->valuestring
+                && *advertised->valuestring) {
+                record.advertisedChecksum = advertised->valuestring;
+            } else if (!cJSON_IsNull(advertised)) {
+                throw std::runtime_error("advertised_checksum must be a string or null");
+            }
             record.cacheFilename = text(root, "cache_filename");
             record.originalUrl = text(root, "original_url");
             record.landingPage = text(root, "landing_page");
             record.sha256 = text(root, "sha256");
             record.decodedPixelSha256 = text(root, "decoded_pixel_sha256");
+            record.classification.decodedPixelSha256 = record.decodedPixelSha256;
             record.author = text(root, "author");
             record.title = text(root, "title");
             record.license = text(root, "license");
@@ -293,13 +321,20 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
             if (!cJSON_IsObject(classification)) {
                 throw std::runtime_error("classification must be an object");
             }
-            requireFields(classification, {
+            std::set<std::string> classificationFields{
                 "channel_means", "chroma_ratio_mean", "clipped_black_fraction",
                 "clipped_white_fraction", "gradient_rms", "hue_degrees",
                 "jpeg_blockiness", "laplacian_rms", "local_contrast",
                 "luminance_mean", "luminance_p01", "luminance_p99",
                 "luminance_stddev", "perceptual_hash", "saturation_mean",
-            }, "classification");
+            };
+            if (version2) {
+                classificationFields.insert({
+                    "dhash", "phash", "luminance_histogram", "hue_histogram",
+                    "saturation_histogram",
+                });
+            }
+            requireFields(classification, classificationFields, "classification");
             const cJSON *channelMeans = field(classification, "channel_means");
             if (!cJSON_IsArray(channelMeans) || cJSON_GetArraySize(channelMeans) != 3) {
                 throw std::runtime_error("classification channel_means must have three values");
@@ -309,15 +344,21 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 if (!cJSON_IsNumber(mean) || !std::isfinite(mean->valuedouble)) {
                     throw std::runtime_error("classification channel_means contains a non-finite value");
                 }
+                record.classification.channelMeans[channel] = mean->valuedouble;
             }
-            for (const char *name : {
-                    "chroma_ratio_mean", "clipped_black_fraction",
-                    "clipped_white_fraction", "gradient_rms", "hue_degrees",
-                    "jpeg_blockiness", "laplacian_rms", "local_contrast",
-                    "luminance_mean", "luminance_p01", "luminance_p99",
-                    "luminance_stddev", "saturation_mean"}) {
-                finiteNumber(classification, name);
-            }
+            record.classification.chromaRatioMean = finiteNumber(classification, "chroma_ratio_mean");
+            record.classification.clippedBlackFraction = finiteNumber(classification, "clipped_black_fraction");
+            record.classification.clippedWhiteFraction = finiteNumber(classification, "clipped_white_fraction");
+            record.classification.gradientRms = finiteNumber(classification, "gradient_rms");
+            record.classification.hueDegrees = finiteNumber(classification, "hue_degrees");
+            record.classification.jpegBlockiness = finiteNumber(classification, "jpeg_blockiness");
+            record.classification.laplacianRms = finiteNumber(classification, "laplacian_rms");
+            record.classification.localContrast = finiteNumber(classification, "local_contrast");
+            record.classification.luminanceMean = finiteNumber(classification, "luminance_mean");
+            record.classification.luminanceP01 = finiteNumber(classification, "luminance_p01");
+            record.classification.luminanceP99 = finiteNumber(classification, "luminance_p99");
+            record.classification.luminanceStddev = finiteNumber(classification, "luminance_stddev");
+            record.classification.saturationMean = finiteNumber(classification, "saturation_mean");
             const cJSON *perceptual = cJSON_GetObjectItemCaseSensitive(
                 classification, "perceptual_hash");
             if (!cJSON_IsString(perceptual) || !perceptual->valuestring
@@ -331,6 +372,53 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 throw std::runtime_error("classification perceptual_hash is malformed");
             }
             record.perceptualHash = perceptual->valuestring;
+            record.classification.perceptualHash = record.perceptualHash;
+            if (version2) {
+                auto signature = [&](const char *name) {
+                    const cJSON *value = field(classification, name);
+                    if (!cJSON_IsString(value) || !value->valuestring
+                        || std::strlen(value->valuestring) != 16
+                        || !std::all_of(value->valuestring, value->valuestring + 16,
+                            [](unsigned char character) {
+                                return std::isdigit(character)
+                                    || (character >= 'a' && character <= 'f');
+                            })) {
+                        throw std::runtime_error(std::string("classification ") + name
+                                                 + " is malformed");
+                    }
+                    return std::string(value->valuestring);
+                };
+                if (signature("dhash") != record.perceptualHash) {
+                    throw std::runtime_error("v2 dhash and compatibility perceptual_hash differ");
+                }
+                record.pHash = signature("phash");
+                record.classification.pHash = record.pHash;
+                // Array items do not have object names, so parse them directly.
+                auto histogramItems = [&](const char *name, auto &target) {
+                    const cJSON *array = field(classification, name);
+                    if (!cJSON_IsArray(array)
+                        || cJSON_GetArraySize(array) != static_cast<int>(target.size())) {
+                        throw std::runtime_error(std::string("classification ") + name
+                                                 + " has the wrong size");
+                    }
+                    for (std::size_t index = 0; index < target.size(); ++index) {
+                        const cJSON *item = cJSON_GetArrayItem(array, static_cast<int>(index));
+                        if (!cJSON_IsNumber(item) || item->valuedouble < 0.0
+                            || std::floor(item->valuedouble) != item->valuedouble
+                            || item->valuedouble > 9007199254740991.0) {
+                            throw std::runtime_error(std::string("classification ") + name
+                                                     + " contains a non-integer");
+                        }
+                        target[index] = static_cast<std::uint64_t>(item->valuedouble);
+                    }
+                };
+                histogramItems("luminance_histogram", record.classification.luminanceHistogram);
+                histogramItems("hue_histogram", record.classification.hueHistogram);
+                histogramItems("saturation_histogram", record.classification.saturationHistogram);
+            } else {
+                record.pHash = record.perceptualHash;
+                record.classification.pHash = record.perceptualHash;
+            }
             record.patchSamplingSeed = unsignedInteger(root, "patch_sampling_seed");
             if (!canonicalSha256(record.sha256)
                 || !canonicalSha256(record.decodedPixelSha256)) {
@@ -358,6 +446,117 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                     throw std::runtime_error("fallback_urls contains an invalid URL");
                 }
                 record.fallbackUrls.emplace_back(url->valuestring);
+            }
+            if (version2) {
+                record.authorId = text(root, "author_id");
+                record.authorUrl = text(root, "author_url");
+                if (!supportedUrl(record.authorUrl)) {
+                    throw std::runtime_error("v2 author URL has an unsupported scheme");
+                }
+                const cJSON *catalog = field(root, "catalog");
+                if (!cJSON_IsObject(catalog)) throw std::runtime_error("catalog must be an object");
+                requireFields(catalog, {"name", "revision", "snapshot_sha256"}, "catalog");
+                record.catalogName = text(catalog, "name");
+                record.catalogRevision = text(catalog, "revision");
+                record.catalogSnapshotSha256 = text(catalog, "snapshot_sha256");
+                static const std::set<std::string> catalogs{
+                    "openimages-v7", "pass-v3", "wikimedia-commons",
+                    "smithsonian-open-access",
+                };
+                if (catalogs.find(record.catalogName) == catalogs.end()
+                    || !canonicalSha256(record.catalogSnapshotSha256)) {
+                    throw std::runtime_error("v2 catalog identity is invalid");
+                }
+                record.upstreamSourceId = text(root, "upstream_source_id");
+                const cJSON *flickr = cJSON_GetObjectItemCaseSensitive(
+                    root, "upstream_flickr_id");
+                if (cJSON_IsString(flickr) && flickr->valuestring && *flickr->valuestring) {
+                    record.upstreamFlickrId = flickr->valuestring;
+                } else if (!cJSON_IsNull(flickr)) {
+                    throw std::runtime_error("upstream_flickr_id must be a string or null");
+                }
+                const cJSON *rights = field(root, "rights");
+                if (!cJSON_IsObject(rights)) throw std::runtime_error("rights must be an object");
+                requireFields(rights, {
+                    "evidence_revision", "evidence_sha256", "evidence_url", "review_status",
+                }, "rights");
+                record.rightsEvidenceRevision = text(rights, "evidence_revision");
+                record.rightsEvidenceSha256 = text(rights, "evidence_sha256");
+                record.rightsEvidenceUrl = text(rights, "evidence_url");
+                record.rightsReviewStatus = text(rights, "review_status");
+                if (!canonicalSha256(record.rightsEvidenceSha256)
+                    || !supportedUrl(record.rightsEvidenceUrl)
+                    || (record.rightsReviewStatus != "approved"
+                        && record.rightsReviewStatus != "rejected"
+                        && record.rightsReviewStatus != "pending")) {
+                    throw std::runtime_error("v2 rights evidence is invalid");
+                }
+                if (record.selected && record.rightsReviewStatus != "approved") {
+                    throw std::runtime_error("selected v2 source lacks approved rights review");
+                }
+                record.peopleReviewStatus = text(root, "people_review_status");
+                if (record.peopleReviewStatus != "not-applicable"
+                    && record.peopleReviewStatus != "approved-no-minors-or-sensitive-content"
+                    && record.peopleReviewStatus != "rejected"
+                    && record.peopleReviewStatus != "pending") {
+                    throw std::runtime_error("v2 people review status is invalid");
+                }
+                const cJSON *tags = field(root, "content_tags");
+                if (!cJSON_IsArray(tags)) throw std::runtime_error("content_tags must be an array");
+                static const std::set<std::string> permittedTags{
+                    "people", "skin-hair-clothing", "foliage", "fur-feathers",
+                    "architecture-brick", "textile-print", "metal-specular-jewelry",
+                    "food", "water-sky", "low-light", "macro-specimen",
+                };
+                std::set<std::string> uniqueTags;
+                for (int index = 0; index < cJSON_GetArraySize(tags); ++index) {
+                    const cJSON *tag = cJSON_GetArrayItem(tags, index);
+                    if (!cJSON_IsString(tag) || !tag->valuestring
+                        || permittedTags.find(tag->valuestring) == permittedTags.end()
+                        || !uniqueTags.insert(tag->valuestring).second) {
+                        throw std::runtime_error("content_tags contains an invalid value");
+                    }
+                    record.contentTags.emplace_back(tag->valuestring);
+                }
+                if (record.selected
+                    && std::find(record.contentTags.begin(), record.contentTags.end(), "people")
+                        != record.contentTags.end()
+                    && record.peopleReviewStatus != "approved-no-minors-or-sensitive-content") {
+                    throw std::runtime_error("selected people image lacks explicit review");
+                }
+                const cJSON *archives = field(root, "archive_fallbacks");
+                if (!cJSON_IsArray(archives)) {
+                    throw std::runtime_error("archive_fallbacks must be an array");
+                }
+                for (int index = 0; index < cJSON_GetArraySize(archives); ++index) {
+                    const cJSON *archive = cJSON_GetArrayItem(archives, index);
+                    if (!cJSON_IsObject(archive)) {
+                        throw std::runtime_error("archive fallback must be an object");
+                    }
+                    requireFields(archive, {"url", "sha256", "member", "member_sha256"},
+                                  "archive fallback");
+                    ArchiveFallback value;
+                    value.url = text(archive, "url");
+                    value.sha256 = text(archive, "sha256");
+                    value.member = text(archive, "member");
+                    value.memberSha256 = text(archive, "member_sha256");
+                    const std::filesystem::path member(value.member);
+                    if (!supportedUrl(value.url) || !canonicalSha256(value.sha256)
+                        || !canonicalSha256(value.memberSha256) || member.is_absolute()) {
+                        throw std::runtime_error("archive fallback is invalid");
+                    }
+                    for (const auto &component : member) {
+                        if (component == "..") {
+                            throw std::runtime_error("archive fallback member is unsafe");
+                        }
+                    }
+                    record.archiveFallbacks.push_back(std::move(value));
+                }
+            } else {
+                record.authorId = record.author;
+                record.authorUrl = record.landingPage;
+                record.rightsReviewStatus = record.selected ? "approved" : "pending";
+                record.peopleReviewStatus = "not-applicable";
             }
             const std::filesystem::path cacheName(record.cacheFilename);
             if (cacheName.is_absolute() || cacheName.has_parent_path()
@@ -430,7 +629,7 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 throw std::runtime_error("duplicate manifest source ID or cache filename");
             }
             if (record.selected) {
-                const auto author = authorSplits.emplace(record.author, record.split);
+                const auto author = authorSplits.emplace(record.authorId, record.split);
                 if (!author.second && author.first->second != record.split) {
                     throw std::runtime_error("author occurs in more than one corpus split");
                 }
@@ -445,6 +644,13 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                         && perceptualEntry.first->second != record.split) {
                         throw std::runtime_error(
                             "perceptual duplicate occurs in more than one corpus split");
+                    }
+                }
+                if (!record.pHash.empty()) {
+                    const auto signature = pHashSplits.emplace(record.pHash, record.split);
+                    if (!signature.second && signature.first->second != record.split) {
+                        throw std::runtime_error(
+                            "DCT perceptual duplicate occurs in more than one corpus split");
                     }
                 }
             }
@@ -471,6 +677,12 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 throw std::runtime_error(
                     "perceptual near-duplicate occurs in more than one corpus split");
             }
+            const std::uint64_t leftPHash = std::stoull(output[left].pHash, nullptr, 16);
+            const std::uint64_t rightPHash = std::stoull(output[right].pHash, nullptr, 16);
+            if (hammingDistance64(leftPHash ^ rightPHash) <= 8) {
+                throw std::runtime_error(
+                    "DCT perceptual near-duplicate occurs in more than one corpus split");
+            }
         }
     }
     return output;
@@ -479,10 +691,36 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
 void validateProductionManifest(const std::vector<SourceRecord> &records)
 {
     std::array<std::uint64_t, 3> sourceCounts{};
+    std::array<std::array<std::uint64_t, 3>, 4> catalogCounts{};
+    std::array<std::uint64_t, 3> peopleCounts{};
+    std::map<std::string, std::size_t> authorCounts;
+    static const std::array<std::string, 4> catalogs{{
+        "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access",
+    }};
     for (const SourceRecord &record : records) {
         if (!record.selected) continue;
         const unsigned splitIndex = static_cast<unsigned>(record.split) - 1;
         ++sourceCounts[splitIndex];
+        if (!record.manifestV2 || record.rightsReviewStatus != "approved") {
+            throw std::runtime_error(
+                "production source must use v2 provenance with approved rights: "
+                + record.sourceId);
+        }
+        const auto catalog = std::find(catalogs.begin(), catalogs.end(), record.catalogName);
+        if (catalog == catalogs.end()) {
+            throw std::runtime_error("production source has an unsupported catalog");
+        }
+        ++catalogCounts[static_cast<std::size_t>(catalog - catalogs.begin())][splitIndex];
+        if (++authorCounts[record.authorId] > 5) {
+            throw std::runtime_error("production manifest exceeds the five-image author cap");
+        }
+        if (std::find(record.contentTags.begin(), record.contentTags.end(), "people")
+            != record.contentTags.end()) {
+            if (record.peopleReviewStatus != "approved-no-minors-or-sensitive-content") {
+                throw std::runtime_error("production people source lacks explicit approval");
+            }
+            ++peopleCounts[splitIndex];
+        }
         const std::size_t required = record.split == CorpusSplit::TRAIN ? 256 : 128;
         if (record.patches.size() != required) {
             throw std::runtime_error("selected source has the wrong frozen patch count: "
@@ -517,6 +755,15 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
         throw std::runtime_error(
             "production manifest must contain exactly 4000/500/500 selected sources");
     }
+    const std::array<std::array<std::uint64_t, 3>, 4> expectedCatalogs{{
+        {{2000,250,250}}, {{1200,150,150}}, {{480,60,60}}, {{320,40,40}},
+    }};
+    if (catalogCounts != expectedCatalogs) {
+        throw std::runtime_error("production manifest does not match frozen source quotas");
+    }
+    if (peopleCounts[0] < 600 || peopleCounts[1] < 75 || peopleCounts[2] < 75) {
+        throw std::runtime_error("production manifest lacks the controlled people share");
+    }
 }
 
 SourceVerification verifySources(
@@ -542,7 +789,8 @@ void classifySources(
     const std::vector<SourceRecord> &records,
     const std::string &cacheDirectory,
     const std::string &outputJsonl,
-    bool force)
+    bool force,
+    bool includeUnselected)
 {
     if (!force && std::filesystem::exists(outputJsonl)) {
         throw std::runtime_error("refusing to replace classification output");
@@ -551,7 +799,7 @@ void classifySources(
     std::ofstream output(temporary, std::ios::binary);
     if (!output) throw std::runtime_error("cannot create classification output");
     for (const SourceRecord &record : records) {
-        if (!record.selected) continue;
+        if (!record.selected && !includeUnselected) continue;
         const auto path = sourcePath(cacheDirectory, record);
         if (hex(sha256File(path.string())) != record.sha256) {
             throw std::runtime_error("source changed before classification: " + record.sourceId);
@@ -559,7 +807,8 @@ void classifySources(
         const LinearImage image = loadLinearImage(path.string());
         const ImageClassification classification = classifyImage(image);
         verifyDecodedMetadata(record, image, classification, false);
-        output << canonicalClassificationJson(image, classification, record.sourceId);
+        output << canonicalClassificationJson(
+            image, classification, record.sourceId, record.cacheFilename);
     }
     output.flush();
     if (!output) {
@@ -570,6 +819,94 @@ void classifySources(
     output.close();
     if (force) std::filesystem::remove(outputJsonl);
     std::filesystem::rename(temporary, outputJsonl);
+}
+
+void classifyFetchedCandidates(
+    const std::string &fetchedCandidateJsonl,
+    const std::string &cacheDirectory,
+    const std::string &outputJsonl,
+    bool force)
+{
+    if (!force && std::filesystem::exists(outputJsonl)) {
+        throw std::runtime_error("refusing to replace classification output");
+    }
+    std::ifstream input(fetchedCandidateJsonl);
+    if (!input) throw std::runtime_error("cannot open fetched candidate JSONL");
+    const std::string temporary = outputJsonl + ".tmp";
+    std::ofstream output(temporary, std::ios::binary);
+    if (!output) throw std::runtime_error("cannot create classification output");
+    std::set<std::string> identities;
+    std::string line;
+    std::uint64_t lineNumber = 0;
+    try {
+        while (std::getline(input, line)) {
+            ++lineNumber;
+            if (line.empty()) throw std::runtime_error("fetched candidates contain a blank line");
+            cJSON *root = cJSON_Parse(line.c_str());
+            if (!root || !cJSON_IsObject(root)) {
+                cJSON_Delete(root);
+                throw std::runtime_error("fetched candidate JSON parse failure on line "
+                                         + std::to_string(lineNumber));
+            }
+            try {
+                if (text(root, "format") != "rawtherapee-tgmr-fetched-candidate-v1") {
+                    throw std::runtime_error("wrong fetched candidate format");
+                }
+                const std::string catalog = text(root, "catalog");
+                const std::string upstream = text(root, "upstream_source_id");
+                std::string sourceId = catalog + ':' + upstream;
+                for (char &value : sourceId) {
+                    const unsigned char byte = static_cast<unsigned char>(value);
+                    if (std::isalnum(byte) || value == '.' || value == '_'
+                        || value == ':' || value == '-') {
+                    } else {
+                        value = '-';
+                    }
+                }
+                sourceId.erase(std::unique(sourceId.begin(), sourceId.end(),
+                    [](char left, char right) { return left == '-' && right == '-'; }),
+                    sourceId.end());
+                while (!sourceId.empty() && sourceId.front() == '-') sourceId.erase(sourceId.begin());
+                while (!sourceId.empty() && sourceId.back() == '-') sourceId.pop_back();
+                if (sourceId.empty() || !identities.insert(sourceId).second) {
+                    throw std::runtime_error("duplicate or empty fetched candidate identity");
+                }
+                const std::string cacheFilename = text(root, "cache_filename");
+                const std::filesystem::path name(cacheFilename);
+                if (name.is_absolute() || name.has_parent_path()) {
+                    throw std::runtime_error("fetched candidate cache filename is unsafe");
+                }
+                const std::string expected = text(root, "sha256");
+                if (!canonicalSha256(expected)) {
+                    throw std::runtime_error("fetched candidate SHA-256 is malformed");
+                }
+                const std::filesystem::path path = std::filesystem::path(cacheDirectory) / name;
+                if (hex(sha256File(path.string())) != expected) {
+                    throw std::runtime_error("fetched candidate changed before classification: "
+                                             + sourceId);
+                }
+                const LinearImage image = loadLinearImage(path.string());
+                const ImageClassification classification = classifyImage(image);
+                output << canonicalClassificationJson(
+                    image, classification, sourceId, cacheFilename);
+                cJSON_Delete(root);
+            } catch (...) {
+                cJSON_Delete(root);
+                throw;
+            }
+        }
+        output.flush();
+        if (!input.eof() || !output) {
+            throw std::runtime_error("fetched candidate classification I/O failed");
+        }
+        output.close();
+        if (force) std::filesystem::remove(outputJsonl);
+        std::filesystem::rename(temporary, outputJsonl);
+    } catch (...) {
+        output.close();
+        std::filesystem::remove(temporary);
+        throw;
+    }
 }
 
 void packSources(

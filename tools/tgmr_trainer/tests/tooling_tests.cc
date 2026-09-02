@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -235,6 +236,7 @@ void testCorpus()
     require(compressed.compressed && compressed.header.payloadSha256 == plain.header.payloadSha256,
             "compressed/uncompressed corpus parity failed");
     const auto statistics = tgmr::analyzeCorpus(corpus);
+    const auto derivedStatistics = tgmr::analyzeCorpusTrainingTertiles(corpus);
     require(statistics.uniqueSources == std::array<std::uint64_t, 3>{{1, 1, 1}},
             "corpus source counts changed");
     require(tgmr::canonicalCorpusReportJson(statistics).find(
@@ -247,6 +249,10 @@ void testCorpus()
     require(tgmr::canonicalBalanceJson(statistics, 1, 1).find(
         "\"status\": \"deficient\"") != std::string::npos,
         "corpus balance calculation changed");
+    require(std::isfinite(derivedStatistics.brightnessThresholds[0])
+        && std::isfinite(derivedStatistics.chromaThresholds[1])
+        && std::isfinite(derivedStatistics.textureThresholds[1]),
+        "training-derived corpus strata are not finite");
 
     auto corrupt = read(corpus);
     corrupt.back() ^= 1;
@@ -491,6 +497,145 @@ void testManifestNearDuplicateLeakage()
     }
     require(rejected, "C++ manifest parser accepted a cross-split perceptual near-duplicate");
     std::remove(path.c_str());
+}
+
+void testProductionSourceSelection()
+{
+    static const std::array<const char *, 4> catalogs{{
+        "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access",
+    }};
+    std::vector<tgmr::SourceRecord> candidates;
+    candidates.reserve(20'000);
+    for (std::size_t catalog = 0; catalog < catalogs.size(); ++catalog) {
+        for (std::size_t index = 0; index < 5'000; ++index) {
+            tgmr::SourceRecord record;
+            record.manifestV2 = true;
+            record.sourceId = std::string(catalogs[catalog]) + ":fixture-"
+                + std::to_string(index);
+            record.selected = false;
+            record.splitAssigned = false;
+            record.selectionStatus = "candidate-reviewed";
+            record.advertisedChecksum = "sha1:" + std::string(40, 'a');
+            record.cacheFilename = "fixture-" + std::to_string(catalog) + '-'
+                + std::to_string(index) + ".jpg";
+            record.originalUrl = "https://example.invalid/" + record.cacheFilename;
+            record.landingPage = "https://example.invalid/source/" + record.sourceId;
+            record.author = "Fixture Author " + std::to_string(catalog) + '-'
+                + std::to_string(index);
+            record.authorId = "fixture-author:" + std::to_string(catalog) + ':'
+                + std::to_string(index);
+            record.authorUrl = "https://example.invalid/author/" + std::to_string(index);
+            record.title = "Fixture source";
+            record.license = catalog == 3 ? "CC0-1.0" : "CC-BY-4.0";
+            record.licenseUrl = catalog == 3
+                ? "https://creativecommons.org/publicdomain/zero/1.0/"
+                : "https://creativecommons.org/licenses/by/4.0/";
+            record.fileType = "jpeg";
+            record.width = 1200;
+            record.height = 800;
+            record.orientation = 1;
+            record.iccIdentity = "assumed-srgb";
+            record.catalogName = catalogs[catalog];
+            record.catalogRevision = "fixture-revision";
+            record.catalogSnapshotSha256 = std::string(64, '1' + catalog);
+            record.upstreamSourceId = "fixture-" + std::to_string(index);
+            record.rightsEvidenceUrl = record.landingPage;
+            record.rightsEvidenceRevision = "fixture-review";
+            record.rightsEvidenceSha256 = std::string(64, '5' + catalog);
+            record.rightsReviewStatus = "approved";
+            const bool people = (catalog == 0 || catalog == 2) && index % 4 == 0;
+            record.peopleReviewStatus = people
+                ? "approved-no-minors-or-sensitive-content" : "not-applicable";
+            if (people) record.contentTags = {"people", "skin-hair-clothing"};
+            else record.contentTags = {index % 2 ? "foliage" : "architecture-brick"};
+            const auto identity = tgmr::sha256(
+                record.sourceId.data(), record.sourceId.size());
+            const std::string identityText = tgmr::hex(identity);
+            record.sha256 = tgmr::hex(tgmr::sha256(
+                (record.sourceId + ":bytes").data(), record.sourceId.size() + 6));
+            const std::string pixelSeed = record.sourceId + ":pixels";
+            record.decodedPixelSha256 = tgmr::hex(tgmr::sha256(
+                pixelSeed.data(), pixelSeed.size()));
+            record.perceptualHash = identityText.substr(0, 16);
+            record.pHash = identityText.substr(16, 16);
+            record.classification.perceptualHash = record.perceptualHash;
+            record.classification.pHash = record.pHash;
+            record.classification.decodedPixelSha256 = record.decodedPixelSha256;
+            record.classification.channelMeans = {{0.2,0.3,0.4}};
+            record.classification.luminanceMean = 0.05 + 0.9 * (index % 97) / 96.0;
+            record.classification.luminanceStddev = 0.1;
+            record.classification.luminanceP01 = 0.01;
+            record.classification.luminanceP99 = 0.99;
+            record.classification.chromaRatioMean = 0.01 + 0.3 * (index % 89) / 88.0;
+            record.classification.hueDegrees = index % 360;
+            record.classification.saturationMean = 0.2;
+            record.classification.gradientRms = 0.001 + 0.2 * (index % 83) / 82.0;
+            record.classification.laplacianRms = 0.02;
+            record.classification.localContrast = 0.03;
+            record.classification.jpegBlockiness = 1.0;
+            record.classification.luminanceHistogram.fill(1);
+            record.classification.hueHistogram.fill(1);
+            record.classification.saturationHistogram.fill(1);
+            record.patchSamplingSeed = index + 1;
+            candidates.push_back(std::move(record));
+        }
+    }
+    const std::string recipe = temporary("-selection.json");
+    const std::string output = temporary("-selected.jsonl");
+    const std::string outputSecond = temporary("-selected-second.jsonl");
+    {
+        std::ofstream stream(recipe, std::ios::binary);
+        stream << "{\"author_image_cap\":5,"
+            "\"format\":\"rawtherapee-tgmr-corpus-selection-v1\","
+            "\"quotas\":{"
+            "\"openimages-v7\":{\"test\":250,\"train\":2000,\"validation\":250},"
+            "\"pass-v3\":{\"test\":150,\"train\":1200,\"validation\":150},"
+            "\"smithsonian-open-access\":{\"test\":40,\"train\":320,\"validation\":40},"
+            "\"wikimedia-commons\":{\"test\":60,\"train\":480,\"validation\":60}},"
+            "\"seed\":\"rawtherapee-tgmr-corpus-v1-selection\"}\n";
+    }
+    const std::string report = tgmr::selectProductionSources(
+        candidates, recipe, output);
+    require(report.find("\"selected_sources\": 5000") != std::string::npos
+        && report.find("\"deduplication_rejections\": [") != std::string::npos,
+            "production selector did not fill the complete source population");
+    const std::string reportSecond = tgmr::selectProductionSources(
+        candidates, recipe, outputSecond);
+    require(reportSecond == report
+        && tgmr::sha256File(outputSecond) == tgmr::sha256File(output),
+        "production source selection is not byte deterministic");
+    const auto selected = tgmr::readSourceManifest(output);
+    require(selected.size() == 5000,
+            "production selector emitted the wrong number of records");
+    std::array<std::uint64_t, 3> splits{};
+    std::array<std::uint64_t, 3> people{};
+    std::map<std::string, std::size_t> authors;
+    for (const auto &record : selected) {
+        require(record.selected && record.manifestV2
+            && record.rightsReviewStatus == "approved",
+            "selected source lost v2 provenance or rights approval");
+        const std::size_t split = static_cast<unsigned>(record.split) - 1U;
+        ++splits[split];
+        ++authors[record.authorId];
+        if (std::find(record.contentTags.begin(), record.contentTags.end(), "people")
+            != record.contentTags.end()) ++people[split];
+    }
+    require(splits == std::array<std::uint64_t, 3>{{4000,500,500}}
+        && people[0] >= 600 && people[1] >= 75 && people[2] >= 75,
+        "production selector changed split or people quotas");
+    require(std::all_of(authors.begin(), authors.end(), [](const auto &entry) {
+        return entry.second <= 5;
+    }), "production selector exceeded its author cap");
+    const std::string sourceReport = tgmr::canonicalSourceReportJson(selected);
+    require(sourceReport.find("rawtherapee-tgmr-source-statistics-v1")
+            != std::string::npos
+        && sourceReport.find("\"catalog_identities\"") != std::string::npos
+        && tgmr::sourceReportCsv(selected).find("catalog_snapshot") != std::string::npos
+        && tgmr::sourceReportHtml(selected).find("<!doctype html>") == 0,
+        "source-corpus report formats changed");
+    std::remove(recipe.c_str());
+    std::remove(output.c_str());
+    std::remove(outputSecond.c_str());
 }
 
 void testModelV2()
@@ -794,6 +939,7 @@ int main()
         testImageManifestAndPack();
         testTiff16Orientation();
         testManifestNearDuplicateLeakage();
+        testProductionSourceSelection();
         testModelV2();
         testValidation();
         testTraining();
