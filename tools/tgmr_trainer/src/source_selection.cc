@@ -29,7 +29,8 @@ constexpr std::size_t CATALOGS = 4;
 constexpr std::size_t SPLITS = 3;
 
 const std::array<const char *, CATALOGS> CATALOG_NAMES{{
-    "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access",
+    "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
+    "smithsonian-open-access",
 }};
 
 const std::array<const char *, SPLITS> SPLIT_NAMES{{"train", "validation", "test"}};

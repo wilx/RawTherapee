@@ -37,9 +37,22 @@ The automatic loader additionally requires the compiled official digest.
   accepted only with explicit CC0. People sources require a separate approved
   no-obvious-minors/non-sensitive-content review.
 - Catalog acquisition is frozen for a deterministic 21,000-candidate pool:
-  10,000 Open Images V7, 6,000 PASS, 3,000 Wikimedia Commons, and 2,000
-  Smithsonian Open Access. The exact selected mix is respectively
+  10,000 candidates from the CVDF Open Images V4/V5 boxable subset, 6,000
+  PASS, 3,000 Wikimedia Commons, and 2,000 Smithsonian Open Access. The exact
+  selected mix is respectively
   2,500/1,500/600/400, with each source preserving the 80/10/10 split.
+- The matching Open Images boxable metadata snapshot contains 1,743,042 image
+  records and is pinned at 638,407,721 bytes with SHA-256
+  `05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0`.
+  A deterministic 100-record pilot against the extracted three-level CVDF
+  mirror classified all 100 inputs. Its candidate JSONL SHA-256 is
+  `29b7fc12a65af58389aa80fb4ee6dd731628caa521521d8011335fb3eba4fa01` and
+  classification JSONL SHA-256 is
+  `ed02f664d805d62517d9153c2deba1959aee0f49cc78979e6564000233b50bc8`.
+  The pilot exposed one grayscale JPEG with an embedded GRAY ICC profile;
+  classification now passes the profile a one-component input to LittleCMS
+  before producing neutral linear RGB. The full and 1/8-proxy paths have a
+  native regression test for this case.
 - A standard-library-only preparation program snapshots and authenticates
   catalogs, captures one-time Commons API responses and anonymous Smithsonian
   Open Data on AWS index/shard snapshots, preserves the complete consumed

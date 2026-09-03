@@ -1,10 +1,14 @@
 {
   "catalogs": {
-    "openimages-v7": {
+    "openimages-cvdf-v5-boxable": {
       "candidate_count": 10000,
-      "image_information_snapshot": "https://storage.googleapis.com/openimages/v6/oidv6-train-images-with-labels-with-rotation.csv",
-      "landing_page": "https://storage.googleapis.com/openimages/web/download_v7.html",
-      "notes": "Use OriginalURL and OriginalMD5. Never use Thumbnail300KURL as canonical bytes.",
+      "catalog_revision": "cvdf-open-images-v5-boxable-05f3d68dbbb0",
+      "image_information_records": 1743042,
+      "image_information_snapshot_bytes": 638407721,
+      "image_information_snapshot_sha256": "05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0",
+      "image_information_snapshot": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
+      "landing_page": "https://github.com/cvdfoundation/open-images-dataset#download-images-with-bounding-boxes-annotations",
+      "notes": "The 561 GB CVDF tar mirror is the 1,743,042-image V4/V5 boxable training subset, not complete Open Images. Use the matching boxable image-information snapshot. Never use Thumbnail300KURL as canonical bytes.",
       "selected_count": 2500
     },
     "pass-v3": {

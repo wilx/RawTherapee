@@ -388,6 +388,62 @@ double luminance(const double *rgb)
     return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
 }
 
+std::vector<double> convertToLinearSrgb(const Decoded &decoded)
+{
+    cmsHPROFILE input = decoded.icc.empty()
+        ? cmsCreate_sRGBProfile()
+        : cmsOpenProfileFromMem(decoded.icc.data(), decoded.icc.size());
+    cmsHPROFILE outputProfile = linearSrgbProfile();
+    if (!input || !outputProfile) {
+        if (input) cmsCloseProfile(input);
+        if (outputProfile) cmsCloseProfile(outputProfile);
+        throw std::runtime_error("cannot create source/linear-sRGB color profile");
+    }
+
+    const cmsColorSpaceSignature colorSpace = cmsGetColorSpace(input);
+    cmsUInt32Number inputFormat = 0;
+    const void *inputPixels = decoded.rgb.data();
+    std::vector<std::uint16_t> gray;
+    if (colorSpace == cmsSigRgbData) {
+        inputFormat = TYPE_RGB_16;
+    } else if (colorSpace == cmsSigGrayData) {
+        // libjpeg expands a grayscale JPEG to RGB for the common decode path,
+        // but an embedded grayscale ICC profile still expects one component.
+        // Feed LittleCMS the original repeated gray sample rather than
+        // incorrectly pairing a GRAY profile with TYPE_RGB_16.
+        gray.resize(static_cast<std::size_t>(decoded.width) * decoded.height);
+        for (std::size_t index = 0; index < gray.size(); ++index) {
+            gray[index] = decoded.rgb[index * 3];
+        }
+        inputFormat = TYPE_GRAY_16;
+        inputPixels = gray.data();
+    } else {
+        cmsCloseProfile(input);
+        cmsCloseProfile(outputProfile);
+        throw std::runtime_error("unsupported input ICC color space");
+    }
+
+    cmsHTRANSFORM transform = cmsCreateTransform(
+        input, inputFormat, outputProfile, TYPE_RGB_DBL,
+        INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_BLACKPOINTCOMPENSATION);
+    if (!transform) {
+        cmsCloseProfile(input);
+        cmsCloseProfile(outputProfile);
+        throw std::runtime_error("cannot create linear-sRGB color transform");
+    }
+    std::vector<double> output(decoded.rgb.size());
+    cmsDoTransform(transform, inputPixels, output.data(),
+                   static_cast<cmsUInt32Number>(decoded.width * decoded.height));
+    cmsDeleteTransform(transform);
+    cmsCloseProfile(input);
+    cmsCloseProfile(outputProfile);
+    if (!std::all_of(output.begin(), output.end(),
+                     [](double value) { return std::isfinite(value); })) {
+        throw std::runtime_error("color management produced a non-finite pixel");
+    }
+    return output;
+}
+
 } // namespace
 
 LinearImage loadLinearImage(const std::string &path)
@@ -409,23 +465,6 @@ LinearImage loadLinearImage(const std::string &path)
         || decoded.rgb.size() != static_cast<std::size_t>(decoded.width) * decoded.height * 3) {
         throw std::runtime_error("decoded image is too small or malformed");
     }
-    cmsHPROFILE input = decoded.icc.empty()
-        ? cmsCreate_sRGBProfile()
-        : cmsOpenProfileFromMem(decoded.icc.data(), decoded.icc.size());
-    cmsHPROFILE outputProfile = linearSrgbProfile();
-    if (!input || !outputProfile) {
-        if (input) cmsCloseProfile(input);
-        if (outputProfile) cmsCloseProfile(outputProfile);
-        throw std::runtime_error("cannot create source/linear-sRGB color profile");
-    }
-    cmsHTRANSFORM transform = cmsCreateTransform(
-        input, TYPE_RGB_16, outputProfile, TYPE_RGB_DBL,
-        INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_BLACKPOINTCOMPENSATION);
-    if (!transform) {
-        cmsCloseProfile(input);
-        cmsCloseProfile(outputProfile);
-        throw std::runtime_error("cannot create linear-sRGB color transform");
-    }
     LinearImage result;
     result.width = decoded.width;
     result.height = decoded.height;
@@ -437,16 +476,7 @@ LinearImage loadLinearImage(const std::string &path)
     result.iccIdentity = decoded.icc.empty()
         ? "assumed-srgb"
         : "sha256:" + hex(sha256(decoded.icc.data(), decoded.icc.size()));
-    result.rgb.resize(decoded.rgb.size());
-    cmsDoTransform(transform, decoded.rgb.data(), result.rgb.data(),
-                   static_cast<cmsUInt32Number>(decoded.width * decoded.height));
-    cmsDeleteTransform(transform);
-    cmsCloseProfile(input);
-    cmsCloseProfile(outputProfile);
-    if (!std::all_of(result.rgb.begin(), result.rgb.end(),
-                     [](double value) { return std::isfinite(value); })) {
-        throw std::runtime_error("color management produced a non-finite pixel");
-    }
+    result.rgb = convertToLinearSrgb(decoded);
     return result;
 }
 
@@ -474,23 +504,6 @@ LoadedLinearImage loadLinearImageAndSha256(const std::string &path, bool jpegPro
         throw std::runtime_error("decoded JPEG proxy is too small");
     }
 
-    cmsHPROFILE input = decoded.icc.empty()
-        ? cmsCreate_sRGBProfile()
-        : cmsOpenProfileFromMem(decoded.icc.data(), decoded.icc.size());
-    cmsHPROFILE outputProfile = linearSrgbProfile();
-    if (!input || !outputProfile) {
-        if (input) cmsCloseProfile(input);
-        if (outputProfile) cmsCloseProfile(outputProfile);
-        throw std::runtime_error("cannot create source/linear-sRGB color profile");
-    }
-    cmsHTRANSFORM transform = cmsCreateTransform(
-        input, TYPE_RGB_16, outputProfile, TYPE_RGB_DBL,
-        INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_BLACKPOINTCOMPENSATION);
-    if (!transform) {
-        cmsCloseProfile(input);
-        cmsCloseProfile(outputProfile);
-        throw std::runtime_error("cannot create linear-sRGB color transform");
-    }
     result.image.width = decoded.width;
     result.image.height = decoded.height;
     result.image.sourceWidth = sourceWidth;
@@ -501,16 +514,7 @@ LoadedLinearImage loadLinearImageAndSha256(const std::string &path, bool jpegPro
     result.image.iccIdentity = decoded.icc.empty()
         ? "assumed-srgb"
         : "sha256:" + hex(sha256(decoded.icc.data(), decoded.icc.size()));
-    result.image.rgb.resize(decoded.rgb.size());
-    cmsDoTransform(transform, decoded.rgb.data(), result.image.rgb.data(),
-                   static_cast<cmsUInt32Number>(decoded.width * decoded.height));
-    cmsDeleteTransform(transform);
-    cmsCloseProfile(input);
-    cmsCloseProfile(outputProfile);
-    if (!std::all_of(result.image.rgb.begin(), result.image.rgb.end(),
-                     [](double value) { return std::isfinite(value); })) {
-        throw std::runtime_error("color management produced a non-finite pixel");
-    }
+    result.image.rgb = convertToLinearSrgb(decoded);
     result.proxy = jpegProxy;
     return result;
 }

@@ -29,6 +29,7 @@
 
 #include <unistd.h>
 #include <jpeglib.h>
+#include <lcms2.h>
 #include <png.h>
 #include <tiffio.h>
 
@@ -160,6 +161,52 @@ void writeJpegFixture(const std::string &path, unsigned width, unsigned height, 
     jpeg_finish_compress(&encoder);
     jpeg_destroy_compress(&encoder);
     require(std::fclose(stream) == 0, "cannot close JPEG fixture");
+}
+
+void writeGrayJpegWithIccFixture(const std::string &path, unsigned width, unsigned height)
+{
+    cmsCIExyY white{};
+    cmsWhitePointFromTemp(&white, 6504.0);
+    cmsToneCurve *curve = cmsBuildGamma(nullptr, 2.2);
+    require(curve != nullptr, "cannot create grayscale ICC tone curve");
+    cmsHPROFILE profile = cmsCreateGrayProfile(&white, curve);
+    cmsFreeToneCurve(curve);
+    require(profile != nullptr, "cannot create grayscale ICC profile");
+    cmsUInt32Number profileBytes = 0;
+    require(cmsSaveProfileToMem(profile, nullptr, &profileBytes) != 0 && profileBytes > 0,
+            "cannot size grayscale ICC profile");
+    std::vector<unsigned char> profileData(profileBytes);
+    require(cmsSaveProfileToMem(profile, profileData.data(), &profileBytes) != 0,
+            "cannot serialize grayscale ICC profile");
+    cmsCloseProfile(profile);
+
+    std::FILE *stream = std::fopen(path.c_str(), "wb");
+    require(stream != nullptr, "cannot create grayscale JPEG fixture");
+    jpeg_compress_struct encoder{};
+    jpeg_error_mgr error{};
+    encoder.err = jpeg_std_error(&error);
+    jpeg_create_compress(&encoder);
+    jpeg_stdio_dest(&encoder, stream);
+    encoder.image_width = width;
+    encoder.image_height = height;
+    encoder.input_components = 1;
+    encoder.in_color_space = JCS_GRAYSCALE;
+    jpeg_set_defaults(&encoder);
+    jpeg_set_quality(&encoder, 91, TRUE);
+    jpeg_start_compress(&encoder, TRUE);
+    jpeg_write_icc_profile(&encoder, profileData.data(), profileBytes);
+    std::vector<unsigned char> row(width);
+    while (encoder.next_scanline < encoder.image_height) {
+        const unsigned y = encoder.next_scanline;
+        for (unsigned x = 0; x < width; ++x) {
+            row[x] = static_cast<unsigned char>((3 * x + 5 * y + 17) & 255);
+        }
+        JSAMPROW rows[] = {row.data()};
+        jpeg_write_scanlines(&encoder, rows, 1);
+    }
+    jpeg_finish_compress(&encoder);
+    jpeg_destroy_compress(&encoder);
+    require(std::fclose(stream) == 0, "cannot close grayscale JPEG fixture");
 }
 
 void writeTiffFixture(const std::string &path, unsigned width, unsigned height)
@@ -485,6 +532,27 @@ void testTiff16Orientation()
     std::remove(path.c_str());
 }
 
+void testGrayJpegIccProfile()
+{
+    const std::string path = temporary("-gray-icc.jpg");
+    writeGrayJpegWithIccFixture(path, 80, 72);
+    const auto full = tgmr::loadLinearImageAndSha256(path, false);
+    const auto proxy = tgmr::loadLinearImageAndSha256(path, true);
+    require(full.image.width == 80 && full.image.height == 72
+        && full.image.iccIdentity.rfind("sha256:", 0) == 0
+        && !full.image.assumedSrgb,
+        "grayscale JPEG ICC profile was not retained");
+    require(proxy.proxy && proxy.image.width > 0 && proxy.image.height > 0,
+        "grayscale JPEG ICC profile failed proxy conversion");
+    for (std::size_t index = 0; index < full.image.rgb.size(); index += 3) {
+        require(std::isfinite(full.image.rgb[index])
+            && std::abs(full.image.rgb[index] - full.image.rgb[index + 1]) < 5e-5
+            && std::abs(full.image.rgb[index] - full.image.rgb[index + 2]) < 5e-5,
+            "grayscale ICC conversion did not produce neutral linear RGB");
+    }
+    std::remove(path.c_str());
+}
+
 void testParallelClassificationAndProxy()
 {
     const std::string base = temporary("-classifier");
@@ -500,11 +568,11 @@ void testParallelClassificationAndProxy()
         const auto path = cache / name.str();
         writeJpegFixture(path.string(), 80 + index, 72 + index, index + 1);
         manifest << "{\"cache_filename\":\"" << name.str()
-            << "\",\"catalog\":\"open-images-v7\","
+            << "\",\"catalog\":\"openimages-cvdf-v5-boxable\","
             << "\"format\":\"rawtherapee-tgmr-fetched-candidate-v1\","
             << "\"sha256\":\"" << tgmr::hex(tgmr::sha256File(path.string()))
             << "\",\"upstream_source_id\":\"abcdef012345678" << index << "\"}\n";
-        catalogManifest << "{\"catalog\":\"openimages-v7\","
+        catalogManifest << "{\"catalog\":\"openimages-cvdf-v5-boxable\","
             << "\"format\":\"rawtherapee-tgmr-catalog-candidate-v1\","
             << "\"upstream_source_id\":\"abcdef012345678" << index << "\"}\n";
     }
@@ -584,7 +652,7 @@ void testParallelClassificationAndProxy()
     {
         std::ofstream invalid(traversal);
         invalid << "{\"cache_filename\":\"../escape.jpg\","
-            << "\"catalog\":\"open-images-v7\","
+            << "\"catalog\":\"openimages-cvdf-v5-boxable\","
             << "\"format\":\"rawtherapee-tgmr-fetched-candidate-v1\","
             << "\"sha256\":\"" << std::string(64, '0') << "\","
             << "\"upstream_source_id\":\"escape\"}\n";
@@ -692,7 +760,8 @@ void testManifestNearDuplicateLeakage()
 void testProductionSourceSelection()
 {
     static const std::array<const char *, 4> catalogs{{
-        "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access",
+        "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
+        "smithsonian-open-access",
     }};
     std::vector<tgmr::SourceRecord> candidates;
     candidates.reserve(20'000);
@@ -778,7 +847,7 @@ void testProductionSourceSelection()
         stream << "{\"author_image_cap\":5,"
             "\"format\":\"rawtherapee-tgmr-corpus-selection-v1\","
             "\"quotas\":{"
-            "\"openimages-v7\":{\"test\":250,\"train\":2000,\"validation\":250},"
+            "\"openimages-cvdf-v5-boxable\":{\"test\":250,\"train\":2000,\"validation\":250},"
             "\"pass-v3\":{\"test\":150,\"train\":1200,\"validation\":150},"
             "\"smithsonian-open-access\":{\"test\":40,\"train\":320,\"validation\":40},"
             "\"wikimedia-commons\":{\"test\":60,\"train\":480,\"validation\":60}},"
@@ -1128,6 +1197,7 @@ int main()
         testSourceLimitedTrainingMatrix();
         testImageManifestAndPack();
         testTiff16Orientation();
+        testGrayJpegIccProfile();
         testParallelClassificationAndProxy();
         testManifestNearDuplicateLeakage();
         testProductionSourceSelection();

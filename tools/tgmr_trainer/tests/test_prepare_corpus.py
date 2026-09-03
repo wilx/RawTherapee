@@ -63,8 +63,9 @@ class PreparationTests(unittest.TestCase):
                 "source_id": "pass-v3:b",
             }, sort_keys=True) + "\n", encoding="utf-8")
             second.write_text(json.dumps({
-                "catalog": "openimages-v7", "format": prepare_corpus.CANDIDATE_FORMAT,
-                "source_id": "openimages-v7:a",
+                "catalog": "openimages-cvdf-v5-boxable",
+                "format": prepare_corpus.CANDIDATE_FORMAT,
+                "source_id": "openimages-cvdf-v5-boxable:a",
             }, sort_keys=True) + "\n", encoding="utf-8")
             merged = root / "merged.jsonl"
             self.assertEqual(prepare_corpus.main([
@@ -72,7 +73,7 @@ class PreparationTests(unittest.TestCase):
             ]), 0)
             merged_values = [json.loads(line) for line in merged.read_text().splitlines()]
             self.assertEqual([value["source_id"] for value in merged_values], [
-                "openimages-v7:a", "pass-v3:b",
+                "openimages-cvdf-v5-boxable:a", "pass-v3:b",
             ])
 
             artifacts = []
@@ -122,9 +123,10 @@ class PreparationTests(unittest.TestCase):
             candidates = root / "candidates.jsonl"
             self.assertEqual(prepare_corpus.main([
                 "normalize", "openimages", str(csv_path), str(candidates),
-                "--revision", "fixture-v7",
+                "--revision", "fixture-boxable",
             ]), 0)
             first = json.loads(candidates.read_text())
+            self.assertEqual(first["catalog"], "openimages-cvdf-v5-boxable")
             self.assertEqual(first["license"], "CC-BY-2.0")
             self.assertEqual(first["author_id"], "flickr-user:example")
             self.assertEqual(first["upstream_flickr_id"], "123456789")
@@ -137,7 +139,7 @@ class PreparationTests(unittest.TestCase):
                 "--retry", "0", "--report", str(report),
             ]), 0)
             fetched_record = json.loads(fetched.read_text())
-            source_id = "openimages-v7:abc1234567890def"
+            source_id = "openimages-cvdf-v5-boxable:abc1234567890def"
             classification = root / "classifications.jsonl"
             classification.write_text(json.dumps({
                 "cache_filename": fetched_record["cache_filename"],

@@ -20,7 +20,8 @@ Model license: intended CC BY 4.0, pending completed review
 Source composition
 ------------------
 
-Open Images V7: 2,500 sources (2,000 train / 250 validation / 250 test)
+CVDF Open Images V4/V5 boxable subset: 2,500 sources
+(2,000 train / 250 validation / 250 test)
 PASS: 1,500 sources (1,200 train / 150 validation / 150 test)
 Wikimedia Commons: 600 sources (480 train / 60 validation / 60 test)
 Smithsonian Open Access: 400 sources (320 train / 40 validation / 40 test)

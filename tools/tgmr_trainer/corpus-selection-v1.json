@@ -1,7 +1,7 @@
 {
   "author_image_cap": 5,
   "candidate_pool": {
-    "openimages-v7": 10000,
+    "openimages-cvdf-v5-boxable": 10000,
     "pass-v3": 6000,
     "smithsonian-open-access": 2000,
     "wikimedia-commons": 3000
@@ -43,7 +43,7 @@
   },
   "people_fraction": 0.15,
   "quotas": {
-    "openimages-v7": {"test": 250, "train": 2000, "validation": 250},
+    "openimages-cvdf-v5-boxable": {"test": 250, "train": 2000, "validation": 250},
     "pass-v3": {"test": 150, "train": 1200, "validation": 150},
     "smithsonian-open-access": {"test": 40, "train": 320, "validation": 40},
     "wikimedia-commons": {"test": 60, "train": 480, "validation": 60}

@@ -84,7 +84,7 @@ The frozen production mix is:
 
 | Catalog | Candidate pool | Train | Validation | Test |
 | --- | ---: | ---: | ---: | ---: |
-| Open Images V7 | 10,000 | 2,000 | 250 | 250 |
+| CVDF Open Images V4/V5 boxable subset | 10,000 | 2,000 | 250 | 250 |
 | PASS | 6,000 | 1,200 | 150 | 150 |
 | Wikimedia Commons | 3,000 | 480 | 60 | 60 |
 | Smithsonian Open Access | 2,000 | 320 | 40 | 40 |
@@ -99,7 +99,13 @@ NC, ND, SA, unknown, ambiguous, and Smithsonian records lacking explicit CC0
 are rejected. People records additionally require an explicit non-sensitive,
 no-obvious-minors review.
 
-Open Images uses `OriginalURL` and its advertised checksum; its changing
+The CVDF Open Images tar mirror contains the 1,743,042-image V4/V5 boxable
+training subset, not the complete roughly nine-million-image catalog. Its
+candidate metadata comes from the matching
+`train-images-boxable-with-rotation.csv` snapshot (638,407,721 bytes, SHA-256
+`05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0`).
+Open Images uses
+`OriginalURL` and its advertised checksum as provenance; its changing
 thumbnail URL is never canonical. PASS uses the official individual URL and
 may name an authenticated Zenodo archive/member as a byte-identical fallback.
 PASS's metadata `hash` is a variable-length hexadecimal source/filename
@@ -144,7 +150,9 @@ PREP=tools/tgmr_trainer/prepare_corpus.py
 # Download and authenticate the four catalog snapshots. The reviewed release
 # records their actual SHA-256 values; examples omit them because this tree does
 # not contain the external snapshots.
-python3 "$PREP" snapshot OPEN_IMAGES_METADATA_URL oi.csv
+python3 "$PREP" snapshot \
+    https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv \
+    oi.csv
 python3 "$PREP" snapshot PASS_METADATA_URL pass.csv
 python3 "$PREP" snapshot PASS_URL_LIST pass-urls.txt
 
@@ -160,7 +168,10 @@ python3 "$PREP" collect-smithsonian smithsonian-aws.jsonl \
     --report smithsonian-aws-report.json
 
 python3 "$PREP" normalize openimages oi.csv oi-candidates.jsonl \
-    --revision OPEN_IMAGES_REVISION --snapshot-sha256 SHA256 --limit 10000
+    --revision cvdf-open-images-v5-boxable-05f3d68dbbb0 \
+    --snapshot-sha256 \
+    05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0 \
+    --eligible-only --limit 10000
 python3 "$PREP" normalize pass pass.csv pass-candidates.jsonl \
     --revision PASS_REVISION --snapshot-sha256 SHA256 --urls pass-urls.txt \
     --archive-index pass-archive-members.json --limit 6000
@@ -237,7 +248,7 @@ parent traversal, changed archives, and changed members.
 Human review input is canonical JSONL. A typical line is:
 
 ```json
-{"content_tags":["people","skin-hair-clothing"],"format":"rawtherapee-tgmr-source-review-v1","normalized_author_id":"flickr-user:stable-identity","people_review_status":"approved-no-minors-or-sensitive-content","rights_evidence_revision":"reviewed-upload-revision","rights_evidence_sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","rights_evidence_url":"https://example.invalid/source-rights-page","rights_review_status":"approved","source_id":"openimages-v7:source-id"}
+{"content_tags":["people","skin-hair-clothing"],"format":"rawtherapee-tgmr-source-review-v1","normalized_author_id":"flickr-user:stable-identity","people_review_status":"approved-no-minors-or-sensitive-content","rights_evidence_revision":"reviewed-upload-revision","rights_evidence_sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","rights_evidence_url":"https://example.invalid/source-rights-page","rights_review_status":"approved","source_id":"openimages-cvdf-v5-boxable:source-id"}
 ```
 
 `normalized_author_id` is optional, but it is required when catalog metadata
@@ -299,11 +310,16 @@ Its rows use the distinct
 `rawtherapee-tgmr-image-proxy-classification-v1` identity and record both source
 and proxy dimensions. Proxy results are approximate, JPEG-only, and must not
 be passed to `assemble`; candidates selected from them require the normal full
-classification pass.
+classification pass. RGB and grayscale embedded ICC profiles are both honored;
+grayscale JPEGs are expanded to neutral linear RGB through their one-component
+profile rather than being incorrectly presented to LittleCMS as RGB-profile
+input.
 
 Bulk CVDF Open Images archives do not need a separate per-file SHA-256 pass.
-After metadata filtering has produced canonical catalog-candidate JSONL, point
-the classifier at the extracted split root:
+The tar files contain only the V4/V5 boxable subset and therefore must be paired
+with the matching boxable image-information snapshot, not the V6/V7
+human-verified-label metadata. After metadata filtering has produced canonical
+catalog-candidate JSONL, point the classifier at the extracted split root:
 
 ```sh
 rt-tgmr-train corpus classify oi-shortlist.jsonl /data/open-images \

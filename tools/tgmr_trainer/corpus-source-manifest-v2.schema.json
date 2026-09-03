@@ -87,7 +87,7 @@
     "catalog": {
       "additionalProperties": false,
       "properties": {
-        "name": {"enum": ["openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access"]},
+        "name": {"enum": ["openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons", "smithsonian-open-access"]},
         "revision": {"minLength": 1, "type": "string"},
         "snapshot_sha256": {"$ref": "#/$defs/sha256"}
       },

@@ -1044,7 +1044,7 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 record.catalogRevision = text(catalog, "revision");
                 record.catalogSnapshotSha256 = text(catalog, "snapshot_sha256");
                 static const std::set<std::string> catalogs{
-                    "openimages-v7", "pass-v3", "wikimedia-commons",
+                    "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
                     "smithsonian-open-access",
                 };
                 if (catalogs.find(record.catalogName) == catalogs.end()
@@ -1283,7 +1283,8 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
     std::array<std::uint64_t, 3> peopleCounts{};
     std::map<std::string, std::size_t> authorCounts;
     static const std::array<std::string, 4> catalogs{{
-        "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access",
+        "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
+        "smithsonian-open-access",
     }};
     for (const SourceRecord &record : records) {
         if (!record.selected) continue;
@@ -1433,7 +1434,8 @@ void classifyFetchedCandidates(
             }
             const std::string catalog = text(root, "catalog");
             const std::string upstream = text(root, "upstream_source_id");
-            if (cvdfLayout && (catalog != "openimages-v7" || upstream.size() != 16
+            if (cvdfLayout && (catalog != "openimages-cvdf-v5-boxable"
+                || upstream.size() != 16
                 || !std::all_of(upstream.begin(), upstream.end(), [](unsigned char value) {
                     return std::isdigit(value) || (value >= 'a' && value <= 'f');
                 }))) {

@@ -255,7 +255,8 @@ def validate_record(value: object, line_number: int) -> dict[str, object]:
         }:
             raise ManifestError(f"line {line_number}: malformed catalog identity")
         if catalog.get("name") not in (
-            "openimages-v7", "pass-v3", "wikimedia-commons", "smithsonian-open-access"
+            "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
+            "smithsonian-open-access"
         ):
             raise ManifestError(f"line {line_number}: unsupported catalog")
         if not isinstance(catalog.get("revision"), str) or not catalog["revision"]:

@@ -251,7 +251,8 @@ def normalize_openimages(path: Path, revision: str, digest: str) -> Iterator[dic
             advertised = f"md5-base64:{encoded_md5}" if encoded_md5 else None
             flickr = flickr_photo_id(landing, original)
             yield candidate(
-                catalog="openimages-v7", revision=revision, snapshot_sha256=digest,
+                catalog="openimages-cvdf-v5-boxable", revision=revision,
+                snapshot_sha256=digest,
                 upstream_id=identifier, original_url=original, landing_page=landing,
                 author=author,
                 author_id=normalized_author_id(author_url, author, "openimages-author"),
@@ -1044,7 +1045,8 @@ def assemble(arguments: argparse.Namespace) -> int:
                 f"local catalog classification lacks source_sha256: {source_id}"
             )
         local_openimages = (
-            candidate_format == CANDIDATE_FORMAT and catalog == "openimages-v7"
+            candidate_format == CANDIDATE_FORMAT
+            and catalog == "openimages-cvdf-v5-boxable"
         )
         if local_openimages:
             parts = Path(cache_filename).parts
@@ -1177,7 +1179,7 @@ def merge_jsonl(arguments: argparse.Namespace) -> int:
             identities.add(identity)
             records.append(value)
     catalog_order = {
-        "openimages-v7": 0, "pass-v3": 1,
+        "openimages-cvdf-v5-boxable": 0, "pass-v3": 1,
         "wikimedia-commons": 2, "smithsonian-open-access": 3,
     }
     def key(value: dict[str, object]) -> tuple[int, str]:
