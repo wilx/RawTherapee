@@ -152,6 +152,23 @@ def candidate_cache_filename(record: dict[str, object]) -> str:
     return identity + suffix
 
 
+def safe_cache_path(cache: Path, relative: str) -> Path:
+    name = Path(relative)
+    if (
+        name.is_absolute()
+        or not name.parts
+        or any(component in ("", ".", "..") for component in name.parts)
+    ):
+        raise CorpusPreparationError("cache filename must be a safe relative path")
+    root = cache.resolve()
+    destination = (cache / name).resolve(strict=False)
+    try:
+        destination.relative_to(root)
+    except ValueError as error:
+        raise CorpusPreparationError("cache filename escapes the cache") from error
+    return destination
+
+
 def license_id(value: object) -> str | None:
     text = str(value or "").strip().lower().rstrip("/")
     aliases = {
@@ -885,7 +902,8 @@ def fetch(arguments: argparse.Namespace) -> int:
         if record.get("format") != CANDIDATE_FORMAT:
             raise CorpusPreparationError("fetch input has the wrong candidate format")
         filename = candidate_cache_filename(record)
-        destination = arguments.cache / filename
+        destination = safe_cache_path(arguments.cache, filename)
+        destination.parent.mkdir(parents=True, exist_ok=True)
         status = "authenticated-cache"
         if not destination.exists() or not _advertised_matches(
             destination, record.get("advertised_checksum")
@@ -985,21 +1003,67 @@ def assemble(arguments: argparse.Namespace) -> int:
     reviews = read_reviews(arguments.reviews)
     output: list[dict[str, object]] = []
     for candidate_value in _jsonl(arguments.candidates):
-        if candidate_value.get("format") != FETCHED_FORMAT:
-            raise CorpusPreparationError("assemble requires fetched candidate records")
+        candidate_format = candidate_value.get("format")
+        if candidate_format not in (FETCHED_FORMAT, CANDIDATE_FORMAT):
+            raise CorpusPreparationError(
+                "assemble requires fetched or local catalog candidate records"
+            )
         catalog = clean_text(candidate_value.get("catalog"), "")
         upstream = clean_text(candidate_value.get("upstream_source_id"), "")
         source_id = portable_id(f"{catalog}:{upstream}")
         classification_record = classifications.get(source_id)
         if classification_record is None:
             continue
+        if classification_record.get("format") == (
+            "rawtherapee-tgmr-image-proxy-classification-v1"
+        ):
+            raise CorpusPreparationError(
+                f"proxy classification cannot be assembled as final metadata: {source_id}"
+            )
         cache_filename = clean_text(classification_record.get("cache_filename"), "")
         if not cache_filename:
             cache_filename = clean_text(candidate_value.get("cache_filename"), "")
-        source_path = arguments.cache / cache_filename
+        source_path = safe_cache_path(arguments.cache, cache_filename)
         if not source_path.is_file():
             raise CorpusPreparationError(f"classified cache file is missing: {source_path}")
         source_sha256, _ = sha256_file(source_path)
+        classified_sha256 = clean_text(classification_record.get("source_sha256"), "")
+        if classified_sha256 and require_sha256(
+            classified_sha256, "classification source_sha256"
+        ) != source_sha256:
+            raise CorpusPreparationError(
+                f"classified source bytes changed before assembly: {source_id}"
+            )
+        if candidate_format == FETCHED_FORMAT:
+            if require_sha256(candidate_value.get("sha256"), "fetched sha256") != source_sha256:
+                raise CorpusPreparationError(
+                    f"fetched source bytes changed before assembly: {source_id}"
+                )
+        elif not classified_sha256:
+            raise CorpusPreparationError(
+                f"local catalog classification lacks source_sha256: {source_id}"
+            )
+        local_openimages = (
+            candidate_format == CANDIDATE_FORMAT and catalog == "openimages-v7"
+        )
+        if local_openimages:
+            parts = Path(cache_filename).parts
+            expected_name = upstream + ".jpg"
+            if (
+                len(parts) != 5
+                or parts[0] not in ("train", "validation", "test")
+                or parts[1:4] != (upstream[0], upstream[1], upstream[2])
+                or parts[4] != expected_name
+            ):
+                raise CorpusPreparationError(
+                    f"local Open Images cache layout is malformed: {source_id}"
+                )
+            reconstruction_url = (
+                "https://open-images-dataset.s3.amazonaws.com/"
+                f"{parts[0]}/{expected_name}"
+            )
+        else:
+            reconstruction_url = candidate_value["original_url"]
         review = reviews.get(source_id, {})
         rights_status = str(review.get("rights_review_status") or candidate_value["rights_review_status"])
         tags = sorted(set(review.get("content_tags") or []))
@@ -1010,7 +1074,12 @@ def assemble(arguments: argparse.Namespace) -> int:
         if not isinstance(classification, dict):
             raise CorpusPreparationError(f"classification object missing for {source_id}")
         output.append({
-            "advertised_checksum": candidate_value.get("advertised_checksum"),
+            # Open Images metadata describes the Flickr original, whereas the
+            # CVDF archive is a <=1024-pixel mirror rendition.  Its exact
+            # SHA-256 is the authoritative source identity.
+            "advertised_checksum": (
+                None if local_openimages else candidate_value.get("advertised_checksum")
+            ),
             "archive_fallbacks": candidate_value.get("archive_fallbacks", []),
             "author": candidate_value["author"],
             "author_id": portable_id(clean_text(
@@ -1035,7 +1104,7 @@ def assemble(arguments: argparse.Namespace) -> int:
             "license": candidate_value["license"],
             "license_url": candidate_value["license_url"],
             "orientation": classification_record["orientation"],
-            "original_url": candidate_value["original_url"],
+            "original_url": reconstruction_url,
             "patch_coordinates": [],
             "patch_sampling_seed": "0x" + hashlib.sha256(source_id.encode()).hexdigest()[:16],
             "people_review_status": people_status,

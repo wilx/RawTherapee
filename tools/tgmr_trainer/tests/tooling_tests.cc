@@ -28,6 +28,7 @@
 #include <vector>
 
 #include <unistd.h>
+#include <jpeglib.h>
 #include <png.h>
 #include <tiffio.h>
 
@@ -127,6 +128,38 @@ void writePngFixture(const std::string &path, unsigned width, unsigned height)
     }
     require(png_image_write_to_file(&image, path.c_str(), 0, pixels.data(), 0, nullptr) != 0,
             "cannot write PNG fixture");
+}
+
+void writeJpegFixture(const std::string &path, unsigned width, unsigned height, unsigned seed)
+{
+    std::FILE *stream = std::fopen(path.c_str(), "wb");
+    require(stream != nullptr, "cannot create JPEG fixture");
+    jpeg_compress_struct encoder{};
+    jpeg_error_mgr error{};
+    encoder.err = jpeg_std_error(&error);
+    jpeg_create_compress(&encoder);
+    jpeg_stdio_dest(&encoder, stream);
+    encoder.image_width = width;
+    encoder.image_height = height;
+    encoder.input_components = 3;
+    encoder.in_color_space = JCS_RGB;
+    jpeg_set_defaults(&encoder);
+    jpeg_set_quality(&encoder, 91, TRUE);
+    jpeg_start_compress(&encoder, TRUE);
+    std::vector<unsigned char> row(static_cast<std::size_t>(width) * 3);
+    while (encoder.next_scanline < encoder.image_height) {
+        const unsigned y = encoder.next_scanline;
+        for (unsigned x = 0; x < width; ++x) {
+            row[x * 3] = static_cast<unsigned char>((3 * x + seed * 17) & 255);
+            row[x * 3 + 1] = static_cast<unsigned char>((5 * y + seed * 11) & 255);
+            row[x * 3 + 2] = static_cast<unsigned char>((x + 2 * y + seed * 7) & 255);
+        }
+        JSAMPROW rows[] = {row.data()};
+        jpeg_write_scanlines(&encoder, rows, 1);
+    }
+    jpeg_finish_compress(&encoder);
+    jpeg_destroy_compress(&encoder);
+    require(std::fclose(stream) == 0, "cannot close JPEG fixture");
 }
 
 void writeTiffFixture(const std::string &path, unsigned width, unsigned height)
@@ -432,6 +465,7 @@ void testImageManifestAndPack()
     std::remove(imagePath.c_str());
     std::remove(manifestPath.c_str());
     std::remove(classificationPath.c_str());
+    std::filesystem::remove_all(classificationPath + ".work");
     std::remove(corpusPath.c_str());
     std::remove(noisyCorpusA.c_str());
     std::remove(noisyCorpusB.c_str());
@@ -449,6 +483,162 @@ void testTiff16Orientation()
     require(std::isfinite(image.rgb.front()) && std::isfinite(image.rgb.back()),
             "TIFF RGB16 conversion produced non-finite values");
     std::remove(path.c_str());
+}
+
+void testParallelClassificationAndProxy()
+{
+    const std::string base = temporary("-classifier");
+    const std::filesystem::path cache = std::filesystem::path(base) / "cache";
+    std::filesystem::create_directories(cache / "train/a/b/c");
+    const std::string input = base + "-fetched.jsonl";
+    const std::string catalogInput = base + "-catalog.jsonl";
+    std::ofstream manifest(input, std::ios::binary);
+    std::ofstream catalogManifest(catalogInput, std::ios::binary);
+    for (unsigned index = 0; index < 6; ++index) {
+        std::ostringstream name;
+        name << "train/a/b/c/abcdef012345678" << index << ".jpg";
+        const auto path = cache / name.str();
+        writeJpegFixture(path.string(), 80 + index, 72 + index, index + 1);
+        manifest << "{\"cache_filename\":\"" << name.str()
+            << "\",\"catalog\":\"open-images-v7\","
+            << "\"format\":\"rawtherapee-tgmr-fetched-candidate-v1\","
+            << "\"sha256\":\"" << tgmr::hex(tgmr::sha256File(path.string()))
+            << "\",\"upstream_source_id\":\"abcdef012345678" << index << "\"}\n";
+        catalogManifest << "{\"catalog\":\"openimages-v7\","
+            << "\"format\":\"rawtherapee-tgmr-catalog-candidate-v1\","
+            << "\"upstream_source_id\":\"abcdef012345678" << index << "\"}\n";
+    }
+    manifest.close();
+    catalogManifest.close();
+
+    tgmr::ClassificationOptions serial;
+    serial.jobs = 1;
+    serial.checkpointImages = 2;
+    serial.checkpointSeconds = 1;
+    serial.progressSeconds = 1;
+    serial.retries = 0;
+    serial.workDirectory = base + "-serial-work";
+    const std::string serialOutput = base + "-serial.jsonl";
+    tgmr::classifyFetchedCandidates(input, cache.string(), serialOutput, false, serial);
+
+    tgmr::ClassificationOptions parallel = serial;
+    parallel.jobs = 4;
+    parallel.workDirectory = base + "-parallel-work";
+    const std::string parallelOutput = base + "-parallel.jsonl";
+    tgmr::classifyFetchedCandidates(input, cache.string(), parallelOutput, false, parallel);
+    require(read(serialOutput) == read(parallelOutput),
+            "parallel classification changed canonical output ordering or values");
+
+    // A completed checkpoint set is itself a valid resume point.  A stale
+    // incomplete temporary segment must be ignored.
+    std::remove(parallelOutput.c_str());
+    {
+        std::ofstream incomplete(
+            std::filesystem::path(parallel.workDirectory) / "segment-stale.tmp");
+        incomplete << "incomplete";
+    }
+    tgmr::classifyFetchedCandidates(input, cache.string(), parallelOutput, false, parallel);
+    require(read(serialOutput) == read(parallelOutput),
+            "checkpoint resume did not reproduce canonical classifier output");
+
+    bool rejectedMismatchedResume = false;
+    const std::string changedInput = base + "-changed-fetched.jsonl";
+    {
+        std::ifstream original(input);
+        std::string contents{
+            std::istreambuf_iterator<char>(original), std::istreambuf_iterator<char>()};
+        const std::size_t identity = contents.find("abcdef0123456780");
+        require(identity != std::string::npos, "cannot mutate classifier input fixture");
+        contents.replace(identity, 16, "abcdef0123456790");
+        std::ofstream changed(changedInput);
+        changed << contents;
+    }
+    try {
+        tgmr::classifyFetchedCandidates(
+            changedInput, cache.string(), base + "-changed.jsonl", false, parallel);
+    } catch (const std::exception &) {
+        rejectedMismatchedResume = true;
+    }
+    require(rejectedMismatchedResume,
+            "classifier resumed a work directory with a different input identity");
+
+    tgmr::ClassificationOptions proxy = parallel;
+    proxy.proxy = true;
+    proxy.openImagesCvdfSplit = "train";
+    proxy.workDirectory = base + "-proxy-work";
+    const std::string proxyOutput = base + "-proxy.jsonl";
+    tgmr::classifyFetchedCandidates(
+        catalogInput, cache.string(), proxyOutput, false, proxy);
+    const auto proxyBytes = read(proxyOutput);
+    const std::string proxyJson(proxyBytes.begin(), proxyBytes.end());
+    require(proxyJson.find("rawtherapee-tgmr-image-proxy-classification-v1")
+                != std::string::npos
+            && proxyJson.find("\"proxy_scale_denominator\":8") != std::string::npos
+            && proxyJson.find("\"proxy_width\":10") != std::string::npos
+            && proxyJson.find("\"width\":80") != std::string::npos
+            && proxyJson.find("\"source_sha256\":\"") != std::string::npos,
+            "JPEG proxy classification lacks its distinct identity or dimensions");
+
+    bool rejectedTraversal = false;
+    const std::string traversal = base + "-traversal.jsonl";
+    {
+        std::ofstream invalid(traversal);
+        invalid << "{\"cache_filename\":\"../escape.jpg\","
+            << "\"catalog\":\"open-images-v7\","
+            << "\"format\":\"rawtherapee-tgmr-fetched-candidate-v1\","
+            << "\"sha256\":\"" << std::string(64, '0') << "\","
+            << "\"upstream_source_id\":\"escape\"}\n";
+    }
+    try {
+        tgmr::classifyFetchedCandidates(
+            traversal, cache.string(), base + "-escape.jsonl", false, serial);
+    } catch (const std::exception &) {
+        rejectedTraversal = true;
+    }
+    require(rejectedTraversal, "classifier accepted a cache path traversal");
+
+    const std::string retryInput = base + "-retry.jsonl";
+    {
+        std::ifstream all(input);
+        std::string first;
+        std::getline(all, first);
+        std::ofstream one(retryInput);
+        one << first << '\n';
+    }
+    const auto retrySource = cache / "train/a/b/c/abcdef0123456780.jpg";
+    const auto heldSource = cache / "train/a/b/c/abcdef0123456780.jpg.held";
+    std::filesystem::rename(retrySource, heldSource);
+    tgmr::ClassificationOptions retry = serial;
+    retry.workDirectory = base + "-retry-work";
+    bool reportedMissing = false;
+    try {
+        tgmr::classifyFetchedCandidates(
+            retryInput, cache.string(), base + "-retry-output.jsonl", false, retry);
+    } catch (const std::exception &) {
+        reportedMissing = std::filesystem::is_regular_file(
+            std::filesystem::path(retry.workDirectory) / "failures.json");
+    }
+    std::filesystem::rename(heldSource, retrySource);
+    require(reportedMissing, "classifier did not checkpoint a missing-input failure");
+    tgmr::classifyFetchedCandidates(
+        retryInput, cache.string(), base + "-retry-output.jsonl", false, retry);
+    require(std::filesystem::is_regular_file(base + "-retry-output.jsonl"),
+            "classifier cached a failure instead of retrying it on resume");
+
+    std::filesystem::remove_all(base);
+    std::remove(input.c_str());
+    std::remove(catalogInput.c_str());
+    std::remove(serialOutput.c_str());
+    std::remove(parallelOutput.c_str());
+    std::remove(proxyOutput.c_str());
+    std::remove(traversal.c_str());
+    std::remove(changedInput.c_str());
+    std::remove(retryInput.c_str());
+    std::remove((base + "-retry-output.jsonl").c_str());
+    std::filesystem::remove_all(serial.workDirectory);
+    std::filesystem::remove_all(parallel.workDirectory);
+    std::filesystem::remove_all(proxy.workDirectory);
+    std::filesystem::remove_all(retry.workDirectory);
 }
 
 void testManifestNearDuplicateLeakage()
@@ -938,6 +1128,7 @@ int main()
         testSourceLimitedTrainingMatrix();
         testImageManifestAndPack();
         testTiff16Orientation();
+        testParallelClassificationAndProxy();
         testManifestNearDuplicateLeakage();
         testProductionSourceSelection();
         testModelV2();

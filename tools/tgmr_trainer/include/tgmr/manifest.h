@@ -84,6 +84,17 @@ struct SourceVerification final {
     std::uint64_t changed = 0;
 };
 
+struct ClassificationOptions final {
+    std::uint32_t jobs = 4;
+    std::uint32_t retries = 2;
+    std::uint64_t checkpointImages = 128;
+    std::uint32_t checkpointSeconds = 120;
+    std::uint32_t progressSeconds = 15;
+    std::string workDirectory;
+    std::string openImagesCvdfSplit;
+    bool proxy = false;
+};
+
 // Corpus-v1 deliberately freezes augmentation recipes by name.  NONE is the
 // simpler clipping-only candidate.  SENSOR_V1 adds deterministic bounded read
 // and signal-dependent perturbations to non-identity patches; its use must be
@@ -102,7 +113,8 @@ void classifySources(
     const std::string &cacheDirectory,
     const std::string &outputJsonl,
     bool force = false,
-    bool includeUnselected = false);
+    bool includeUnselected = false,
+    const ClassificationOptions &options = ClassificationOptions{});
 
 // Classify the authenticated output of prepare_corpus.py fetch before a full
 // source-manifest record exists.  This path reads only the minimal fetched
@@ -111,7 +123,8 @@ void classifyFetchedCandidates(
     const std::string &fetchedCandidateJsonl,
     const std::string &cacheDirectory,
     const std::string &outputJsonl,
-    bool force = false);
+    bool force = false,
+    const ClassificationOptions &options = ClassificationOptions{});
 
 // Select an exact production source population from reviewed v2 candidates.
 // The returned string is a canonical decision report; the selected v2 JSONL

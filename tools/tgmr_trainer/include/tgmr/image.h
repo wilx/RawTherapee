@@ -11,6 +11,10 @@ namespace tgmr
 struct LinearImage final {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
+    // The dimensions after applying orientation but before an optional JPEG
+    // proxy scale.  They equal width/height for canonical full decoding.
+    std::uint32_t sourceWidth = 0;
+    std::uint32_t sourceHeight = 0;
     std::uint16_t orientation = 1;
     std::string fileType;
     std::string iccIdentity;
@@ -18,6 +22,13 @@ struct LinearImage final {
     // Interleaved, row-major, linear-sRGB float64 values.  Values are not
     // clipped after the color transform.
     std::vector<double> rgb;
+};
+
+struct LoadedLinearImage final {
+    LinearImage image;
+    std::string fileSha256;
+    std::uint64_t fileBytes = 0;
+    bool proxy = false;
 };
 
 struct ImageClassification final {
@@ -46,8 +57,18 @@ struct ImageClassification final {
 };
 
 LinearImage loadLinearImage(const std::string &path);
+// Batch intake reads JPEG bytes once, authenticates those exact bytes, and
+// decodes either the full image or libjpeg's 1/8-resolution proxy.  Other
+// supported formats retain the legacy decode path and are intended for final
+// corpus intake rather than the Open Images proxy pass.
+LoadedLinearImage loadLinearImageAndSha256(const std::string &path, bool jpegProxy = false);
 ImageClassification classifyImage(const LinearImage &image);
 std::string canonicalClassificationJson(
+    const LinearImage &image,
+    const ImageClassification &classification,
+    const std::string &sourceId,
+    const std::string &cacheFilename = std::string());
+std::string canonicalProxyClassificationJson(
     const LinearImage &image,
     const ImageClassification &classification,
     const std::string &sourceId,

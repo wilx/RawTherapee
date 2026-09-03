@@ -61,8 +61,12 @@ def _require_string(record: dict[str, object], name: str) -> str:
 
 def _safe_filename(value: str) -> str:
     path = PurePath(value)
-    if path.is_absolute() or len(path.parts) != 1 or value in (".", ".."):
-        raise ManifestError("cache_filename must be one safe path component")
+    if (
+        path.is_absolute()
+        or not path.parts
+        or any(component in ("", ".", "..") for component in path.parts)
+    ):
+        raise ManifestError("cache_filename must be a safe relative path")
     return value
 
 
@@ -445,6 +449,13 @@ def fetch_record(
     record: dict[str, object], cache: Path, retries: int, offline: bool
 ) -> dict[str, object]:
     destination = cache / str(record["cache_filename"])
+    cache_root = cache.resolve()
+    resolved_destination = destination.resolve(strict=False)
+    try:
+        resolved_destination.relative_to(cache_root)
+    except ValueError as error:
+        raise ManifestError("cache_filename escapes the cache through a symlink") from error
+    destination.parent.mkdir(parents=True, exist_ok=True)
     expected = str(record["sha256"])
     if destination.exists():
         actual, size = _sha256(destination)

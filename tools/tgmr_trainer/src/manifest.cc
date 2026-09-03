@@ -6,17 +6,34 @@
 #include "cJSON.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstring>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <limits>
 #include <map>
+#include <mutex>
+#include <queue>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <thread>
+#include <tuple>
+#include <utility>
+
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace tgmr
 {
@@ -195,13 +212,38 @@ CorpusSplit split(const std::string &value)
     throw std::runtime_error("manifest split is invalid: " + value);
 }
 
-std::filesystem::path sourcePath(const std::string &cache, const SourceRecord &record)
+std::filesystem::path safeCachePath(
+    const std::string &cache,
+    const std::string &relativeName)
 {
-    const std::filesystem::path name(record.cacheFilename);
-    if (name.is_absolute() || name.has_parent_path()) {
+    const std::filesystem::path name(relativeName);
+    if (name.empty() || name.is_absolute()) {
         throw std::runtime_error("manifest cache filename is unsafe");
     }
-    return std::filesystem::path(cache) / name;
+    for (const auto &component : name) {
+        if (component.empty() || component == "." || component == "..") {
+            throw std::runtime_error("manifest cache filename is unsafe");
+        }
+    }
+    const std::filesystem::path root = std::filesystem::weakly_canonical(cache);
+    const std::filesystem::path candidate = std::filesystem::weakly_canonical(root / name);
+    auto rootPart = root.begin();
+    auto candidatePart = candidate.begin();
+    for (; rootPart != root.end() && candidatePart != candidate.end();
+         ++rootPart, ++candidatePart) {
+        if (*rootPart != *candidatePart) {
+            throw std::runtime_error("manifest cache filename escapes the cache");
+        }
+    }
+    if (rootPart != root.end()) {
+        throw std::runtime_error("manifest cache filename escapes the cache");
+    }
+    return candidate;
+}
+
+std::filesystem::path sourcePath(const std::string &cache, const SourceRecord &record)
+{
+    return safeCachePath(cache, record.cacheFilename);
 }
 
 double gainFromQ12(std::uint16_t value)
@@ -224,6 +266,548 @@ void verifyDecodedMetadata(
         && classification.decodedPixelSha256 != record.decodedPixelSha256) {
         throw std::runtime_error("decoded pixels differ from manifest: " + record.sourceId);
     }
+}
+
+struct ClassificationTask final {
+    std::uint64_t ordinal = 0;
+    std::string sourceId;
+    std::string cacheFilename;
+    std::string expectedSha256;
+    std::filesystem::path path;
+    const SourceRecord *reviewedRecord = nullptr;
+};
+
+struct ClassificationResult final {
+    std::uint64_t ordinal = 0;
+    std::string json;
+};
+
+std::string jsonEscape(const std::string &value)
+{
+    std::ostringstream output;
+    for (unsigned char byte : value) {
+        switch (byte) {
+            case '\"': output << "\\\""; break;
+            case '\\': output << "\\\\"; break;
+            case '\b': output << "\\b"; break;
+            case '\f': output << "\\f"; break;
+            case '\n': output << "\\n"; break;
+            case '\r': output << "\\r"; break;
+            case '\t': output << "\\t"; break;
+            default:
+                if (byte < 0x20) {
+                    output << "\\u00" << std::hex << std::setfill('0')
+                           << std::setw(2) << static_cast<unsigned>(byte) << std::dec;
+                } else {
+                    output << static_cast<char>(byte);
+                }
+        }
+    }
+    return output.str();
+}
+
+std::string bindSourceSha256(std::string json, const std::string &digest)
+{
+    if (!canonicalSha256(digest) || json.empty() || json.front() != '{') {
+        throw std::runtime_error("cannot bind source SHA-256 to classification JSON");
+    }
+    json.insert(1, "\"source_sha256\":\"" + digest + "\",");
+    return json;
+}
+
+void durableWrite(const std::filesystem::path &path, const std::string &contents)
+{
+    const std::filesystem::path temporary = path.string() + ".tmp";
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    std::FILE *stream = std::fopen(temporary.string().c_str(), "wb");
+    if (!stream) throw std::runtime_error("cannot create durable classifier state");
+    const bool wrote = contents.empty()
+        || std::fwrite(contents.data(), 1, contents.size(), stream) == contents.size();
+    const bool flushed = std::fflush(stream) == 0;
+#if defined(_WIN32)
+    const bool synced = flushed && _commit(_fileno(stream)) == 0;
+#else
+    const bool synced = flushed && fsync(fileno(stream)) == 0;
+#endif
+    const bool closed = std::fclose(stream) == 0;
+    if (!wrote || !flushed || !synced || !closed) {
+        std::filesystem::remove(temporary, ignored);
+        throw std::runtime_error("cannot flush durable classifier state");
+    }
+#if defined(_WIN32)
+    std::filesystem::remove(path, ignored);
+#endif
+    if (std::rename(temporary.string().c_str(), path.string().c_str()) != 0) {
+        std::filesystem::remove(temporary, ignored);
+        throw std::runtime_error("cannot publish durable classifier state");
+    }
+}
+
+std::string classificationInputDigest(
+    const std::vector<ClassificationTask> &tasks,
+    bool proxy)
+{
+    Sha256 digest;
+    const char *contract = "rawtherapee-tgmr-classifier-contract-v1\n";
+    digest.update(contract, std::strlen(contract));
+    const char *mode = proxy ? "proxy-v1\n" : "full-v1\n";
+    digest.update(mode, std::strlen(mode));
+    for (const auto &task : tasks) {
+        const std::string record = std::to_string(task.ordinal) + '\n'
+            + task.sourceId + '\n' + task.cacheFilename + '\n'
+            + task.expectedSha256 + '\n';
+        digest.update(record.data(), record.size());
+    }
+    return hex(digest.finish());
+}
+
+std::string segmentHeader(const std::string &inputDigest, bool proxy)
+{
+    return "# rawtherapee-tgmr-classification-segment-v1 " + inputDigest
+        + (proxy ? " proxy\n" : " full\n");
+}
+
+std::pair<std::uint64_t, std::string> parseSegmentRecord(
+    const std::string &line,
+    const std::vector<ClassificationTask> &tasks)
+{
+    const std::size_t separator = line.find('\t');
+    if (separator == std::string::npos || separator == 0 || separator + 1 >= line.size()) {
+        throw std::runtime_error("classifier checkpoint record is malformed");
+    }
+    std::size_t consumed = 0;
+    const std::uint64_t ordinal = std::stoull(line.substr(0, separator), &consumed);
+    if (consumed != separator || ordinal >= tasks.size()) {
+        throw std::runtime_error("classifier checkpoint ordinal is invalid");
+    }
+    const std::string json = line.substr(separator + 1);
+    cJSON *root = cJSON_Parse(json.c_str());
+    if (!root || !cJSON_IsObject(root)) {
+        cJSON_Delete(root);
+        throw std::runtime_error("classifier checkpoint JSON is malformed");
+    }
+    try {
+        if (text(root, "source_id") != tasks[ordinal].sourceId) {
+            throw std::runtime_error("classifier checkpoint source identity changed");
+        }
+        cJSON_Delete(root);
+    } catch (...) {
+        cJSON_Delete(root);
+        throw;
+    }
+    return {ordinal, json + '\n'};
+}
+
+std::vector<std::filesystem::path> discoverClassificationSegments(
+    const std::filesystem::path &workDirectory,
+    const std::string &inputDigest,
+    bool proxy,
+    const std::vector<ClassificationTask> &tasks,
+    std::vector<bool> &completed,
+    std::uint64_t &nextSegment)
+{
+    const std::regex pattern("segment-([0-9]{8})-([0-9a-f]{64})\\.jsonl");
+    std::vector<std::pair<std::uint64_t, std::filesystem::path>> numbered;
+    for (const auto &entry : std::filesystem::directory_iterator(workDirectory)) {
+        if (!entry.is_regular_file()) continue;
+        const std::string name = entry.path().filename().string();
+        if (name.size() >= 4 && name.substr(name.size() - 4) == ".tmp") continue;
+        std::smatch match;
+        if (!std::regex_match(name, match, pattern)) {
+            if (name.rfind("segment-", 0) == 0) {
+                throw std::runtime_error("classifier work directory contains a malformed segment");
+            }
+            continue;
+        }
+        const std::uint64_t sequence = std::stoull(match[1].str());
+        if (hex(sha256File(entry.path().string())) != match[2].str()) {
+            throw std::runtime_error("classifier checkpoint segment digest mismatch");
+        }
+        numbered.emplace_back(sequence, entry.path());
+        nextSegment = std::max(nextSegment, sequence + 1);
+    }
+    std::sort(numbered.begin(), numbered.end());
+    std::vector<std::filesystem::path> output;
+    for (const auto &item : numbered) {
+        std::ifstream stream(item.second, std::ios::binary);
+        std::string line;
+        if (!std::getline(stream, line)
+            || line + '\n' != segmentHeader(inputDigest, proxy)) {
+            throw std::runtime_error("classifier checkpoint segment binding mismatch");
+        }
+        std::uint64_t previous = 0;
+        bool first = true;
+        while (std::getline(stream, line)) {
+            const auto record = parseSegmentRecord(line, tasks);
+            if ((!first && record.first <= previous) || completed[record.first]) {
+                throw std::runtime_error("classifier checkpoint contains duplicate/reordered results");
+            }
+            first = false;
+            previous = record.first;
+            completed[record.first] = true;
+        }
+        if (!stream.eof()) throw std::runtime_error("classifier checkpoint read failed");
+        output.push_back(item.second);
+    }
+    return output;
+}
+
+std::filesystem::path publishClassificationSegment(
+    const std::filesystem::path &workDirectory,
+    std::uint64_t sequence,
+    const std::string &inputDigest,
+    bool proxy,
+    std::vector<ClassificationResult> records)
+{
+    std::sort(records.begin(), records.end(), [](const auto &left, const auto &right) {
+        return left.ordinal < right.ordinal;
+    });
+    std::ostringstream contents;
+    contents << segmentHeader(inputDigest, proxy);
+    std::uint64_t previous = 0;
+    bool first = true;
+    for (const auto &record : records) {
+        if (!first && record.ordinal <= previous) {
+            throw std::runtime_error("new classifier segment contains duplicate results");
+        }
+        first = false;
+        previous = record.ordinal;
+        contents << record.ordinal << '\t' << record.json;
+        if (record.json.empty() || record.json.back() != '\n') contents << '\n';
+    }
+    const std::string bytes = contents.str();
+    const std::string digest = hex(sha256(bytes.data(), bytes.size()));
+    std::ostringstream name;
+    name << "segment-" << std::setfill('0') << std::setw(8) << sequence
+         << '-' << digest << ".jsonl";
+    const auto path = workDirectory / name.str();
+    durableWrite(path, bytes);
+    return path;
+}
+
+struct MergeCursor final {
+    explicit MergeCursor(const std::filesystem::path &path)
+        : stream(path, std::ios::binary)
+    {
+        if (!stream) throw std::runtime_error("cannot open classifier merge input");
+        advance();
+        if (valid && line.rfind("# ", 0) == 0) advance();
+    }
+
+    void advance()
+    {
+        valid = static_cast<bool>(std::getline(stream, line));
+        if (!valid) {
+            if (!stream.eof()) throw std::runtime_error("classifier merge input read failed");
+            return;
+        }
+        if (line.rfind("# ", 0) == 0) return;
+        const std::size_t separator = line.find('\t');
+        if (separator == std::string::npos) {
+            throw std::runtime_error("classifier merge record is malformed");
+        }
+        std::size_t consumed = 0;
+        ordinal = std::stoull(line.substr(0, separator), &consumed);
+        if (consumed != separator) throw std::runtime_error("classifier merge ordinal is malformed");
+        json = line.substr(separator + 1);
+    }
+
+    std::ifstream stream;
+    std::string line;
+    std::string json;
+    std::uint64_t ordinal = 0;
+    bool valid = false;
+};
+
+void mergeClassificationRuns(
+    const std::vector<std::filesystem::path> &inputs,
+    const std::filesystem::path &output,
+    bool finalOutput,
+    std::uint64_t expectedRecords)
+{
+    std::vector<std::unique_ptr<MergeCursor>> cursors;
+    for (const auto &input : inputs) cursors.emplace_back(new MergeCursor(input));
+    using HeapValue = std::pair<std::uint64_t, std::size_t>;
+    std::priority_queue<HeapValue, std::vector<HeapValue>, std::greater<HeapValue>> heap;
+    for (std::size_t index = 0; index < cursors.size(); ++index) {
+        if (cursors[index]->valid) heap.emplace(cursors[index]->ordinal, index);
+    }
+    const std::filesystem::path temporary = output.string() + ".tmp";
+    std::ofstream stream(temporary, std::ios::binary);
+    if (!stream) throw std::runtime_error("cannot create classifier merge output");
+    std::uint64_t count = 0;
+    std::uint64_t previous = 0;
+    bool first = true;
+    while (!heap.empty()) {
+        const auto current = heap.top();
+        heap.pop();
+        if ((!first && current.first <= previous)
+            || (finalOutput && current.first != count)) {
+            throw std::runtime_error("classifier merge contains duplicate or missing results");
+        }
+        first = false;
+        previous = current.first;
+        const auto &cursor = cursors[current.second];
+        if (finalOutput) stream << cursor->json << '\n';
+        else stream << current.first << '\t' << cursor->json << '\n';
+        ++count;
+        cursor->advance();
+        if (cursor->valid) heap.emplace(cursor->ordinal, current.second);
+    }
+    if (finalOutput && count != expectedRecords) {
+        throw std::runtime_error("classifier merge is incomplete");
+    }
+    stream.flush();
+    if (!stream) {
+        stream.close();
+        std::filesystem::remove(temporary);
+        throw std::runtime_error("classifier merge output write failed");
+    }
+    stream.close();
+    std::error_code ignored;
+    if (finalOutput) std::filesystem::remove(output, ignored);
+    std::filesystem::rename(temporary, output);
+}
+
+void finalizeClassificationOutput(
+    std::vector<std::filesystem::path> runs,
+    const std::filesystem::path &workDirectory,
+    const std::string &outputJsonl,
+    std::uint64_t expectedRecords)
+{
+    std::vector<std::filesystem::path> temporaryRuns;
+    unsigned pass = 0;
+    while (runs.size() > 64) {
+        std::vector<std::filesystem::path> next;
+        for (std::size_t start = 0; start < runs.size(); start += 64) {
+            const std::size_t end = std::min(runs.size(), start + 64);
+            std::ostringstream name;
+            name << ".merge-" << pass << '-' << (start / 64) << ".run";
+            const auto path = workDirectory / name.str();
+            mergeClassificationRuns(
+                std::vector<std::filesystem::path>(runs.begin() + start, runs.begin() + end),
+                path, false, 0);
+            next.push_back(path);
+            temporaryRuns.push_back(path);
+        }
+        runs = std::move(next);
+        ++pass;
+    }
+    mergeClassificationRuns(runs, outputJsonl, true, expectedRecords);
+    std::error_code ignored;
+    for (const auto &path : temporaryRuns) std::filesystem::remove(path, ignored);
+}
+
+void runClassificationTasks(
+    const std::vector<ClassificationTask> &tasks,
+    const std::string &outputJsonl,
+    bool force,
+    const ClassificationOptions &options)
+{
+    if (tasks.empty()) throw std::runtime_error("classification input contains no tasks");
+    if (options.jobs == 0 || options.checkpointImages == 0
+        || options.checkpointSeconds == 0 || options.progressSeconds == 0) {
+        throw std::runtime_error("classifier jobs/checkpoint/progress values must be positive");
+    }
+    if (!force && std::filesystem::exists(outputJsonl)) {
+        throw std::runtime_error("refusing to replace classification output");
+    }
+    const std::filesystem::path workDirectory = options.workDirectory.empty()
+        ? std::filesystem::path(outputJsonl + ".work")
+        : std::filesystem::path(options.workDirectory);
+    std::filesystem::create_directories(workDirectory);
+    const std::string inputDigest = classificationInputDigest(tasks, options.proxy);
+    std::ostringstream run;
+    run << "{\n  \"format\": \"rawtherapee-tgmr-classification-run-v1\",\n"
+        << "  \"input_sha256\": \"" << inputDigest << "\",\n"
+        << "  \"mode\": \"" << (options.proxy ? "proxy" : "full") << "\",\n"
+        << "  \"task_count\": " << tasks.size() << "\n}\n";
+    const auto runPath = workDirectory / "run.json";
+    if (std::filesystem::exists(runPath)) {
+        std::ifstream input(runPath, std::ios::binary);
+        const std::string existing{
+            std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        if (existing != run.str()) {
+            throw std::runtime_error(
+                "classifier work directory belongs to different input or settings");
+        }
+    } else {
+        durableWrite(runPath, run.str());
+    }
+
+    std::vector<bool> completed(tasks.size(), false);
+    std::uint64_t nextSegment = 0;
+    auto segments = discoverClassificationSegments(
+        workDirectory, inputDigest, options.proxy, tasks, completed, nextSegment);
+    std::vector<std::size_t> order;
+    order.reserve(tasks.size());
+    for (std::size_t index = 0; index < tasks.size(); ++index) {
+        if (!completed[index]) order.push_back(index);
+    }
+    std::sort(order.begin(), order.end(), [&](std::size_t left, std::size_t right) {
+        return std::tie(tasks[left].path, tasks[left].ordinal)
+            < std::tie(tasks[right].path, tasks[right].ordinal);
+    });
+
+    std::atomic<std::size_t> next{0};
+    std::atomic<std::uint32_t> active{options.jobs};
+    std::atomic<std::uint64_t> processedBytes{0};
+    std::mutex mutex;
+    std::condition_variable changed;
+    std::vector<ClassificationResult> pending;
+    std::vector<std::pair<std::uint64_t, std::string>> failures;
+    const auto started = std::chrono::steady_clock::now();
+    auto lastCheckpoint = started;
+    auto lastProgress = started;
+
+    auto worker = [&]() {
+        while (true) {
+            const std::size_t position = next.fetch_add(1);
+            if (position >= order.size()) break;
+            const ClassificationTask &task = tasks[order[position]];
+            std::string error;
+            bool success = false;
+            for (std::uint32_t attempt = 0; attempt <= options.retries; ++attempt) {
+                try {
+                    LoadedLinearImage loaded = loadLinearImageAndSha256(
+                        task.path.string(), options.proxy);
+                    if (!task.expectedSha256.empty()
+                        && loaded.fileSha256 != task.expectedSha256) {
+                        throw std::runtime_error("source SHA-256 changed");
+                    }
+                    const ImageClassification classification = classifyImage(loaded.image);
+                    if (task.reviewedRecord && !options.proxy) {
+                        verifyDecodedMetadata(
+                            *task.reviewedRecord, loaded.image, classification, false);
+                    }
+                    ClassificationResult result;
+                    result.ordinal = task.ordinal;
+                    result.json = options.proxy
+                        ? canonicalProxyClassificationJson(
+                            loaded.image, classification, task.sourceId, task.cacheFilename)
+                        : canonicalClassificationJson(
+                            loaded.image, classification, task.sourceId, task.cacheFilename);
+                    result.json = bindSourceSha256(std::move(result.json), loaded.fileSha256);
+                    processedBytes.fetch_add(loaded.fileBytes);
+                    {
+                        std::lock_guard<std::mutex> lock(mutex);
+                        pending.push_back(std::move(result));
+                    }
+                    success = true;
+                    changed.notify_one();
+                    break;
+                } catch (const std::exception &exception) {
+                    error = exception.what();
+                    if (attempt < options.retries) {
+                        std::this_thread::sleep_for(
+                            std::chrono::milliseconds(100 * (attempt + 1)));
+                    }
+                }
+            }
+            if (!success) {
+                std::lock_guard<std::mutex> lock(mutex);
+                failures.emplace_back(task.ordinal, error);
+                changed.notify_one();
+            }
+        }
+        active.fetch_sub(1);
+        changed.notify_one();
+    };
+
+    std::vector<std::thread> workers;
+    workers.reserve(options.jobs);
+    for (std::uint32_t index = 0; index < options.jobs; ++index) {
+        workers.emplace_back(worker);
+    }
+    const std::uint64_t resumed = tasks.size() - order.size();
+    std::uint64_t checkpointed = resumed;
+    std::exception_ptr coordinatorError;
+    try {
+        bool done = false;
+        while (!done) {
+            std::vector<ClassificationResult> records;
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                changed.wait_for(lock, std::chrono::seconds(1));
+                done = active.load() == 0 && pending.empty();
+                const auto now = std::chrono::steady_clock::now();
+                if (pending.size() >= options.checkpointImages
+                    || now - lastCheckpoint >= std::chrono::seconds(options.checkpointSeconds)
+                    || active.load() == 0) {
+                    records.swap(pending);
+                    lastCheckpoint = now;
+                    done = active.load() == 0 && pending.empty();
+                }
+            }
+            if (!records.empty()) {
+                segments.push_back(publishClassificationSegment(
+                    workDirectory, nextSegment++, inputDigest, options.proxy, std::move(records)));
+                std::ifstream segment(segments.back());
+                std::uint64_t recordsInSegment = 0;
+                std::string line;
+                std::getline(segment, line);
+                while (std::getline(segment, line)) ++recordsInSegment;
+                checkpointed += recordsInSegment;
+            }
+            const auto now = std::chrono::steady_clock::now();
+            if (now - lastProgress >= std::chrono::seconds(options.progressSeconds)
+                || active.load() == 0) {
+                const double seconds = std::max(1e-9,
+                    std::chrono::duration<double>(now - started).count());
+                std::size_t failed = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    failed = failures.size();
+                }
+                std::cerr << "TGMR classify: " << checkpointed << '/' << tasks.size()
+                    << " checkpointed, " << failed << " failed, "
+                    << active.load() << " workers active, "
+                    << std::fixed << std::setprecision(2)
+                    << ((checkpointed - resumed) / seconds) << " images/s, "
+                    << (processedBytes.load() / (1024.0 * 1024.0) / seconds) << " MiB/s";
+                const double rate = (checkpointed - resumed) / seconds;
+                if (rate > 0.0 && checkpointed < tasks.size()) {
+                    std::cerr << ", ETA " << ((tasks.size() - checkpointed) / rate) << " s";
+                }
+                std::cerr << '\n';
+                std::ostringstream progress;
+                progress << "{\n  \"checkpointed\": " << checkpointed << ",\n"
+                    << "  \"failed\": " << failed << ",\n"
+                    << "  \"format\": \"rawtherapee-tgmr-classification-progress-v1\",\n"
+                    << "  \"input_sha256\": \"" << inputDigest << "\",\n"
+                    << "  \"total\": " << tasks.size() << "\n}\n";
+                durableWrite(workDirectory / "progress.json", progress.str());
+                lastProgress = now;
+            }
+        }
+    } catch (...) {
+        coordinatorError = std::current_exception();
+    }
+    for (auto &thread : workers) thread.join();
+    if (coordinatorError) std::rethrow_exception(coordinatorError);
+    if (!failures.empty()) {
+        std::sort(failures.begin(), failures.end());
+        std::ostringstream report;
+        report << "{\n  \"failures\": [\n";
+        for (std::size_t index = 0; index < failures.size(); ++index) {
+            if (index) report << ",\n";
+            const auto &failure = failures[index];
+            report << "    {\"error\": \"" << jsonEscape(failure.second)
+                << "\", \"ordinal\": " << failure.first
+                << ", \"source_id\": \"" << jsonEscape(tasks[failure.first].sourceId)
+                << "\"}";
+        }
+        report << "\n  ],\n  \"format\": "
+            << "\"rawtherapee-tgmr-classification-failures-v1\",\n"
+            << "  \"input_sha256\": \"" << inputDigest << "\"\n}\n";
+        durableWrite(workDirectory / "failures.json", report.str());
+        throw std::runtime_error(std::to_string(failures.size())
+                                 + " images failed classification; rerun after correcting inputs");
+    }
+    finalizeClassificationOutput(segments, workDirectory, outputJsonl, tasks.size());
+    std::error_code ignored;
+    std::filesystem::remove(workDirectory / "failures.json", ignored);
 }
 
 } // namespace
@@ -559,8 +1143,12 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 record.peopleReviewStatus = "not-applicable";
             }
             const std::filesystem::path cacheName(record.cacheFilename);
-            if (cacheName.is_absolute() || cacheName.has_parent_path()
-                || record.cacheFilename == "." || record.cacheFilename == "..") {
+            bool unsafeCacheName = cacheName.empty() || cacheName.is_absolute();
+            for (const auto &component : cacheName) {
+                unsafeCacheName = unsafeCacheName || component.empty()
+                    || component == "." || component == "..";
+            }
+            if (unsafeCacheName) {
                 throw std::runtime_error("manifest cache filename is unsafe");
             }
             const cJSON *patches = field(root, "patch_coordinates");
@@ -790,123 +1378,107 @@ void classifySources(
     const std::string &cacheDirectory,
     const std::string &outputJsonl,
     bool force,
-    bool includeUnselected)
+    bool includeUnselected,
+    const ClassificationOptions &options)
 {
-    if (!force && std::filesystem::exists(outputJsonl)) {
-        throw std::runtime_error("refusing to replace classification output");
-    }
-    const std::string temporary = outputJsonl + ".tmp";
-    std::ofstream output(temporary, std::ios::binary);
-    if (!output) throw std::runtime_error("cannot create classification output");
+    std::vector<ClassificationTask> tasks;
     for (const SourceRecord &record : records) {
         if (!record.selected && !includeUnselected) continue;
-        const auto path = sourcePath(cacheDirectory, record);
-        if (hex(sha256File(path.string())) != record.sha256) {
-            throw std::runtime_error("source changed before classification: " + record.sourceId);
-        }
-        const LinearImage image = loadLinearImage(path.string());
-        const ImageClassification classification = classifyImage(image);
-        verifyDecodedMetadata(record, image, classification, false);
-        output << canonicalClassificationJson(
-            image, classification, record.sourceId, record.cacheFilename);
+        ClassificationTask task;
+        task.ordinal = tasks.size();
+        task.sourceId = record.sourceId;
+        task.cacheFilename = record.cacheFilename;
+        task.expectedSha256 = record.sha256;
+        task.path = sourcePath(cacheDirectory, record);
+        task.reviewedRecord = &record;
+        tasks.push_back(std::move(task));
     }
-    output.flush();
-    if (!output) {
-        output.close();
-        std::filesystem::remove(temporary);
-        throw std::runtime_error("classification output write failed");
-    }
-    output.close();
-    if (force) std::filesystem::remove(outputJsonl);
-    std::filesystem::rename(temporary, outputJsonl);
+    runClassificationTasks(tasks, outputJsonl, force, options);
 }
 
 void classifyFetchedCandidates(
     const std::string &fetchedCandidateJsonl,
     const std::string &cacheDirectory,
     const std::string &outputJsonl,
-    bool force)
+    bool force,
+    const ClassificationOptions &options)
 {
-    if (!force && std::filesystem::exists(outputJsonl)) {
-        throw std::runtime_error("refusing to replace classification output");
-    }
     std::ifstream input(fetchedCandidateJsonl);
     if (!input) throw std::runtime_error("cannot open fetched candidate JSONL");
-    const std::string temporary = outputJsonl + ".tmp";
-    std::ofstream output(temporary, std::ios::binary);
-    if (!output) throw std::runtime_error("cannot create classification output");
+    std::vector<ClassificationTask> tasks;
     std::set<std::string> identities;
     std::string line;
     std::uint64_t lineNumber = 0;
-    try {
-        while (std::getline(input, line)) {
-            ++lineNumber;
-            if (line.empty()) throw std::runtime_error("fetched candidates contain a blank line");
-            cJSON *root = cJSON_Parse(line.c_str());
-            if (!root || !cJSON_IsObject(root)) {
-                cJSON_Delete(root);
-                throw std::runtime_error("fetched candidate JSON parse failure on line "
-                                         + std::to_string(lineNumber));
-            }
-            try {
-                if (text(root, "format") != "rawtherapee-tgmr-fetched-candidate-v1") {
-                    throw std::runtime_error("wrong fetched candidate format");
-                }
-                const std::string catalog = text(root, "catalog");
-                const std::string upstream = text(root, "upstream_source_id");
-                std::string sourceId = catalog + ':' + upstream;
-                for (char &value : sourceId) {
-                    const unsigned char byte = static_cast<unsigned char>(value);
-                    if (std::isalnum(byte) || value == '.' || value == '_'
-                        || value == ':' || value == '-') {
-                    } else {
-                        value = '-';
-                    }
-                }
-                sourceId.erase(std::unique(sourceId.begin(), sourceId.end(),
-                    [](char left, char right) { return left == '-' && right == '-'; }),
-                    sourceId.end());
-                while (!sourceId.empty() && sourceId.front() == '-') sourceId.erase(sourceId.begin());
-                while (!sourceId.empty() && sourceId.back() == '-') sourceId.pop_back();
-                if (sourceId.empty() || !identities.insert(sourceId).second) {
-                    throw std::runtime_error("duplicate or empty fetched candidate identity");
-                }
-                const std::string cacheFilename = text(root, "cache_filename");
-                const std::filesystem::path name(cacheFilename);
-                if (name.is_absolute() || name.has_parent_path()) {
-                    throw std::runtime_error("fetched candidate cache filename is unsafe");
-                }
-                const std::string expected = text(root, "sha256");
-                if (!canonicalSha256(expected)) {
-                    throw std::runtime_error("fetched candidate SHA-256 is malformed");
-                }
-                const std::filesystem::path path = std::filesystem::path(cacheDirectory) / name;
-                if (hex(sha256File(path.string())) != expected) {
-                    throw std::runtime_error("fetched candidate changed before classification: "
-                                             + sourceId);
-                }
-                const LinearImage image = loadLinearImage(path.string());
-                const ImageClassification classification = classifyImage(image);
-                output << canonicalClassificationJson(
-                    image, classification, sourceId, cacheFilename);
-                cJSON_Delete(root);
-            } catch (...) {
-                cJSON_Delete(root);
-                throw;
-            }
-        }
-        output.flush();
-        if (!input.eof() || !output) {
-            throw std::runtime_error("fetched candidate classification I/O failed");
-        }
-        output.close();
-        if (force) std::filesystem::remove(outputJsonl);
-        std::filesystem::rename(temporary, outputJsonl);
-    } catch (...) {
-        output.close();
-        std::filesystem::remove(temporary);
-        throw;
+    const bool cvdfLayout = !options.openImagesCvdfSplit.empty();
+    if (cvdfLayout && options.openImagesCvdfSplit != "train"
+        && options.openImagesCvdfSplit != "validation"
+        && options.openImagesCvdfSplit != "test") {
+        throw std::runtime_error("Open Images CVDF split must be train, validation, or test");
     }
+    while (std::getline(input, line)) {
+        ++lineNumber;
+        if (line.empty()) throw std::runtime_error("fetched candidates contain a blank line");
+        cJSON *root = cJSON_Parse(line.c_str());
+        if (!root || !cJSON_IsObject(root)) {
+            cJSON_Delete(root);
+            throw std::runtime_error("fetched candidate JSON parse failure on line "
+                                     + std::to_string(lineNumber));
+        }
+        try {
+            const std::string expectedFormat = cvdfLayout
+                ? "rawtherapee-tgmr-catalog-candidate-v1"
+                : "rawtherapee-tgmr-fetched-candidate-v1";
+            if (text(root, "format") != expectedFormat) {
+                throw std::runtime_error("wrong fetched candidate format");
+            }
+            const std::string catalog = text(root, "catalog");
+            const std::string upstream = text(root, "upstream_source_id");
+            if (cvdfLayout && (catalog != "openimages-v7" || upstream.size() != 16
+                || !std::all_of(upstream.begin(), upstream.end(), [](unsigned char value) {
+                    return std::isdigit(value) || (value >= 'a' && value <= 'f');
+                }))) {
+                throw std::runtime_error("CVDF input is not a canonical Open Images identity");
+            }
+            std::string sourceId = catalog + ':' + upstream;
+            for (char &value : sourceId) {
+                const unsigned char byte = static_cast<unsigned char>(value);
+                if (std::isalnum(byte) || value == '.' || value == '_'
+                    || value == ':' || value == '-') {
+                } else {
+                    value = '-';
+                }
+            }
+            sourceId.erase(std::unique(sourceId.begin(), sourceId.end(),
+                [](char left, char right) { return left == '-' && right == '-'; }),
+                sourceId.end());
+            while (!sourceId.empty() && sourceId.front() == '-') sourceId.erase(sourceId.begin());
+            while (!sourceId.empty() && sourceId.back() == '-') sourceId.pop_back();
+            if (sourceId.empty() || !identities.insert(sourceId).second) {
+                throw std::runtime_error("duplicate or empty fetched candidate identity");
+            }
+            const std::string cacheFilename = cvdfLayout
+                ? options.openImagesCvdfSplit + '/' + upstream[0] + '/'
+                    + upstream[1] + '/' + upstream[2] + '/' + upstream + ".jpg"
+                : text(root, "cache_filename");
+            const std::string expected = cvdfLayout ? std::string() : text(root, "sha256");
+            if (!expected.empty() && !canonicalSha256(expected)) {
+                throw std::runtime_error("fetched candidate SHA-256 is malformed");
+            }
+            ClassificationTask task;
+            task.ordinal = tasks.size();
+            task.sourceId = sourceId;
+            task.cacheFilename = cacheFilename;
+            task.expectedSha256 = expected;
+            task.path = safeCachePath(cacheDirectory, cacheFilename);
+            tasks.push_back(std::move(task));
+            cJSON_Delete(root);
+        } catch (...) {
+            cJSON_Delete(root);
+            throw;
+        }
+    }
+    if (!input.eof()) throw std::runtime_error("fetched candidate classification I/O failed");
+    runClassificationTasks(tasks, outputJsonl, force, options);
 }
 
 void packSources(

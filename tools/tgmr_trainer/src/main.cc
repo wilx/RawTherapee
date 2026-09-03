@@ -42,7 +42,10 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train corpus matrices\n"
         << "  rt-tgmr-train corpus classify-file SOURCE-ID IMAGE\n"
         << "  rt-tgmr-train corpus classify INPUT CACHE OUTPUT.jsonl"
-           " [--candidates|--all] [--force]\n"
+           " [--candidates|--open-images-cvdf SPLIT|--all]"
+           " [--proxy] [--jobs N] [--work-dir DIR]"
+           " [--checkpoint-images N] [--checkpoint-seconds N]"
+           " [--progress-seconds N] [--retries N] [--force]\n"
         << "  rt-tgmr-train corpus select CANDIDATES.jsonl RECIPE.json OUTPUT.jsonl"
            " [--force]\n"
         << "  rt-tgmr-train corpus propose-patches MANIFEST CACHE OUTPUT.jsonl [--force]\n"
@@ -791,29 +794,78 @@ int corpusCommand(int argc, char **argv)
         return 0;
     }
     if (command == "classify") {
-        if (argc < 6 || argc > 8) {
+        if (argc < 6) {
             throw std::runtime_error(
                 "corpus classify requires INPUT CACHE OUTPUT"
-                " [--candidates|--all] [--force]");
+                " [--candidates|--all] [classifier options] [--force]");
         }
         bool force = false;
         bool includeUnselected = false;
         bool candidates = false;
+        bool fetchedCandidates = false;
+        tgmr::ClassificationOptions classification;
+        auto unsignedOption = [&](int &index, const char *name) {
+            if (++index >= argc) {
+                throw std::runtime_error(std::string(name) + " requires a value");
+            }
+            std::size_t consumed = 0;
+            const std::string encoded = argv[index];
+            const std::uint64_t value = std::stoull(encoded, &consumed);
+            if (consumed != encoded.size() || value == 0
+                || value > std::numeric_limits<std::uint32_t>::max()) {
+                throw std::runtime_error(std::string(name) + " is out of range");
+            }
+            return static_cast<std::uint32_t>(value);
+        };
         for (int index = 6; index < argc; ++index) {
             const std::string option = argv[index];
             if (option == "--force") force = true;
             else if (option == "--all") includeUnselected = true;
-            else if (option == "--candidates") candidates = true;
+            else if (option == "--candidates") {
+                candidates = true;
+                fetchedCandidates = true;
+            }
+            else if (option == "--open-images-cvdf") {
+                if (++index >= argc) {
+                    throw std::runtime_error("--open-images-cvdf requires a split");
+                }
+                candidates = true;
+                classification.openImagesCvdfSplit = argv[index];
+            }
+            else if (option == "--proxy") classification.proxy = true;
+            else if (option == "--jobs") classification.jobs = unsignedOption(index, "--jobs");
+            else if (option == "--retries") {
+                if (++index >= argc) throw std::runtime_error("--retries requires a value");
+                std::size_t consumed = 0;
+                const std::string encoded = argv[index];
+                const std::uint64_t value = std::stoull(encoded, &consumed);
+                if (consumed != encoded.size()
+                    || value > std::numeric_limits<std::uint32_t>::max()) {
+                    throw std::runtime_error("--retries is out of range");
+                }
+                classification.retries = static_cast<std::uint32_t>(value);
+            } else if (option == "--checkpoint-images") {
+                classification.checkpointImages = unsignedOption(index, "--checkpoint-images");
+            } else if (option == "--checkpoint-seconds") {
+                classification.checkpointSeconds = unsignedOption(index, "--checkpoint-seconds");
+            } else if (option == "--progress-seconds") {
+                classification.progressSeconds = unsignedOption(index, "--progress-seconds");
+            } else if (option == "--work-dir") {
+                if (++index >= argc) throw std::runtime_error("--work-dir requires a value");
+                classification.workDirectory = argv[index];
+            }
             else throw std::runtime_error("unknown corpus classify option: " + option);
         }
         if (candidates) {
-            if (includeUnselected) {
-                throw std::runtime_error("--candidates and --all are mutually exclusive");
+            if (includeUnselected || (fetchedCandidates
+                && !classification.openImagesCvdfSplit.empty())) {
+                throw std::runtime_error("classification input modes are mutually exclusive");
             }
-            tgmr::classifyFetchedCandidates(argv[3], argv[4], argv[5], force);
+            tgmr::classifyFetchedCandidates(
+                argv[3], argv[4], argv[5], force, classification);
         } else {
             tgmr::classifySources(tgmr::readSourceManifest(argv[3]), argv[4], argv[5],
-                                  force, includeUnselected);
+                                  force, includeUnselected, classification);
         }
         std::cout << "classification complete: " << argv[5] << '\n';
         return 0;

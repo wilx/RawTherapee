@@ -112,7 +112,7 @@ class PreparationTests(unittest.TestCase):
                 ])
                 writer.writeheader()
                 writer.writerow({
-                    "ImageID": "abc123", "OriginalURL": source.as_uri(),
+                    "ImageID": "abc1234567890def", "OriginalURL": source.as_uri(),
                     "OriginalLandingURL": "https://www.flickr.com/photos/example/123456789/",
                     "License": "https://creativecommons.org/licenses/by/2.0/",
                     "AuthorProfileURL": "https://www.flickr.com/people/example/",
@@ -137,7 +137,7 @@ class PreparationTests(unittest.TestCase):
                 "--retry", "0", "--report", str(report),
             ]), 0)
             fetched_record = json.loads(fetched.read_text())
-            source_id = "openimages-v7:abc123"
+            source_id = "openimages-v7:abc1234567890def"
             classification = root / "classifications.jsonl"
             classification.write_text(json.dumps({
                 "cache_filename": fetched_record["cache_filename"],
@@ -166,6 +166,39 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(record["format"], reconstruct_corpus.FORMAT_V2)
             self.assertEqual(record["rights"]["review_status"], "approved")  # type: ignore[index]
             self.assertEqual(record["split"], "unassigned")
+
+            proxy_record = json.loads(classification.read_text())
+            proxy_record["source_sha256"] = fetched_record["sha256"]
+            proxy_record["cache_filename"] = (
+                "train/a/b/c/abc1234567890def.jpg"
+            )
+            local_source = cache / proxy_record["cache_filename"]
+            local_source.parent.mkdir(parents=True)
+            local_source.write_bytes((cache / fetched_record["cache_filename"]).read_bytes())
+            classification.write_text(
+                json.dumps(proxy_record, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            local_assembled = root / "local-assembled.jsonl"
+            self.assertEqual(prepare_corpus.main([
+                "assemble", str(candidates), str(classification), str(cache),
+                str(local_assembled), "--reviews", str(reviews),
+            ]), 0)
+            local_record = reconstruct_corpus.read_manifest(local_assembled)[0]
+            self.assertEqual(local_record["sha256"], fetched_record["sha256"])
+            self.assertEqual(
+                local_record["original_url"],
+                "https://open-images-dataset.s3.amazonaws.com/train/abc1234567890def.jpg",
+            )
+
+            proxy_record["format"] = "rawtherapee-tgmr-image-proxy-classification-v1"
+            classification.write_text(
+                json.dumps(proxy_record, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            with self.assertRaises(prepare_corpus.CorpusPreparationError):
+                prepare_corpus.main([
+                    "assemble", str(fetched), str(classification), str(cache),
+                    str(root / "proxy-assembled.jsonl"), "--reviews", str(reviews),
+                ])
 
     def test_pass_commons_and_smithsonian_normalizers(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

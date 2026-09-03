@@ -146,21 +146,26 @@ void jpegFailure(j_common_ptr common)
     std::longjmp(error->jump, 1);
 }
 
-Decoded decodeJpeg(const std::string &path)
+Decoded decodeJpegBytes(
+    const std::uint8_t *bytes,
+    std::size_t byteCount,
+    unsigned scaleDenominator,
+    std::uint32_t &sourceWidth,
+    std::uint32_t &sourceHeight)
 {
-    std::FILE *file = std::fopen(path.c_str(), "rb");
-    if (!file) throw std::runtime_error("cannot open JPEG: " + path);
+    if (!bytes || byteCount == 0 || byteCount > std::numeric_limits<unsigned long>::max()) {
+        throw std::runtime_error("JPEG input is empty or too large");
+    }
     jpeg_decompress_struct decoder{};
     JpegError error{};
     decoder.err = jpeg_std_error(&error.base);
     error.base.error_exit = jpegFailure;
     if (setjmp(error.jump)) {
         jpeg_destroy_decompress(&decoder);
-        std::fclose(file);
         throw std::runtime_error(std::string("JPEG decode failed: ") + error.message);
     }
     jpeg_create_decompress(&decoder);
-    jpeg_stdio_src(&decoder, file);
+    jpeg_mem_src(&decoder, bytes, static_cast<unsigned long>(byteCount));
     jpeg_save_markers(&decoder, JPEG_APP0 + 1, 0xffff);
     jpeg_save_markers(&decoder, JPEG_APP0 + 2, 0xffff);
     jpeg_read_header(&decoder, TRUE);
@@ -168,11 +173,15 @@ Decoded decodeJpeg(const std::string &path)
     unsigned int profileBytes = 0;
     Decoded output;
     output.orientation = jpegExifOrientation(decoder);
+    sourceWidth = decoder.image_width;
+    sourceHeight = decoder.image_height;
     if (jpeg_read_icc_profile(&decoder, &profile, &profileBytes)) {
         output.icc.assign(profile, profile + profileBytes);
         std::free(profile);
     }
     decoder.out_color_space = JCS_RGB;
+    decoder.scale_num = 1;
+    decoder.scale_denom = scaleDenominator;
     jpeg_start_decompress(&decoder);
     output.width = decoder.output_width;
     output.height = decoder.output_height;
@@ -192,9 +201,25 @@ Decoded decodeJpeg(const std::string &path)
     }
     jpeg_finish_decompress(&decoder);
     jpeg_destroy_decompress(&decoder);
-    std::fclose(file);
     orientTopLeft(output);
+    if (output.orientation >= 5) std::swap(sourceWidth, sourceHeight);
     return output;
+}
+
+std::vector<std::uint8_t> readFileBytes(const std::string &path)
+{
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream) throw std::runtime_error("cannot open image: " + path);
+    stream.seekg(0, std::ios::end);
+    const std::streamoff length = stream.tellg();
+    if (length <= 0 || static_cast<std::uint64_t>(length) > std::numeric_limits<std::size_t>::max()) {
+        throw std::runtime_error("image file is empty or too large: " + path);
+    }
+    stream.seekg(0, std::ios::beg);
+    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(length));
+    stream.read(reinterpret_cast<char *>(bytes.data()), length);
+    if (!stream) throw std::runtime_error("cannot read image: " + path);
+    return bytes;
 }
 
 Decoded decodePng(const std::string &path)
@@ -369,10 +394,17 @@ LinearImage loadLinearImage(const std::string &path)
 {
     const std::string extension = lowercaseExtension(path);
     Decoded decoded;
-    if (extension == ".jpg" || extension == ".jpeg") decoded = decodeJpeg(path);
+    std::uint32_t sourceWidth = 0;
+    std::uint32_t sourceHeight = 0;
+    if (extension == ".jpg" || extension == ".jpeg") {
+        const auto bytes = readFileBytes(path);
+        decoded = decodeJpegBytes(bytes.data(), bytes.size(), 1, sourceWidth, sourceHeight);
+    }
     else if (extension == ".png") decoded = decodePng(path);
     else if (extension == ".tif" || extension == ".tiff") decoded = decodeTiff(path);
     else throw std::runtime_error("unsupported image type: " + extension);
+    if (sourceWidth == 0) sourceWidth = decoded.width;
+    if (sourceHeight == 0) sourceHeight = decoded.height;
     if (decoded.width < 7 || decoded.height < 7
         || decoded.rgb.size() != static_cast<std::size_t>(decoded.width) * decoded.height * 3) {
         throw std::runtime_error("decoded image is too small or malformed");
@@ -397,6 +429,8 @@ LinearImage loadLinearImage(const std::string &path)
     LinearImage result;
     result.width = decoded.width;
     result.height = decoded.height;
+    result.sourceWidth = sourceWidth;
+    result.sourceHeight = sourceHeight;
     result.orientation = decoded.orientation;
     result.fileType = decoded.type;
     result.assumedSrgb = decoded.icc.empty();
@@ -413,6 +447,71 @@ LinearImage loadLinearImage(const std::string &path)
                      [](double value) { return std::isfinite(value); })) {
         throw std::runtime_error("color management produced a non-finite pixel");
     }
+    return result;
+}
+
+LoadedLinearImage loadLinearImageAndSha256(const std::string &path, bool jpegProxy)
+{
+    LoadedLinearImage result;
+    const std::string extension = lowercaseExtension(path);
+    if (extension != ".jpg" && extension != ".jpeg") {
+        if (jpegProxy) {
+            throw std::runtime_error("proxy classification accepts JPEG input only");
+        }
+        result.fileSha256 = hex(sha256File(path, &result.fileBytes));
+        result.image = loadLinearImage(path);
+        return result;
+    }
+
+    const auto bytes = readFileBytes(path);
+    result.fileBytes = bytes.size();
+    result.fileSha256 = hex(sha256(bytes.data(), bytes.size()));
+    std::uint32_t sourceWidth = 0;
+    std::uint32_t sourceHeight = 0;
+    Decoded decoded = decodeJpegBytes(
+        bytes.data(), bytes.size(), jpegProxy ? 8 : 1, sourceWidth, sourceHeight);
+    if (decoded.width < 7 || decoded.height < 7) {
+        throw std::runtime_error("decoded JPEG proxy is too small");
+    }
+
+    cmsHPROFILE input = decoded.icc.empty()
+        ? cmsCreate_sRGBProfile()
+        : cmsOpenProfileFromMem(decoded.icc.data(), decoded.icc.size());
+    cmsHPROFILE outputProfile = linearSrgbProfile();
+    if (!input || !outputProfile) {
+        if (input) cmsCloseProfile(input);
+        if (outputProfile) cmsCloseProfile(outputProfile);
+        throw std::runtime_error("cannot create source/linear-sRGB color profile");
+    }
+    cmsHTRANSFORM transform = cmsCreateTransform(
+        input, TYPE_RGB_16, outputProfile, TYPE_RGB_DBL,
+        INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_BLACKPOINTCOMPENSATION);
+    if (!transform) {
+        cmsCloseProfile(input);
+        cmsCloseProfile(outputProfile);
+        throw std::runtime_error("cannot create linear-sRGB color transform");
+    }
+    result.image.width = decoded.width;
+    result.image.height = decoded.height;
+    result.image.sourceWidth = sourceWidth;
+    result.image.sourceHeight = sourceHeight;
+    result.image.orientation = decoded.orientation;
+    result.image.fileType = decoded.type;
+    result.image.assumedSrgb = decoded.icc.empty();
+    result.image.iccIdentity = decoded.icc.empty()
+        ? "assumed-srgb"
+        : "sha256:" + hex(sha256(decoded.icc.data(), decoded.icc.size()));
+    result.image.rgb.resize(decoded.rgb.size());
+    cmsDoTransform(transform, decoded.rgb.data(), result.image.rgb.data(),
+                   static_cast<cmsUInt32Number>(decoded.width * decoded.height));
+    cmsDeleteTransform(transform);
+    cmsCloseProfile(input);
+    cmsCloseProfile(outputProfile);
+    if (!std::all_of(result.image.rgb.begin(), result.image.rgb.end(),
+                     [](double value) { return std::isfinite(value); })) {
+        throw std::runtime_error("color management produced a non-finite pixel");
+    }
+    result.proxy = jpegProxy;
     return result;
 }
 
@@ -665,6 +764,46 @@ std::string canonicalClassificationJson(
         << "\"source_id\":\"" << sourceId << "\","
         << "\"width\":" << image.width << "}\n";
     return output.str();
+}
+
+std::string canonicalProxyClassificationJson(
+    const LinearImage &image,
+    const ImageClassification &classification,
+    const std::string &sourceId,
+    const std::string &cacheFilename)
+{
+    std::string full = canonicalClassificationJson(
+        image, classification, sourceId, cacheFilename);
+    // Reuse the exact metric encoding, while making proxy dimensions and the
+    // noncanonical decoded-pixel identity impossible to mistake for final
+    // corpus metadata.
+    const std::string decoded = "\"decoded_pixel_sha256\":";
+    const std::size_t decodedPosition = full.find(decoded);
+    if (decodedPosition == std::string::npos) {
+        throw std::runtime_error("internal proxy JSON construction failure");
+    }
+    full.replace(decodedPosition, decoded.size(), "\"proxy_decoded_pixel_sha256\":");
+    const std::string dimensions = "\"height\":" + std::to_string(image.height) + ',';
+    const std::size_t dimensionsPosition = full.find(dimensions);
+    if (dimensionsPosition == std::string::npos) {
+        throw std::runtime_error("internal proxy JSON dimensions failure");
+    }
+    std::ostringstream replacement;
+    replacement << "\"height\":" << image.sourceHeight << ','
+        << "\"proxy_height\":" << image.height << ','
+        << "\"proxy_scale_denominator\":8,";
+    full.replace(dimensionsPosition, dimensions.size(), replacement.str());
+    const std::string width = "\"width\":" + std::to_string(image.width) + '}';
+    const std::size_t widthPosition = full.rfind(width);
+    if (widthPosition == std::string::npos) {
+        throw std::runtime_error("internal proxy JSON width failure");
+    }
+    std::ostringstream widthReplacement;
+    widthReplacement << "\"proxy_width\":" << image.width << ','
+        << "\"width\":" << image.sourceWidth << '}';
+    full.replace(widthPosition, width.size(), widthReplacement.str());
+    full.insert(1, "\"format\":\"rawtherapee-tgmr-image-proxy-classification-v1\",");
+    return full;
 }
 
 } // namespace tgmr

@@ -61,9 +61,11 @@ class ReconstructionTests(unittest.TestCase):
             source = root / "source.bin"
             data = b"authenticated TGMR corpus fixture\n"
             source.write_bytes(data)
+            source_record = record(source, data)
+            source_record["cache_filename"] = "a/b/c/fixture.bin"
             manifest = root / "corpus-v1.jsonl"
             manifest.write_text(
-                json.dumps(record(source, data), sort_keys=True, separators=(",", ":")) + "\n",
+                json.dumps(source_record, sort_keys=True, separators=(",", ":")) + "\n",
                 encoding="utf-8",
             )
             cache = root / "cache"
@@ -72,7 +74,7 @@ class ReconstructionTests(unittest.TestCase):
                 reconstruct_corpus.main([str(manifest), str(cache), "--retry", "0", "--report", str(report)]),
                 0,
             )
-            self.assertEqual((cache / "fixture.bin").read_bytes(), data)
+            self.assertEqual((cache / "a/b/c/fixture.bin").read_bytes(), data)
             self.assertEqual(
                 reconstruct_corpus.main([str(manifest), str(cache), "--offline-verify"]), 0
             )

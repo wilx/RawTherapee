@@ -266,7 +266,68 @@ candidate, not a claim about a particular camera's calibrated noise model.
 `corpus classify --candidates` is the canonical batch path: it authenticates
 the Python fetch output, decodes every available candidate, and produces the
 classification input for assembly. `--all` classifies selected and unselected
-records from an already assembled V2 manifest.
+records from an already assembled V2 manifest. Batch classification uses a
+bounded C++ worker pool (`--jobs 4` by default). Each JPEG is read once: the
+exact compressed bytes are SHA-256 authenticated and then decoded from memory.
+Nested cache names are supported for sharded stores, but absolute paths,
+`.`/`..` components, and symlink escapes outside the supplied cache are
+rejected.
+
+Long runs are restartable without changing their final bytes. By default the
+tool writes immutable, authenticated result segments under
+`OUTPUT.jsonl.work`, checkpoints every 128 completed images or 120 seconds,
+and reports progress every 15 seconds. Put this work directory on a local
+filesystem when the source cache is a network share:
+
+```sh
+rt-tgmr-train corpus classify fetched.jsonl /data/open-images \
+    classifications.jsonl --candidates --jobs 4 \
+    --work-dir /var/tmp/tgmr-classify-work \
+    --checkpoint-images 128 --checkpoint-seconds 120 \
+    --progress-seconds 15 --retries 2
+```
+
+Rerunning the same command validates and resumes its segments. Incomplete
+`.tmp` files are ignored. A changed input list or full/proxy mode is rejected
+instead of being combined with old state. Final output is merged in original
+input order and is byte-identical across thread counts and interruptions.
+Unresolved per-image failures are recorded in `failures.json`; successful
+images remain checkpointed for the next run.
+
+For metadata shortlisting, `--proxy` asks libjpeg for a 1/8-resolution decode.
+Its rows use the distinct
+`rawtherapee-tgmr-image-proxy-classification-v1` identity and record both source
+and proxy dimensions. Proxy results are approximate, JPEG-only, and must not
+be passed to `assemble`; candidates selected from them require the normal full
+classification pass.
+
+Bulk CVDF Open Images archives do not need a separate per-file SHA-256 pass.
+After metadata filtering has produced canonical catalog-candidate JSONL, point
+the classifier at the extracted split root:
+
+```sh
+rt-tgmr-train corpus classify oi-shortlist.jsonl /data/open-images \
+    oi-proxy.jsonl --open-images-cvdf train --proxy --jobs 4 \
+    --work-dir /var/tmp/tgmr-oi-proxy
+```
+
+For an image ID `abcdef0123456789`, this mode requires
+`train/a/b/c/abcdef0123456789.jpg`. It authenticates and decodes the same byte
+buffer and records `source_sha256` in the classification row. Run the retained
+shortlist again without `--proxy` for final metadata. `prepare_corpus.py
+assemble` accepts the original catalog-candidate JSONL for this local mode,
+requires the full classification's source digest, and reauthenticates the file
+before creating the V2 source manifest. Because CVDF images are rescaled mirror
+renditions rather than the Flickr originals, assembly records the matching
+`https://open-images-dataset.s3.amazonaws.com/SPLIT/ID.jpg` object as the
+reconstruction URL and does not apply the original-image MD5 to those bytes.
+
+The intended large-catalog sequence is metadata/license/author filtering
+first, proxy classification of a roughly 50,000-image shortlist second, and
+full classification of only the roughly 10,000--16,000 candidates retained for
+deduplication and balanced source selection. The tool can process a larger
+list, but scanning every Open Images file is neither required nor the frozen
+corpus recipe.
 
 `corpus balance` reports the declared low/middle/high brightness, chroma, and
 texture strata using cut points derived only from training patches. The old
