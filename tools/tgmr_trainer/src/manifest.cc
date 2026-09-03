@@ -524,7 +524,8 @@ void mergeClassificationRuns(
     const std::vector<std::filesystem::path> &inputs,
     const std::filesystem::path &output,
     bool finalOutput,
-    std::uint64_t expectedRecords)
+    std::uint64_t expectedRecords,
+    bool allowMissingOrdinals = false)
 {
     std::vector<std::unique_ptr<MergeCursor>> cursors;
     for (const auto &input : inputs) cursors.emplace_back(new MergeCursor(input));
@@ -543,7 +544,7 @@ void mergeClassificationRuns(
         const auto current = heap.top();
         heap.pop();
         if ((!first && current.first <= previous)
-            || (finalOutput && current.first != count)) {
+            || (finalOutput && !allowMissingOrdinals && current.first != count)) {
             throw std::runtime_error("classifier merge contains duplicate or missing results");
         }
         first = false;
@@ -574,7 +575,8 @@ void finalizeClassificationOutput(
     std::vector<std::filesystem::path> runs,
     const std::filesystem::path &workDirectory,
     const std::string &outputJsonl,
-    std::uint64_t expectedRecords)
+    std::uint64_t expectedRecords,
+    bool allowMissingOrdinals)
 {
     std::vector<std::filesystem::path> temporaryRuns;
     unsigned pass = 0;
@@ -594,7 +596,8 @@ void finalizeClassificationOutput(
         runs = std::move(next);
         ++pass;
     }
-    mergeClassificationRuns(runs, outputJsonl, true, expectedRecords);
+    mergeClassificationRuns(
+        runs, outputJsonl, true, expectedRecords, allowMissingOrdinals);
     std::error_code ignored;
     for (const auto &path : temporaryRuns) std::filesystem::remove(path, ignored);
 }
@@ -802,12 +805,20 @@ void runClassificationTasks(
             << "\"rawtherapee-tgmr-classification-failures-v1\",\n"
             << "  \"input_sha256\": \"" << inputDigest << "\"\n}\n";
         durableWrite(workDirectory / "failures.json", report.str());
-        throw std::runtime_error(std::to_string(failures.size())
-                                 + " images failed classification; rerun after correcting inputs");
+        if (!options.allowFailures) {
+            throw std::runtime_error(std::to_string(failures.size())
+                + " images failed classification; rerun after correcting inputs");
+        }
+        std::cerr << "TGMR classify: explicitly omitting " << failures.size()
+            << " failed candidate image(s); see "
+            << (workDirectory / "failures.json").string() << '\n';
+    } else {
+        std::error_code ignored;
+        std::filesystem::remove(workDirectory / "failures.json", ignored);
     }
-    finalizeClassificationOutput(segments, workDirectory, outputJsonl, tasks.size());
-    std::error_code ignored;
-    std::filesystem::remove(workDirectory / "failures.json", ignored);
+    finalizeClassificationOutput(
+        segments, workDirectory, outputJsonl, tasks.size() - failures.size(),
+        options.allowFailures);
 }
 
 } // namespace

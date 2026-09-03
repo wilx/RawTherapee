@@ -93,6 +93,7 @@ struct ClassificationOptions final {
     std::string workDirectory;
     std::string openImagesCvdfSplit;
     bool proxy = false;
+    bool allowFailures = false;
 };
 
 // Corpus-v1 deliberately freezes augmentation recipes by name.  NONE is the

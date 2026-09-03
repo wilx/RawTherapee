@@ -43,7 +43,7 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train corpus classify-file SOURCE-ID IMAGE\n"
         << "  rt-tgmr-train corpus classify INPUT CACHE OUTPUT.jsonl"
            " [--candidates|--open-images-cvdf SPLIT|--all]"
-           " [--proxy] [--jobs N] [--work-dir DIR]"
+           " [--proxy] [--allow-failures] [--jobs N] [--work-dir DIR]"
            " [--checkpoint-images N] [--checkpoint-seconds N]"
            " [--progress-seconds N] [--retries N] [--force]\n"
         << "  rt-tgmr-train corpus select CANDIDATES.jsonl RECIPE.json OUTPUT.jsonl"
@@ -833,6 +833,7 @@ int corpusCommand(int argc, char **argv)
                 classification.openImagesCvdfSplit = argv[index];
             }
             else if (option == "--proxy") classification.proxy = true;
+            else if (option == "--allow-failures") classification.allowFailures = true;
             else if (option == "--jobs") classification.jobs = unsignedOption(index, "--jobs");
             else if (option == "--retries") {
                 if (++index >= argc) throw std::runtime_error("--retries requires a value");

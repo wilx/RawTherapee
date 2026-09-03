@@ -303,7 +303,12 @@ Rerunning the same command validates and resumes its segments. Incomplete
 instead of being combined with old state. Final output is merged in original
 input order and is byte-identical across thread counts and interruptions.
 Unresolved per-image failures are recorded in `failures.json`; successful
-images remain checkpointed for the next run.
+images remain checkpointed for the next run. Candidate-pool screening may use
+the explicit `--allow-failures` option after reviewing that file: the final
+classification JSONL then contains only successful records, while the failure
+report remains beside the checkpoints as the rejection audit. The default
+continues to fail closed, and reviewed/final corpus verification must not use
+this option to hide missing selected sources.
 
 For metadata shortlisting, `--proxy` asks libjpeg for a 1/8-resolution decode.
 Its rows use the distinct

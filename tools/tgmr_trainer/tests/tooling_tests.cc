@@ -209,6 +209,97 @@ void writeGrayJpegWithIccFixture(const std::string &path, unsigned width, unsign
     require(std::fclose(stream) == 0, "cannot close grayscale JPEG fixture");
 }
 
+cmsInt32Number sampleTestCmykProfile(
+    const cmsUInt16Number input[], cmsUInt16Number output[], void *)
+{
+    const double c = input[0] / 65535.0;
+    const double m = input[1] / 65535.0;
+    const double y = input[2] / 65535.0;
+    const double k = input[3] / 65535.0;
+    const double r = (1.0 - c) * (1.0 - k);
+    const double g = (1.0 - m) * (1.0 - k);
+    const double b = (1.0 - y) * (1.0 - k);
+    const cmsCIELab lab{
+        100.0 * (0.2126 * r + 0.7152 * g + 0.0722 * b),
+        80.0 * (r - g),
+        80.0 * (g - b),
+    };
+    cmsFloat2LabEncoded(output, &lab);
+    return 1;
+}
+
+std::vector<unsigned char> testCmykIccProfile()
+{
+    cmsHPROFILE profile = cmsCreateProfilePlaceholder(nullptr);
+    require(profile != nullptr, "cannot create CMYK ICC profile placeholder");
+    cmsSetProfileVersion(profile, 2.1);
+    cmsSetDeviceClass(profile, cmsSigInputClass);
+    cmsSetColorSpace(profile, cmsSigCmykData);
+    cmsSetPCS(profile, cmsSigLabData);
+    cmsSetHeaderRenderingIntent(profile, INTENT_RELATIVE_COLORIMETRIC);
+    require(cmsWriteTag(profile, cmsSigMediaWhitePointTag, cmsD50_XYZ()) != 0,
+            "cannot write CMYK ICC white point");
+    cmsPipeline *pipeline = cmsPipelineAlloc(nullptr, 4, 3);
+    cmsStage *clut = cmsStageAllocCLut16bit(nullptr, 5, 4, 3, nullptr);
+    require(pipeline != nullptr && clut != nullptr,
+            "cannot create CMYK ICC lookup table");
+    require(cmsStageSampleCLut16bit(clut, sampleTestCmykProfile, nullptr, 0) != 0,
+            "cannot sample CMYK ICC lookup table");
+    cmsPipelineInsertStage(pipeline, cmsAT_END, clut);
+    require(cmsWriteTag(profile, cmsSigAToB0Tag, pipeline) != 0
+        && cmsWriteTag(profile, cmsSigAToB1Tag, pipeline) != 0,
+        "cannot write CMYK ICC transform tags");
+    cmsPipelineFree(pipeline);
+    cmsUInt32Number bytes = 0;
+    require(cmsSaveProfileToMem(profile, nullptr, &bytes) != 0 && bytes > 0,
+            "cannot size CMYK ICC profile");
+    std::vector<unsigned char> output(bytes);
+    require(cmsSaveProfileToMem(profile, output.data(), &bytes) != 0,
+            "cannot serialize CMYK ICC profile");
+    cmsCloseProfile(profile);
+    return output;
+}
+
+void writeCmykJpegFixture(
+    const std::string &path, unsigned width, unsigned height, bool includeProfile)
+{
+    const std::vector<unsigned char> profile = includeProfile
+        ? testCmykIccProfile() : std::vector<unsigned char>{};
+    std::FILE *stream = std::fopen(path.c_str(), "wb");
+    require(stream != nullptr, "cannot create CMYK JPEG fixture");
+    jpeg_compress_struct encoder{};
+    jpeg_error_mgr error{};
+    encoder.err = jpeg_std_error(&error);
+    jpeg_create_compress(&encoder);
+    jpeg_stdio_dest(&encoder, stream);
+    encoder.image_width = width;
+    encoder.image_height = height;
+    encoder.input_components = 4;
+    encoder.in_color_space = JCS_CMYK;
+    jpeg_set_defaults(&encoder);
+    encoder.write_Adobe_marker = FALSE;
+    jpeg_set_quality(&encoder, 91, TRUE);
+    jpeg_start_compress(&encoder, TRUE);
+    if (!profile.empty()) {
+        jpeg_write_icc_profile(&encoder, profile.data(), profile.size());
+    }
+    std::vector<unsigned char> row(static_cast<std::size_t>(width) * 4);
+    while (encoder.next_scanline < encoder.image_height) {
+        const unsigned rowIndex = encoder.next_scanline;
+        for (unsigned x = 0; x < width; ++x) {
+            row[x * 4] = static_cast<unsigned char>((3 * x + 17) & 127);
+            row[x * 4 + 1] = static_cast<unsigned char>((5 * rowIndex + 11) & 127);
+            row[x * 4 + 2] = static_cast<unsigned char>((x + rowIndex + 7) & 127);
+            row[x * 4 + 3] = static_cast<unsigned char>((x + 2 * rowIndex) & 63);
+        }
+        JSAMPROW rows[] = {row.data()};
+        jpeg_write_scanlines(&encoder, rows, 1);
+    }
+    jpeg_finish_compress(&encoder);
+    jpeg_destroy_compress(&encoder);
+    require(std::fclose(stream) == 0, "cannot close CMYK JPEG fixture");
+}
+
 void writeTiffFixture(const std::string &path, unsigned width, unsigned height)
 {
     TIFF *tiff = TIFFOpen(path.c_str(), "w");
@@ -553,6 +644,32 @@ void testGrayJpegIccProfile()
     std::remove(path.c_str());
 }
 
+void testCmykJpegIccProfile()
+{
+    const std::string profiled = temporary("-cmyk-icc.jpg");
+    const std::string unprofiled = temporary("-cmyk-no-icc.jpg");
+    writeCmykJpegFixture(profiled, 80, 72, true);
+    writeCmykJpegFixture(unprofiled, 80, 72, false);
+    const auto full = tgmr::loadLinearImageAndSha256(profiled, false);
+    const auto proxy = tgmr::loadLinearImageAndSha256(profiled, true);
+    require(full.image.width == 80 && full.image.height == 72
+        && full.image.iccIdentity.rfind("sha256:", 0) == 0
+        && !full.image.assumedSrgb && proxy.proxy,
+        "profiled CMYK JPEG was not converted to linear RGB");
+    require(std::all_of(full.image.rgb.begin(), full.image.rgb.end(),
+            [](double value) { return std::isfinite(value); }),
+        "profiled CMYK JPEG produced a non-finite value");
+    bool rejected = false;
+    try {
+        (void)tgmr::loadLinearImage(unprofiled);
+    } catch (const std::runtime_error &error) {
+        rejected = std::string(error.what()) == "CMYK image lacks an embedded ICC profile";
+    }
+    require(rejected, "unprofiled CMYK JPEG was not rejected deterministically");
+    std::remove(profiled.c_str());
+    std::remove(unprofiled.c_str());
+}
+
 void testParallelClassificationAndProxy()
 {
     const std::string base = temporary("-classifier");
@@ -686,6 +803,21 @@ void testParallelClassificationAndProxy()
         reportedMissing = std::filesystem::is_regular_file(
             std::filesystem::path(retry.workDirectory) / "failures.json");
     }
+    tgmr::ClassificationOptions allowFailures = serial;
+    allowFailures.allowFailures = true;
+    allowFailures.workDirectory = base + "-allow-failures-work";
+    const std::string partialOutput = base + "-partial-output.jsonl";
+    tgmr::classifyFetchedCandidates(
+        input, cache.string(), partialOutput, false, allowFailures);
+    {
+        std::ifstream partial(partialOutput);
+        std::size_t lines = 0;
+        std::string line;
+        while (std::getline(partial, line)) ++lines;
+        require(lines == 5 && std::filesystem::is_regular_file(
+                std::filesystem::path(allowFailures.workDirectory) / "failures.json"),
+            "explicit candidate failure omission did not preserve five successes and audit");
+    }
     std::filesystem::rename(heldSource, retrySource);
     require(reportedMissing, "classifier did not checkpoint a missing-input failure");
     tgmr::classifyFetchedCandidates(
@@ -703,10 +835,12 @@ void testParallelClassificationAndProxy()
     std::remove(changedInput.c_str());
     std::remove(retryInput.c_str());
     std::remove((base + "-retry-output.jsonl").c_str());
+    std::remove(partialOutput.c_str());
     std::filesystem::remove_all(serial.workDirectory);
     std::filesystem::remove_all(parallel.workDirectory);
     std::filesystem::remove_all(proxy.workDirectory);
     std::filesystem::remove_all(retry.workDirectory);
+    std::filesystem::remove_all(allowFailures.workDirectory);
 }
 
 void testManifestNearDuplicateLeakage()
@@ -1198,6 +1332,7 @@ int main()
         testImageManifestAndPack();
         testTiff16Orientation();
         testGrayJpegIccProfile();
+        testCmykJpegIccProfile();
         testParallelClassificationAndProxy();
         testManifestNearDuplicateLeakage();
         testProductionSourceSelection();

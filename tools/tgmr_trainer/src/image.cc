@@ -35,6 +35,7 @@ struct Decoded final {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     std::uint16_t orientation = 1;
+    std::uint8_t components = 3;
     std::string type;
     std::vector<std::uint16_t> rgb;
     std::vector<std::uint8_t> icc;
@@ -112,7 +113,7 @@ void orientTopLeft(Decoded &image)
     const std::uint32_t outputWidth = transposed ? inputHeight : inputWidth;
     const std::uint32_t outputHeight = transposed ? inputWidth : inputHeight;
     std::vector<std::uint16_t> oriented(
-        static_cast<std::size_t>(outputWidth) * outputHeight * 3);
+        static_cast<std::size_t>(outputWidth) * outputHeight * image.components);
     for (std::uint32_t y = 0; y < outputHeight; ++y) {
         for (std::uint32_t x = 0; x < outputWidth; ++x) {
             std::uint32_t sourceX = x;
@@ -128,10 +129,12 @@ void orientTopLeft(Decoded &image)
                 default: break;
             }
             const std::size_t source =
-                (static_cast<std::size_t>(sourceY) * inputWidth + sourceX) * 3;
+                (static_cast<std::size_t>(sourceY) * inputWidth + sourceX)
+                * image.components;
             const std::size_t destination =
-                (static_cast<std::size_t>(y) * outputWidth + x) * 3;
-            std::copy_n(image.rgb.data() + source, 3, oriented.data() + destination);
+                (static_cast<std::size_t>(y) * outputWidth + x) * image.components;
+            std::copy_n(image.rgb.data() + source, image.components,
+                        oriented.data() + destination);
         }
     }
     image.width = outputWidth;
@@ -179,24 +182,32 @@ Decoded decodeJpegBytes(
         output.icc.assign(profile, profile + profileBytes);
         std::free(profile);
     }
-    decoder.out_color_space = JCS_RGB;
+    const bool cmyk = decoder.jpeg_color_space == JCS_CMYK
+        || decoder.jpeg_color_space == JCS_YCCK;
+    const bool invertedCmyk = cmyk && decoder.saw_Adobe_marker;
+    decoder.out_color_space = cmyk ? JCS_CMYK : JCS_RGB;
     decoder.scale_num = 1;
     decoder.scale_denom = scaleDenominator;
     jpeg_start_decompress(&decoder);
     output.width = decoder.output_width;
     output.height = decoder.output_height;
+    output.components = static_cast<std::uint8_t>(decoder.output_components);
     output.type = "jpeg";
-    if (decoder.output_components != 3 || output.width == 0 || output.height == 0) {
-        throw std::runtime_error("JPEG did not decode to non-empty RGB");
+    if ((!cmyk && decoder.output_components != 3)
+        || (cmyk && decoder.output_components != 4)
+        || output.width == 0 || output.height == 0) {
+        throw std::runtime_error("JPEG did not decode to the requested color components");
     }
-    output.rgb.resize(static_cast<std::size_t>(output.width) * output.height * 3);
-    std::vector<JSAMPLE> row(static_cast<std::size_t>(output.width) * 3);
+    output.rgb.resize(
+        static_cast<std::size_t>(output.width) * output.height * output.components);
+    std::vector<JSAMPLE> row(static_cast<std::size_t>(output.width) * output.components);
     while (decoder.output_scanline < decoder.output_height) {
         JSAMPROW rowPointer = row.data();
         jpeg_read_scanlines(&decoder, &rowPointer, 1);
         const std::size_t y = decoder.output_scanline - 1;
         for (std::size_t index = 0; index < row.size(); ++index) {
-            output.rgb[y * row.size() + index] = static_cast<std::uint16_t>(row[index] * 257U);
+            const unsigned value = invertedCmyk ? 255U - row[index] : row[index];
+            output.rgb[y * row.size() + index] = static_cast<std::uint16_t>(value * 257U);
         }
     }
     jpeg_finish_decompress(&decoder);
@@ -390,6 +401,9 @@ double luminance(const double *rgb)
 
 std::vector<double> convertToLinearSrgb(const Decoded &decoded)
 {
+    if (decoded.components == 4 && decoded.icc.empty()) {
+        throw std::runtime_error("CMYK image lacks an embedded ICC profile");
+    }
     cmsHPROFILE input = decoded.icc.empty()
         ? cmsCreate_sRGBProfile()
         : cmsOpenProfileFromMem(decoded.icc.data(), decoded.icc.size());
@@ -404,9 +418,9 @@ std::vector<double> convertToLinearSrgb(const Decoded &decoded)
     cmsUInt32Number inputFormat = 0;
     const void *inputPixels = decoded.rgb.data();
     std::vector<std::uint16_t> gray;
-    if (colorSpace == cmsSigRgbData) {
+    if (colorSpace == cmsSigRgbData && decoded.components == 3) {
         inputFormat = TYPE_RGB_16;
-    } else if (colorSpace == cmsSigGrayData) {
+    } else if (colorSpace == cmsSigGrayData && decoded.components == 3) {
         // libjpeg expands a grayscale JPEG to RGB for the common decode path,
         // but an embedded grayscale ICC profile still expects one component.
         // Feed LittleCMS the original repeated gray sample rather than
@@ -417,6 +431,8 @@ std::vector<double> convertToLinearSrgb(const Decoded &decoded)
         }
         inputFormat = TYPE_GRAY_16;
         inputPixels = gray.data();
+    } else if (colorSpace == cmsSigCmykData && decoded.components == 4) {
+        inputFormat = TYPE_CMYK_16;
     } else {
         cmsCloseProfile(input);
         cmsCloseProfile(outputProfile);
@@ -431,7 +447,8 @@ std::vector<double> convertToLinearSrgb(const Decoded &decoded)
         cmsCloseProfile(outputProfile);
         throw std::runtime_error("cannot create linear-sRGB color transform");
     }
-    std::vector<double> output(decoded.rgb.size());
+    std::vector<double> output(
+        static_cast<std::size_t>(decoded.width) * decoded.height * 3);
     cmsDoTransform(transform, inputPixels, output.data(),
                    static_cast<cmsUInt32Number>(decoded.width * decoded.height));
     cmsDeleteTransform(transform);
@@ -462,7 +479,8 @@ LinearImage loadLinearImage(const std::string &path)
     if (sourceWidth == 0) sourceWidth = decoded.width;
     if (sourceHeight == 0) sourceHeight = decoded.height;
     if (decoded.width < 7 || decoded.height < 7
-        || decoded.rgb.size() != static_cast<std::size_t>(decoded.width) * decoded.height * 3) {
+        || decoded.rgb.size() != static_cast<std::size_t>(decoded.width)
+            * decoded.height * decoded.components) {
         throw std::runtime_error("decoded image is too small or malformed");
     }
     LinearImage result;

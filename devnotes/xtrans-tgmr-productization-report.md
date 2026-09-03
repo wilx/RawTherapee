@@ -272,6 +272,68 @@ sources without relaxing an already frozen quality rule. Under the corpus plan,
 the correct response is to expand or replace the PASS source allocation rather
 than upscale its images or silently lower the threshold.
 
+## Open Images 10,000-source classification run
+
+The first complete catalog-sized intake stage was run against the locally
+mirrored CVDF Open Images V5 boxable training archive. The external images and
+generated candidate artifacts remain under `~/TGPC` and are not tracked in
+Git.
+
+- The authenticated catalog input is
+  `train-images-boxable-with-rotation.csv`: 638,407,721 bytes, 1,743,042 data
+  records, SHA-256
+  `05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0`.
+- Deterministic candidate generation emitted exactly 10,000 records. The
+  candidate JSONL SHA-256 is
+  `e8ecba0eaa288da88a8efb962a6205417c76e0991bdec2c0b7ada353c521d9fb`.
+- Full-resolution classification used 12 bounded workers and local durable
+  checkpoints while reading the sharded CIFS image store. The main pass
+  sustained approximately 28.6 images/s and 8.7 MiB/s. It completed 9,998
+  candidates and retained two rejected records in the failure audit.
+- Three otherwise valid CMYK JPEGs initially exposed a decoder limitation.
+  The intake path now preserves CMYK/YCCK JPEG components and uses an embedded
+  CMYK ICC profile through LittleCMS. It rejects unprofiled CMYK and component/
+  profile mismatches instead of assigning an invented color interpretation.
+- The final classification JSONL contains 9,998 records and has SHA-256
+  `a2ef9ea919dd8edf8887e44600d227266594b4d6b0afc04fc942adf13499b6fb`.
+  The two-record failure audit has SHA-256
+  `be6734fe9ef9e4de31fb0bad22623c9a5afb5ed79ff90b1f7ab946546e24ab40`:
+  one three-component JPEG carrying an incompatible CMYK profile and one
+  four-component CMYK JPEG without any profile.
+- Candidate screening now requires the explicit `--allow-failures` option to
+  publish only successful classifications. The default remains fail-closed,
+  and the option is not appropriate for a reviewed or selected corpus. The
+  durable failure report remains beside the checkpoints as the rejection
+  record.
+- Assembly re-authenticated the source bytes and emitted 9,998 V2 records in
+  pending-review state. Its JSONL SHA-256 is
+  `279bd7e911b0d5cf3c15554036de19d6bffe09efa6d9941fe27b47bb260577ae`.
+  The source-statistics JSON SHA-256 is
+  `29bbe005fda89118a4211305bc343df47ab41981737f6f2b636faa8c6e3f9e77`.
+
+Of the 9,998 decoded candidates, 4,668 meet the frozen 512-pixel shortest-side
+and 0.75-megapixel gates. Before duplicate and content review, deterministic
+author-group split assignment produces this capacity:
+
+| Projected split | Size-eligible | After five-image author cap | Required Open Images quota |
+| --- | ---: | ---: | ---: |
+| train | 3,766 | 3,611 | 2,000 |
+| validation | 441 | 428 | 250 |
+| test | 461 | 431 | 250 |
+
+The Open Images pool therefore has useful numerical surplus for its frozen
+2,500-source quota. It is not selectable yet: all 9,998 records deliberately
+remain `rights.review_status=pending`, content tags are empty, and the
+controlled people subset has not undergone the required no-minors/sensitive-
+content review. These are human audit gates rather than classifier outputs.
+
+The run also confirms an operational distinction. Parallel decoding and
+classification scale adequately even from the network store, but Python V2
+assembly currently rehashes source files serially and classifier resume startup
+canonicalizes all candidate paths on the CIFS mount. Both are bounded and
+correct, but optimizing those preparation stages would improve iteration time
+before processing substantially larger candidate pools.
+
 ## Incomplete plan items
 
 The following remain deliberately open rather than being represented as done:
