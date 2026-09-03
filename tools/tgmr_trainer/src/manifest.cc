@@ -890,6 +890,18 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 throw std::runtime_error("selected source cannot have an unassigned split");
             }
             record.selectionStatus = text(root, "selection_status");
+            if (version2) {
+                static const std::set<std::string> candidateStatuses{
+                    "candidate-pending-review", "candidate-reviewed",
+                    "candidate-pending-duplicate-review", "candidate-rejected-duplicate",
+                };
+                if ((record.selected && record.selectionStatus != "accepted-corpus-v1")
+                    || (!record.selected
+                        && candidateStatuses.find(record.selectionStatus)
+                            == candidateStatuses.end())) {
+                    throw std::runtime_error("v2 source selection_status is invalid");
+                }
+            }
             const cJSON *advertised = field(root, "advertised_checksum");
             if (cJSON_IsString(advertised) && advertised->valuestring
                 && *advertised->valuestring) {
@@ -1101,7 +1113,8 @@ std::vector<SourceRecord> readSourceManifest(const std::string &path)
                 static const std::set<std::string> permittedTags{
                     "people", "skin-hair-clothing", "foliage", "fur-feathers",
                     "architecture-brick", "textile-print", "metal-specular-jewelry",
-                    "food", "water-sky", "low-light", "macro-specimen",
+                    "food", "water-sky", "low-light", "astronomy-star-field",
+                    "macro-specimen",
                 };
                 std::set<std::string> uniqueTags;
                 for (int index = 0; index < cJSON_GetArraySize(tags); ++index) {
@@ -1356,7 +1369,7 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
             "production manifest must contain exactly 4000/500/500 selected sources");
     }
     const std::array<std::array<std::uint64_t, 3>, 4> expectedCatalogs{{
-        {{2000,250,250}}, {{1200,150,150}}, {{480,60,60}}, {{320,40,40}},
+        {{3200,400,400}}, {{0,0,0}}, {{480,60,60}}, {{320,40,40}},
     }};
     if (catalogCounts != expectedCatalogs) {
         throw std::runtime_error("production manifest does not match frozen source quotas");

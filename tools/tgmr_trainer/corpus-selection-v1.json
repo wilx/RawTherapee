@@ -1,8 +1,8 @@
 {
   "author_image_cap": 5,
   "candidate_pool": {
-    "openimages-cvdf-v5-boxable": 10000,
-    "pass-v3": 6000,
+    "openimages-cvdf-v5-boxable": 12000,
+    "pass-v3": 0,
     "smithsonian-open-access": 2000,
     "wikimedia-commons": 3000
   },
@@ -11,6 +11,9 @@
     "luminance_bins": 16,
     "saturation_bins": 8,
     "tertiles_derived_from": "eligible-training-candidates"
+  },
+  "content_tag_minimum_sources": {
+    "astronomy-star-field": {"test": 1, "train": 12, "validation": 1}
   },
   "content_tags": [
     "people",
@@ -23,9 +26,12 @@
     "food",
     "water-sky",
     "low-light",
+    "astronomy-star-field",
     "macro-specimen"
   ],
   "deduplication": {
+    "borderline_dhash_hamming_max": 7,
+    "borderline_phash_hamming_max": 10,
     "cross_split_dhash_hamming_max": 5,
     "cross_split_phash_hamming_max": 8,
     "require_manual_review_for_borderline_clusters": true
@@ -43,8 +49,8 @@
   },
   "people_fraction": 0.15,
   "quotas": {
-    "openimages-cvdf-v5-boxable": {"test": 250, "train": 2000, "validation": 250},
-    "pass-v3": {"test": 150, "train": 1200, "validation": 150},
+    "openimages-cvdf-v5-boxable": {"test": 400, "train": 3200, "validation": 400},
+    "pass-v3": {"test": 0, "train": 0, "validation": 0},
     "smithsonian-open-access": {"test": 40, "train": 320, "validation": 40},
     "wikimedia-commons": {"test": 60, "train": 480, "validation": 60}
   },

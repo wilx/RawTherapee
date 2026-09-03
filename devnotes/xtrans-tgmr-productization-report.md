@@ -36,11 +36,14 @@ The automatic loader additionally requires the compiled official digest.
   ND, SA, unknown, and ambiguous terms are rejected. Smithsonian records are
   accepted only with explicit CC0. People sources require a separate approved
   no-obvious-minors/non-sensitive-content review.
-- Catalog acquisition is frozen for a deterministic 21,000-candidate pool:
-  10,000 candidates from the CVDF Open Images V4/V5 boxable subset, 6,000
-  PASS, 3,000 Wikimedia Commons, and 2,000 Smithsonian Open Access. The exact
-  selected mix is respectively
-  2,500/1,500/600/400, with each source preserving the 80/10/10 split.
+- Catalog acquisition is frozen for a deterministic 17,000-candidate
+  pool: 12,000 candidates from the CVDF Open Images V4/V5 boxable subset,
+  3,000 Wikimedia Commons, and 2,000 Smithsonian Open Access. PASS remains a
+  supported research/tooling input but contributes no corpus-v1 sources after
+  its distributed images failed the frozen resolution gate. The exact selected
+  mix is 4,000/600/400, with each source preserving the 80/10/10 split.
+  Open Images grows in deterministic 2,000-record tranches whenever any
+  projected split has less than 20% surplus after quality and author-cap gates.
 - The matching Open Images boxable metadata snapshot contains 1,743,042 image
   records and is pinned at 638,407,721 bytes with SHA-256
   `05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0`.
@@ -54,7 +57,7 @@ The automatic loader additionally requires the compiled official digest.
   before producing neutral linear RGB. The full and 1/8-proxy paths have a
   native regression test for this case.
 - A standard-library-only preparation program snapshots and authenticates
-  catalogs, captures one-time Commons API responses and anonymous Smithsonian
+  catalogs, captures a bounded one-time Commons category/API snapshot and anonymous Smithsonian
   Open Data on AWS index/shard snapshots, preserves the complete consumed
   Smithsonian metadata bytes for byte-identical offline replay, normalizes all
   four catalogs, fetches originals, assembles C++ classifications plus human
@@ -212,13 +215,15 @@ redistributed.
 
 Before freeze:
 
-1. Download and authenticate the four frozen catalog snapshots and record their
-   exact identities; curate 21,000 candidates at the fixed per-source quotas.
+1. Download and authenticate the frozen catalog and annotation snapshots and
+   record their exact identities; curate the initial 15,000 candidates and any
+   required deterministic Open Images expansion tranches.
 2. Download and authenticate original bytes; record advertised and RawTherapee
    hashes independently, including PASS archive-member fallbacks.
-3. Review per-source license, attribution, people status, and content tags. A
-   catalog license field is
-   evidence to inspect, not an automatic legal conclusion.
+3. Review per-source license, attribution, people status, and content tags.
+   Complete authenticated Open Images catalog rows with whitelisted CC BY
+   metadata are the automatic rights decision under the frozen recipe;
+   people/minor/sensitive-content and ambiguous duplicate cases remain manual.
 4. Decode, orient, color-manage, classify, and compute exact, Flickr, dHash, and
    DCT-pHash identities plus signal-statistics histograms.
 5. Assign normalized author groups to splits; reject duplicates and review
@@ -228,6 +233,10 @@ Before freeze:
 7. Require at least 10,000 training and 1,000 validation/test patches in every
    declared critical brightness, chroma, and texture stratum. Add sources rather
    than duplicating deficient patches.
+   In addition, retain the source-level `astronomy-star-field` safety guardrail:
+   at least 12 training, one validation, and one test source, identified through
+   authenticated Commons astronomy-category provenance plus tracked stellar
+   title patterns. Generic low-light images do not satisfy this minimum.
 8. Compare identity-only, clipping, and bounded read/signal-noise augmentation
    recipes on validation. Prefer the simpler recipe inside 0.1 dB with
    equivalent tails.
@@ -272,7 +281,7 @@ sources without relaxing an already frozen quality rule. Under the corpus plan,
 the correct response is to expand or replace the PASS source allocation rather
 than upscale its images or silently lower the threshold.
 
-## Open Images 10,000-source classification run
+## Open Images 12,000-candidate preparation
 
 The first complete catalog-sized intake stage was run against the locally
 mirrored CVDF Open Images V5 boxable training archive. The external images and
@@ -315,31 +324,158 @@ Of the 9,998 decoded candidates, 4,668 meet the frozen 512-pixel shortest-side
 and 0.75-megapixel gates. Before duplicate and content review, deterministic
 author-group split assignment produces this capacity:
 
-| Projected split | Size-eligible | After five-image author cap | Required Open Images quota |
+| Projected split | Size-eligible | After five-image author cap | Initial required quota |
 | --- | ---: | ---: | ---: |
-| train | 3,766 | 3,611 | 2,000 |
-| validation | 441 | 428 | 250 |
-| test | 461 | 431 | 250 |
+| train | 3,766 | 3,611 | 3,200 |
+| validation | 441 | 428 | 400 |
+| test | 461 | 431 | 400 |
 
-The Open Images pool therefore has useful numerical surplus for its frozen
-2,500-source quota. It is not selectable yet: all 9,998 records deliberately
-remain `rights.review_status=pending`, content tags are empty, and the
-controlled people subset has not undergone the required no-minors/sensitive-
-content review. These are human audit gates rather than classifier outputs.
+That initial pool could meet the exact quotas, but failed the separately frozen
+20% surplus gate in every split. A deterministic 2,000-record tranche beginning
+at eligible catalog offset 10,000 was therefore normalized and classified. All
+2,000 additional images succeeded at about 12.1 images/s using four workers.
+Assembly re-authenticated them and the merged 11,998-record V2 review input has
+SHA-256
+`27d03730f4e5c701085944284fdebeb3a2dec4d8da298f42eb805c9c75d04fd3`.
+
+The content/review preparation authenticates and joins these snapshots:
+
+| Snapshot | Bytes | SHA-256 |
+| --- | ---: | --- |
+| V7 boxable class descriptions | 12,064 | `1839e0e7e84130ae281f7f67413768601b031581c0c42e7fc17527b8e2a99aa9` |
+| V5 positive human image labels | 376,764,810 | `f9bec2d40b4e12d67c9f726292b5db88285713267fc3dc6496ae72839b2fd9de` |
+| V6 object boxes | 2,258,447,590 | `dfc9637907a6b105f87e435bac91a5ee9b29af3ff8391168f86c1d63879786b6` |
+| tracked content-tag rules | 2,405 | `22ebe02edf465ebe5878cbd86429c5b2471f25751d803c7ae6da4bda3bef2ad5` |
+
+The exact annotation join found 46,462 positive human-label rows and 101,355
+box rows for the expanded candidates. It tagged 10,714 sources and approved the
+rights evidence for all 11,998 complete catalog rows. Machine labels were not
+used for rejection. After the frozen dimension/area and five-image author cap,
+the expanded split capacity is:
+
+| Projected split | Quality/author capacity | After conservative deduplication | Exact quota | 20% surplus target |
+| --- | ---: | ---: | ---: | ---: |
+| train | 4,302 | 4,293 | 3,200 | 3,840 |
+| validation | 483 | 482 | 400 | 480 |
+| test | 516 | 516 | 400 | 480 |
+
+Ten candidates were conservatively rejected by the frozen pHash threshold;
+there were no additional dHash, exact-byte, decoded-pixel, or Flickr-ID
+collisions in this stable-order capacity pass. All three splits still pass the
+surplus gate, although validation remains close to it. The deterministic
+people-review queue contains 750 train, 94 validation,
+and 94 test candidates, exactly 25% above the required 600/75/75 approvals. Its
+JSONL SHA-256 is
+`fdc4a67545bff5db4b7c17ef64cef6699dfeb694aaf5a4685b51526052d6aa18`;
+the generated HTML and JSONL remain external under `~/TGPC`. Human review is
+still required before Open Images candidates can enter final selection. The
+review page is reject-only: unchecked entries are exported as approved, so the
+reviewer scans the complete queue and marks only obvious minors or sensitive
+content rather than clicking 938 individual approval controls.
+
+The separate borderline-duplicate pass examines the 5,301 candidates that can
+survive the projected split and five-image author cap. The frozen manual band
+is dHash distance 6-7 or DCT pHash distance 9-10, immediately outside the hard
+automatic thresholds of 5 and 8. It found 27 review pairs involving 46 sources,
+plus 11 hard-close pairs that remain automatically excluded. Because pairwise
+review would make transitive duplicate families awkward and error-prone, the
+tool groups those pairs into 20 connected review clusters. The cluster queue
+SHA-256 is
+`f567b7db6055780e50b0208a2c5240d3533708a35b4612102f6f27ab54426ee6`;
+the pending-manifest SHA-256 is
+`4403a812791504403a9d03dde8d01c404d6d1ca28d87cf002eff0a401099aa0e`.
+Every involved source is ineligible until its complete cluster is explicitly
+reviewed and any redundant members are rejected.
 
 The run also confirms an operational distinction. Parallel decoding and
-classification scale adequately even from the network store, but Python V2
-assembly currently rehashes source files serially and classifier resume startup
-canonicalizes all candidate paths on the CIFS mount. Both are bounded and
-correct, but optimizing those preparation stages would improve iteration time
-before processing substantially larger candidate pools.
+classification scale adequately even from the network store. V2 assembly now
+uses bounded parallel source authentication while preserving deterministic
+record order. Classifier resume startup still canonicalizes all candidate paths
+on the CIFS mount; it is bounded and correct, but remains an avoidable iteration
+cost.
+
+## Commons and Smithsonian metadata preparation
+
+The two supplementary candidate catalogs have now been frozen at metadata
+level. All generated snapshots and original images remain external under
+`~/TGPC`.
+
+The Commons collector uses the tracked bounded category recipe rather than a
+manually edited title list. It combines subject-tagged Quality Images with
+explicit CC BY 2.0/3.0/4.0 and CC0 license categories. This distinction is
+necessary: a Quality-Images-only pilot found just 471 admissible files among
+3,850 discoveries because 3,368 used ShareAlike or another excluded license.
+The final author-balanced run discovered 23,850 unique files and froze exactly
+3,000 records after rejecting 3,304 disallowed-license, 1,567 undersized, 677
+unsupported-raster, and 14,051 above-author-cap candidates. It contains 1,063
+authors; after applying the final five-image cap, its projected capacities are
+1,814 train, 247 validation, and 180 test candidates, comfortably above the
+480/60/60 quota. The snapshot SHA-256 is
+`c03fb6265aae1462b0e37c06627caca4ddc6e25079fa3dd7ff4363d1a71af0b6`;
+the normalized candidate JSONL SHA-256 is
+`886e3d196e30258a65bfd1b59bd3649b6c15c95e4037c6011e274eb6c8482221`.
+All 3,000 rows have complete whitelisted catalog rights evidence. The tracked
+recipe SHA-256 is
+`46ada0da3f88323e1497e704950530ddec95f453518890e1317f57090f7f8e99`.
+
+Smithsonian collection used anonymous Open Data on AWS metadata shards. A
+first pass exposed 200 otherwise usable records without a stable landing page;
+the collector now rejects those before normalization because the rights trail
+would be incomplete. Offline replay of the already-authenticated shards emitted
+1,576 initial and 800 expansion records, or 2,376 unique eligible records. The
+merged compact snapshot SHA-256 is
+`0e0973e40b657a12958d2a43c002ed9ebd56056aa54a9e9b98ad5e32e5254121`.
+The deterministic first 2,000 normalized candidates have SHA-256
+`d0ec606cb208b82fd51cabe9821db4021a2bf999465b290a0101b09867405346`;
+all are explicit CC0 with complete metadata and media rights evidence.
+Each candidate now carries the catalog-declared JPEG type, including 189
+Smithsonian delivery-service URLs whose query identifiers have no filename
+extension. This prevents authenticated JPEGs from being assigned a misleading
+`.img` cache suffix.
+
+Catalog category terms are mapped through the tracked, authenticated
+`catalog-content-tags-v1.json`. It identifies 147 Smithsonian people candidates,
+which remain ineligible without a manual no-obvious-minors/no-sensitive-content
+decision. The selector can satisfy its fixed people quota entirely from the
+reviewed Open Images queue and has more than enough non-people Smithsonian
+capacity, so those records cannot enter the corpus accidentally. A generic
+catalog contact-sheet/decision path is nevertheless available if they are to be
+considered later.
+
+All 2,000 Smithsonian originals were then downloaded and authenticated. The
+portable-cache migration moved the 189 extensionless delivery-service objects
+to their catalog-declared `.jpg` names without redownloading them. A retry of
+just those records completed the classification, producing a 2,000-record
+classification JSONL with SHA-256
+`264d69b9e54f88c00fbe5d4b4501c97950f01c8f13666e53ca3a6b1cf230768c`.
+Assembly re-authenticated every source and produced a V2 manifest with SHA-256
+`65aa619e6ceb49c907e6ff564284879f03cd2d4b7cf1a5d36024362102f27082`.
+After the frozen decoded-size gates, the non-people capacity is 1,417 train,
+209 validation, and 182 test candidates, far above the required 320/40/40.
+
+The optional Smithsonian people queue contains 116 train, 21 validation, and
+10 test records and has SHA-256
+`f7ad7809b2665e96122e8f2b4461a95360664ded62aedb66fd7b98dbede4e4de`.
+The duplicate pass found 1,174 borderline pairs involving 280 sources and
+grouped them into 25 connected clusters; 25 dHash-close and 911 pHash-close
+pairs are hard exclusions under the frozen thresholds. The canonical cluster
+queue has SHA-256
+`0bc622a8a0d72375dc6ab6805ff05b111cf9824dfaaf2f42c1be447b414a3a87`.
+The large pair count is concentrated in visually repetitive museum/artwork
+families, which is precisely why cluster-level review is required rather than
+1,174 independent pair decisions.
 
 ## Incomplete plan items
 
 The following remain deliberately open rather than being represented as done:
 
-- Curating/downloading/reviewing the 5,000 licensed sources.
-- Capturing and pinning the actual external catalog snapshots and SHA-256 values.
+- Completing the 938-image Open Images people review and the 20-cluster
+  ambiguous-duplicate review.
+- Completing download, classification, assembly, people review, and duplicate
+  review of the frozen 3,000 Commons candidates. Smithsonian download,
+  classification, assembly, and review-queue preparation are complete; its 25
+  duplicate clusters remain a manual decision only if those candidates are
+  needed for final selection.
 - Freezing and publishing `corpus-v1.jsonl`, TGPC, deterministic gzip, fetch
   list, and attribution notice.
 - Source-count convergence and augmentation/noise selection.

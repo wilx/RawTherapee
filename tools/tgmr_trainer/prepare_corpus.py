@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import base64
+import collections
+import concurrent.futures
 import csv
 import hashlib
 import html
@@ -31,6 +33,16 @@ SOURCE_FORMAT = "rawtherapee-tgmr-corpus-source-manifest-v2"
 SNAPSHOT_FORMAT = "rawtherapee-tgmr-catalog-snapshot-v1"
 FETCHED_FORMAT = "rawtherapee-tgmr-fetched-candidate-v1"
 REVIEW_FORMAT = "rawtherapee-tgmr-source-review-v1"
+OPENIMAGES_REVIEW_QUEUE_FORMAT = "rawtherapee-tgmr-openimages-people-review-queue-v1"
+OPENIMAGES_PEOPLE_DECISION_FORMAT = "rawtherapee-tgmr-openimages-people-review-decision-v1"
+PEOPLE_REVIEW_QUEUE_FORMAT = "rawtherapee-tgmr-people-review-queue-v1"
+PEOPLE_DECISION_FORMAT = "rawtherapee-tgmr-people-review-decision-v1"
+DUPLICATE_REVIEW_QUEUE_FORMAT = "rawtherapee-tgmr-duplicate-cluster-review-queue-v1"
+DUPLICATE_DECISION_FORMAT = "rawtherapee-tgmr-duplicate-review-decision-v1"
+HARD_DHASH_DISTANCE = 5
+HARD_PHASH_DISTANCE = 8
+BORDERLINE_DHASH_DISTANCE = 7
+BORDERLINE_PHASH_DISTANCE = 10
 ACCEPTED_LICENSES = frozenset(
     ("CC0-1.0", "PDM-1.0", "CC-BY-2.0", "CC-BY-3.0", "CC-BY-4.0")
 )
@@ -38,13 +50,18 @@ CONTENT_TAGS = frozenset(
     (
         "people", "skin-hair-clothing", "foliage", "fur-feathers",
         "architecture-brick", "textile-print", "metal-specular-jewelry",
-        "food", "water-sky", "low-light", "macro-specimen",
+        "food", "water-sky", "low-light", "astronomy-star-field",
+        "macro-specimen",
     )
 )
 CHUNK = 1024 * 1024
 SMITHSONIAN_AWS_INDEX = (
     "https://smithsonian-open-access.s3-us-west-2.amazonaws.com/metadata/edan/index.txt"
 )
+COMMONS_API = "https://commons.wikimedia.org/w/api.php"
+COMMONS_REQUEST_INTERVAL_SECONDS = 0.5
+CORPUS_SELECTION_SEED = "rawtherapee-tgmr-corpus-v1-selection"
+_commons_last_request = 0.0
 
 
 class CorpusPreparationError(ValueError):
@@ -135,10 +152,14 @@ def normalized_author_id(author_url: str, author: str, prefix: str) -> str:
     return portable_id(prefix + ":" + author.casefold())
 
 
-def candidate_cache_filename(record: dict[str, object]) -> str:
-    identity = portable_id(
-        f"{clean_text(record.get('catalog'), '')}:{clean_text(record.get('upstream_source_id'), '')}"
-    )
+def _candidate_suffix(record: dict[str, object], use_hint: bool = True) -> str:
+    hint = str(record.get("file_type_hint") or "").casefold() if use_hint else ""
+    if hint in ("jpeg", "jpg"):
+        return ".jpg"
+    if hint == "png":
+        return ".png"
+    if hint in ("tif", "tiff"):
+        return ".tiff"
     parsed = urllib.parse.urlparse(str(record.get("original_url", "")))
     suffix = Path(parsed.path).suffix.lower()
     if not suffix:
@@ -149,7 +170,38 @@ def candidate_cache_filename(record: dict[str, object]) -> str:
         suffix = ".jpg"
     if suffix not in (".jpg", ".png", ".tif", ".tiff"):
         suffix = ".img"
+    return suffix
+
+
+def candidate_cache_filename(record: dict[str, object]) -> str:
+    identity = portable_id(
+        f"{clean_text(record.get('catalog'), '')}:{clean_text(record.get('upstream_source_id'), '')}"
+    )
+    suffix = _candidate_suffix(record)
+    # A colon is legal on the Linux preparation host but not in Windows file
+    # names. Keep cache names portable because they are frozen into source
+    # manifest v2 and consumed by the reconstruction utility on every platform.
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", identity).strip("-._")[:160]
+    identity_suffix = hashlib.sha256(identity.encode()).hexdigest()[:16]
+    return f"{stem}-{identity_suffix}{suffix}"
+
+
+def _legacy_candidate_cache_filename(record: dict[str, object]) -> str:
+    """Return the pre-v2 portable-cache fix name for one-time local migration."""
+    identity = portable_id(
+        f"{clean_text(record.get('catalog'), '')}:{clean_text(record.get('upstream_source_id'), '')}"
+    )
+    suffix = _candidate_suffix(record, use_hint=False)
     return identity + suffix
+
+
+def _unhinted_candidate_cache_filename(record: dict[str, object]) -> str:
+    identity = portable_id(
+        f"{clean_text(record.get('catalog'), '')}:{clean_text(record.get('upstream_source_id'), '')}"
+    )
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", identity).strip("-._")[:160]
+    identity_suffix = hashlib.sha256(identity.encode()).hexdigest()[:16]
+    return f"{stem}-{identity_suffix}{_candidate_suffix(record, use_hint=False)}"
 
 
 def safe_cache_path(cache: Path, relative: str) -> Path:
@@ -208,9 +260,23 @@ def candidate(
     flickr_id: str | None = None, rights_evidence_url: str | None = None,
     archive_fallbacks: list[dict[str, object]] | None = None,
     catalog_categories: list[str] | None = None,
+    content_tags: list[str] | None = None,
+    approve_complete_rights: bool = False,
+    content_tag_rules_sha256: str | None = None,
+    file_type_hint: str | None = None,
 ) -> dict[str, object]:
     accepted = license_name in ACCEPTED_LICENSES
-    return {
+    complete_rights = all((
+        clean_text(author, "") and clean_text(author, "").casefold() != "unknown",
+        isinstance(author_url, str) and author_url.startswith(("https://", "http://")),
+        isinstance(landing_page, str) and landing_page.startswith(("https://", "http://")),
+        isinstance(rights_evidence_url or landing_page, str)
+        and str(rights_evidence_url or landing_page).startswith(("https://", "http://")),
+    ))
+    tags = sorted(set(content_tags or []))
+    if any(tag not in CONTENT_TAGS for tag in tags):
+        raise CorpusPreparationError("candidate contains an unknown content tag")
+    output = {
         "advertised_checksum": advertised_checksum,
         "author": clean_text(author, "unknown"),
         "author_id": portable_id(author_id),
@@ -218,6 +284,7 @@ def candidate(
         "archive_fallbacks": archive_fallbacks or [],
         "catalog": catalog,
         "catalog_categories": catalog_categories or [],
+        "content_tags": tags,
         "catalog_revision": revision,
         "catalog_snapshot_sha256": snapshot_sha256,
         "format": CANDIDATE_FORMAT,
@@ -226,11 +293,80 @@ def candidate(
         "license_url": license_url(license_name) if accepted else rights_evidence_url or landing_page,
         "original_url": original_url,
         "rights_evidence_url": rights_evidence_url or landing_page,
-        "rights_review_status": "pending" if accepted else "rejected-license",
+        "rights_review_status": (
+            "approved" if accepted and approve_complete_rights and complete_rights
+            else "pending" if accepted else "rejected-license"
+        ),
         "title": clean_text(title, upstream_id),
         "upstream_flickr_id": flickr_id,
         "upstream_source_id": upstream_id,
     }
+    if content_tag_rules_sha256 is not None:
+        output["content_tag_rules_sha256"] = require_sha256(
+            content_tag_rules_sha256, "content_tag_rules_sha256"
+        )
+    if file_type_hint is not None:
+        if file_type_hint not in ("jpeg", "png", "tiff"):
+            raise CorpusPreparationError("candidate file_type_hint is invalid")
+        output["file_type_hint"] = file_type_hint
+    return output
+
+
+def _content_tag_rules(path: Path | None) -> tuple[list[dict[str, object]], str | None]:
+    if path is None:
+        return [], None
+    digest, _ = sha256_file(path)
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or set(value) != {"format", "rules"} or value.get(
+        "format"
+    ) != "rawtherapee-tgmr-catalog-content-tag-rules-v1":
+        raise CorpusPreparationError("wrong catalog content-tag rules format")
+    rules = value.get("rules")
+    if not isinstance(rules, list):
+        raise CorpusPreparationError("content-tag rules must be a list")
+    for rule in rules:
+        if not isinstance(rule, dict) or set(rule) not in (
+            {"patterns", "tags"}, {"patterns", "tags", "title_patterns"},
+        ):
+            raise CorpusPreparationError("malformed content-tag rule")
+        patterns = rule.get("patterns")
+        tags = rule.get("tags")
+        if not isinstance(patterns, list) or not patterns or any(
+            not isinstance(pattern, str) or not pattern.strip() for pattern in patterns
+        ):
+            raise CorpusPreparationError("content-tag patterns must be nonempty strings")
+        if not isinstance(tags, list) or not tags or any(tag not in CONTENT_TAGS for tag in tags):
+            raise CorpusPreparationError("content-tag rule contains invalid tags")
+        title_patterns = rule.get("title_patterns")
+        if title_patterns is not None and (
+            not isinstance(title_patterns, list) or not title_patterns or any(
+                not isinstance(pattern, str) or not pattern.strip()
+                for pattern in title_patterns
+            )
+        ):
+            raise CorpusPreparationError(
+                "content-tag title_patterns must be nonempty strings"
+            )
+    return rules, digest
+
+
+def _tags_for_categories(
+    categories: Iterable[object], rules: list[dict[str, object]], title: str = "",
+) -> list[str]:
+    haystack = "\n".join(clean_text(category, "").casefold() for category in categories)
+    title_haystack = clean_text(title, "").casefold()
+    tags: set[str] = set()
+    for rule in rules:
+        category_match = any(
+            str(pattern).casefold() in haystack for pattern in rule["patterns"]
+        )
+        title_patterns = rule.get("title_patterns")
+        title_match = title_patterns is None or any(
+            str(pattern).casefold() in title_haystack for pattern in title_patterns
+        )
+        if category_match and title_match:
+            tags.update(map(str, rule["tags"]))
+    return sorted(tags)
 
 
 def normalize_openimages(path: Path, revision: str, digest: str) -> Iterator[dict[str, object]]:
@@ -331,7 +467,11 @@ def _jsonl(path: Path) -> Iterator[dict[str, object]]:
             yield value
 
 
-def normalize_commons(path: Path, revision: str, digest: str) -> Iterator[dict[str, object]]:
+def normalize_commons(
+    path: Path, revision: str, digest: str,
+    tag_rules: list[dict[str, object]] | None = None,
+    tag_rules_sha256: str | None = None,
+) -> Iterator[dict[str, object]]:
     """Normalize frozen MediaWiki imageinfo results, one page per JSONL line."""
     for value in _jsonl(path):
         title = clean_text(value.get("title"), "")
@@ -347,19 +487,37 @@ def normalize_commons(path: Path, revision: str, digest: str) -> Iterator[dict[s
         short = license_id(meta("LicenseShortName")) or license_id(meta("LicenseUrl"))
         page_id = str(value.get("pageid") or title)
         author = re.sub(r"<[^>]+>", "", meta("Artist")) or clean_text(info.get("user"), "unknown")
+        commons_user = clean_text(info.get("userid") or info.get("user"), author)
+        categories = value.get("catalog_categories", [])
+        tags = value.get("content_tags", [])
+        if not isinstance(categories, list) or not isinstance(tags, list):
+            raise CorpusPreparationError("Commons categories and content_tags must be lists")
         yield candidate(
             catalog="wikimedia-commons", revision=revision, snapshot_sha256=digest,
             upstream_id=page_id, original_url=require_url(info.get("url"), "Commons original URL"),
             landing_page=require_url(info.get("descriptionurl"), "Commons description URL"),
-            author=author, author_id=str(info.get("userid") or info.get("user") or author),
+            author=author, author_id=portable_id("commons-user:" + commons_user.casefold()),
             author_url=str(info.get("userpage") or info.get("descriptionurl")),
             title=title, license_name=short,
-            advertised_checksum=f"sha1:{str(info.get('sha1') or '')}" if info.get("sha1") else None,
+            advertised_checksum=(
+                f"sha1:{str(info.get('sha1') or '').casefold()}"
+                if info.get("sha1") else None
+            ),
             rights_evidence_url=str(info.get("descriptionurl")),
+            catalog_categories=sorted(set(map(str, categories))),
+            content_tags=sorted(set(map(str, tags)).union(
+                _tags_for_categories(categories, tag_rules or [], title)
+            )),
+            approve_complete_rights=True,
+            content_tag_rules_sha256=tag_rules_sha256,
         )
 
 
-def normalize_smithsonian(path: Path, revision: str, digest: str) -> Iterator[dict[str, object]]:
+def normalize_smithsonian(
+    path: Path, revision: str, digest: str,
+    tag_rules: list[dict[str, object]] | None = None,
+    tag_rules_sha256: str | None = None,
+) -> Iterator[dict[str, object]]:
     """Normalize frozen Smithsonian Open Access AWS/API records."""
     for value in _jsonl(path):
         identifier = clean_text(value.get("id"), "")
@@ -387,6 +545,12 @@ def normalize_smithsonian(path: Path, revision: str, digest: str) -> Iterator[di
                 clean_text(category, "") for category in categories
                 if clean_text(category, "")
             ],
+            content_tags=_tags_for_categories(
+                categories, tag_rules or [], clean_text(value.get("title"), identifier)
+            ),
+            approve_complete_rights=True,
+            content_tag_rules_sha256=tag_rules_sha256,
+            file_type_hint="jpeg",
         )
 
 
@@ -429,9 +593,24 @@ def _read_id_list(path: Path) -> list[str]:
     return values
 
 
+def _catalog_dimension_eligible(width: object, height: object) -> bool | None:
+    """Return a catalog-only resolution decision, or None when dimensions are absent."""
+    try:
+        parsed_width = int(str(width))
+        parsed_height = int(str(height))
+    except (TypeError, ValueError):
+        return None
+    if parsed_width <= 0 or parsed_height <= 0:
+        return None
+    return min(parsed_width, parsed_height) >= 512 \
+        and parsed_width * parsed_height >= 750000
+
+
 def collect_commons(arguments: argparse.Namespace) -> int:
     titles = _read_id_list(arguments.ids)
     records: list[dict[str, object]] = []
+    found = 0
+    rejected_dimensions = 0
     for offset in range(0, len(titles), 50):
         query = urllib.parse.urlencode({
             "action": "query", "format": "json", "formatversion": "2",
@@ -455,6 +634,13 @@ def collect_commons(arguments: argparse.Namespace) -> int:
             imageinfo = page.get("imageinfo")
             if not isinstance(imageinfo, list) or len(imageinfo) != 1:
                 raise CorpusPreparationError("Commons page lacks one imageinfo revision")
+            found += 1
+            dimensions = _catalog_dimension_eligible(
+                imageinfo[0].get("width"), imageinfo[0].get("height")
+            )
+            if dimensions is False:
+                rejected_dimensions += 1
+                continue
             records.append({
                 "imageinfo": imageinfo[0], "pageid": page.get("pageid"),
                 "title": page.get("title"),
@@ -463,10 +649,297 @@ def collect_commons(arguments: argparse.Namespace) -> int:
     write_jsonl(arguments.output, records, arguments.force)
     sys.stdout.buffer.write(canonical_pretty({
         "format": "rawtherapee-tgmr-commons-snapshot-report-v1",
-        "records": len(records), "requested": len(titles),
+        "found": found, "records": len(records),
+        "rejected_dimensions": rejected_dimensions, "requested": len(titles),
         "sha256": sha256_file(arguments.output)[0],
     }))
     return 0 if len(records) == len(titles) else 1
+
+
+def _commons_api_json(parameters: dict[str, object]) -> dict[str, object]:
+    """Read one MediaWiki API response with bounded maxlag retry handling."""
+    global _commons_last_request
+    query = dict(parameters)
+    query.update({"format": "json", "formatversion": "2", "maxlag": "5"})
+    url = COMMONS_API + "?" + urllib.parse.urlencode(query)
+    last_error: Exception | None = None
+    for attempt in range(8):
+        try:
+            remaining = COMMONS_REQUEST_INTERVAL_SECONDS - (
+                time.monotonic() - _commons_last_request
+            )
+            if remaining > 0:
+                time.sleep(remaining)
+            request = urllib.request.Request(
+                url, headers={
+                    "User-Agent": (
+                        "RawTherapee-TGMR-corpus/1.0 "
+                        "(https://github.com/Beep6581/RawTherapee)"
+                    )
+                },
+            )
+            with urllib.request.urlopen(request, timeout=120) as response:
+                payload = json.load(response)
+            _commons_last_request = time.monotonic()
+            if not isinstance(payload, dict):
+                raise CorpusPreparationError("Commons API returned a non-object")
+            api_error = payload.get("error")
+            if isinstance(api_error, dict):
+                code = clean_text(api_error.get("code"), "unknown")
+                if code == "maxlag" and attempt < 7:
+                    time.sleep(min(2 ** attempt, 8))
+                    continue
+                raise CorpusPreparationError(f"Commons API error: {code}")
+            return payload
+        except urllib.error.HTTPError as error:
+            last_error = error
+            _commons_last_request = time.monotonic()
+            if attempt < 7 and error.code in (429, 500, 502, 503, 504):
+                retry_after = error.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after is not None else 2 ** attempt
+                except ValueError:
+                    delay = 2 ** attempt
+                time.sleep(max(1.0, min(delay, 60.0)))
+                continue
+            break
+        except (OSError, urllib.error.URLError) as error:
+            last_error = error
+            _commons_last_request = time.monotonic()
+            if attempt < 7:
+                time.sleep(min(2 ** attempt, 8))
+                continue
+    raise CorpusPreparationError(f"Commons API request failed: {last_error}")
+
+
+def _commons_category_members(
+    category: str, max_members: int,
+) -> list[dict[str, object]]:
+    members: list[dict[str, object]] = []
+    continuation: str | None = None
+    while True:
+        parameters: dict[str, object] = {
+            "action": "query", "list": "categorymembers", "cmtitle": category,
+            "cmtype": "file|subcat", "cmprop": "ids|title|type", "cmlimit": "500",
+            "cmsort": "sortkey", "cmdir": "ascending",
+        }
+        if continuation is not None:
+            parameters["cmcontinue"] = continuation
+        payload = _commons_api_json(parameters)
+        values = payload.get("query", {})
+        values = values.get("categorymembers") if isinstance(values, dict) else None
+        if not isinstance(values, list):
+            raise CorpusPreparationError(f"Commons category response lacks members: {category}")
+        for value in values:
+            if not isinstance(value, dict):
+                raise CorpusPreparationError("Commons category contains a non-object member")
+            members.append(value)
+            if len(members) >= max_members:
+                return members
+        next_value = payload.get("continue")
+        continuation = (
+            clean_text(next_value.get("cmcontinue"), "")
+            if isinstance(next_value, dict) else ""
+        )
+        if not continuation:
+            break
+    return members
+
+
+def _commons_recipe(path: Path) -> dict[str, object]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("format") != (
+        "rawtherapee-tgmr-commons-category-recipe-v1"
+    ):
+        raise CorpusPreparationError("wrong Commons category recipe format")
+    if set(value) != {
+        "api", "candidate_author_cap", "format", "roots", "seed", "target_records"
+    }:
+        raise CorpusPreparationError("Commons category recipe has unknown or missing fields")
+    if value.get("api") != COMMONS_API:
+        raise CorpusPreparationError("Commons category recipe has an unexpected API")
+    roots = value.get("roots")
+    if not isinstance(roots, list) or not roots:
+        raise CorpusPreparationError("Commons category recipe needs roots")
+    for root in roots:
+        if not isinstance(root, dict) or set(root) != {
+            "category", "content_tags", "max_categories", "max_depth", "max_files",
+            "max_members_per_category",
+        }:
+            raise CorpusPreparationError("malformed Commons category root")
+        if not str(root.get("category", "")).startswith("Category:"):
+            raise CorpusPreparationError("Commons root needs a Category: title")
+        tags = root.get("content_tags")
+        if not isinstance(tags, list) or any(tag not in CONTENT_TAGS for tag in tags):
+            raise CorpusPreparationError("Commons root has invalid content tags")
+        for field in (
+            "max_categories", "max_depth", "max_files", "max_members_per_category",
+        ):
+            if not isinstance(root.get(field), int) or int(root[field]) < 0:
+                raise CorpusPreparationError(f"Commons root {field} must be non-negative")
+    if not isinstance(value.get("target_records"), int) or int(value["target_records"]) <= 0:
+        raise CorpusPreparationError("Commons target_records must be positive")
+    if not isinstance(value.get("candidate_author_cap"), int) \
+            or int(value["candidate_author_cap"]) < 5:
+        raise CorpusPreparationError("Commons candidate_author_cap must be at least five")
+    if not clean_text(value.get("seed"), ""):
+        raise CorpusPreparationError("Commons recipe needs a seed")
+    return value
+
+
+def collect_commons_categories(arguments: argparse.Namespace) -> int:
+    """Freeze a deterministic, rights-filtered Commons metadata snapshot."""
+    recipe = _commons_recipe(arguments.recipe)
+    target = int(recipe["target_records"])
+    if arguments.limit is not None:
+        target = min(target, arguments.limit)
+    seed = str(recipe["seed"])
+    discovery: dict[str, dict[str, set[str]]] = {}
+    root_reports = []
+    for root in recipe["roots"]:  # type: ignore[union-attr]
+        category = str(root["category"])
+        max_depth = int(root["max_depth"])
+        max_categories = int(root["max_categories"])
+        max_files = int(root["max_files"])
+        max_members_per_category = int(root["max_members_per_category"])
+        root_tags = set(map(str, root["content_tags"]))
+        queue: collections.deque[tuple[str, int]] = collections.deque([(category, 0)])
+        seen_categories: set[str] = set()
+        root_files: set[str] = set()
+        while queue and len(seen_categories) < max_categories and len(root_files) < max_files:
+            current, depth = queue.popleft()
+            if current in seen_categories:
+                continue
+            seen_categories.add(current)
+            members = _commons_category_members(current, max_members_per_category)
+            subcategories = []
+            for member in members:
+                title = clean_text(member.get("title"), "")
+                member_type = clean_text(member.get("type"), "")
+                if member_type == "file" and title.startswith("File:"):
+                    root_files.add(title)
+                elif member_type == "subcat" and depth < max_depth \
+                        and title.startswith("Category:"):
+                    subcategories.append(title)
+            for subcategory in sorted(set(subcategories), key=str.casefold):
+                if subcategory not in seen_categories:
+                    queue.append((subcategory, depth + 1))
+        ordered_root_files = sorted(
+            root_files,
+            key=lambda title: (hashlib.sha256((seed + "\0" + category + "\0" + title).encode()).digest(), title),
+        )[:max_files]
+        for title in ordered_root_files:
+            entry = discovery.setdefault(title, {"categories": set(), "tags": set()})
+            entry["categories"].add(category)
+            entry["tags"].update(root_tags)
+        root_reports.append({
+            "category": category, "categories_scanned": len(seen_categories),
+            "files": len(ordered_root_files), "queue_remaining": len(queue),
+        })
+
+    ordered_titles = sorted(
+        discovery,
+        key=lambda title: (hashlib.sha256((seed + "\0" + title).encode()).digest(), title),
+    )
+    records: list[dict[str, object]] = []
+    author_counts: collections.Counter[str] = collections.Counter()
+    rejected_dimensions = 0
+    rejected_license = 0
+    rejected_type = 0
+    rejected_author_cap = 0
+    missing = 0
+    for offset in range(0, len(ordered_titles), 50):
+        titles = ordered_titles[offset:offset + 50]
+        payload = _commons_api_json({
+            "action": "query", "iiextmetadatafilter": "Artist|LicenseShortName|LicenseUrl",
+            "iiprop": "url|sha1|size|mime|timestamp|user|userid|extmetadata",
+            "prop": "imageinfo", "titles": "|".join(titles),
+        })
+        pages = payload.get("query", {})
+        pages = pages.get("pages") if isinstance(pages, dict) else None
+        if not isinstance(pages, list):
+            raise CorpusPreparationError("Commons imageinfo response lacks pages")
+        pages_by_title = {
+            clean_text(page.get("title"), ""): page
+            for page in pages if isinstance(page, dict)
+        }
+        for requested_title in titles:
+            page = pages_by_title.get(requested_title)
+            if page is None:
+                missing += 1
+                continue
+            if not isinstance(page, dict) or page.get("missing"):
+                missing += 1
+                continue
+            imageinfo = page.get("imageinfo")
+            if not isinstance(imageinfo, list) or len(imageinfo) != 1:
+                missing += 1
+                continue
+            info = imageinfo[0]
+            title = clean_text(page.get("title"), "")
+            if title not in discovery:
+                raise CorpusPreparationError("Commons imageinfo changed a discovered title")
+            if _catalog_dimension_eligible(info.get("width"), info.get("height")) is False:
+                rejected_dimensions += 1
+                continue
+            mime = clean_text(info.get("mime"), "").casefold()
+            if mime not in ("image/jpeg", "image/png", "image/tiff"):
+                rejected_type += 1
+                continue
+            metadata = info.get("extmetadata")
+            if not isinstance(metadata, dict):
+                rejected_license += 1
+                continue
+            def meta(name: str) -> str:
+                entry = metadata.get(name)
+                return clean_text(entry.get("value") if isinstance(entry, dict) else entry, "")
+            if license_id(meta("LicenseShortName")) not in ACCEPTED_LICENSES \
+                    and license_id(meta("LicenseUrl")) not in ACCEPTED_LICENSES:
+                rejected_license += 1
+                continue
+            author_key = clean_text(
+                info.get("userid") or info.get("user") or meta("Artist"), "unknown"
+            ).casefold()
+            if author_counts[author_key] >= int(recipe["candidate_author_cap"]):
+                rejected_author_cap += 1
+                continue
+            author_counts[author_key] += 1
+            records.append({
+                "catalog_categories": sorted(discovery[title]["categories"]),
+                "content_tags": sorted(discovery[title]["tags"]),
+                "imageinfo": info, "pageid": page.get("pageid"), "title": title,
+            })
+        # ordered_titles is already in the frozen selection order, so later
+        # API pages cannot displace an accepted record once the target fills.
+        if len(records) >= target:
+            break
+    records.sort(
+        key=lambda value: (
+            hashlib.sha256((seed + "\0" + str(value.get("title"))).encode()).digest(),
+            str(value.get("title")),
+        )
+    )
+    records = records[:target]
+    records.sort(key=lambda value: str(value.get("title")).casefold())
+    payload = "".join(canonical_json(record) + "\n" for record in records).encode()
+    complete = len(records) == target
+    if complete:
+        atomic_bytes(arguments.output, payload, arguments.force)
+    report = {
+        "discovered_files": len(discovery), "format": (
+            "rawtherapee-tgmr-commons-category-snapshot-report-v1"
+        ), "missing": missing, "recipe_sha256": sha256_file(arguments.recipe)[0],
+        "records": len(records), "rejected_dimensions": rejected_dimensions,
+        "rejected_author_cap": rejected_author_cap,
+        "rejected_license": rejected_license, "rejected_type": rejected_type,
+        "published": complete, "roots": root_reports,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "target_records": target,
+    }
+    if arguments.report is not None:
+        atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0 if complete else 1
 
 
 def _smithsonian_record(response: dict[str, object]) -> dict[str, object] | None:
@@ -481,6 +954,13 @@ def _smithsonian_record(response: dict[str, object]) -> dict[str, object] | None
         metadata_usage.get("access") if isinstance(metadata_usage, dict) else metadata_usage
     )
     if str(metadata_access).casefold() != "cc0":
+        return None
+    record_url = descriptive.get("record_link")
+    if not isinstance(record_url, str) or not record_url.startswith(("https://", "http://")):
+        # A stable landing page is part of the frozen rights/provenance
+        # evidence.  Some otherwise usable Smithsonian records omit it; they
+        # must not enter the candidate pool because normalization cannot
+        # reconstruct that evidence later.
         return None
     online = descriptive.get("online_media")
     media_values = online.get("media") if isinstance(online, dict) else None
@@ -498,19 +978,31 @@ def _smithsonian_record(response: dict[str, object]) -> dict[str, object] | None
         preferred_labels = ("High-resolution JPEG", "Screen Image")
         selected_resource = None
         for label in preferred_labels:
+            candidates = (
+                item for item in resource_values
+                if isinstance(item, dict)
+                and clean_text(item.get("label"), "") == label
+                and isinstance(item.get("url"), str)
+            )
             selected_resource = next(
-                (
-                    item for item in resource_values
-                    if isinstance(item, dict)
-                    and clean_text(item.get("label"), "") == label
-                    and isinstance(item.get("url"), str)
-                ),
+                (item for item in candidates
+                 if _catalog_dimension_eligible(item.get("width"), item.get("height"))
+                 is not False),
                 None,
             )
             if selected_resource is not None:
                 break
+        if resource_values and selected_resource is None:
+            # The catalog supplied concrete renditions, but none met the
+            # frozen resolution gate. Do not fetch a lower-quality fallback.
+            continue
         url = selected_resource.get("url") if selected_resource else media.get("content")
-        if str(access).casefold() == "cc0" and "image" in media_type and isinstance(url, str):
+        dimensions = _catalog_dimension_eligible(
+            selected_resource.get("width") if selected_resource else None,
+            selected_resource.get("height") if selected_resource else None,
+        )
+        if str(access).casefold() == "cc0" and "image" in media_type \
+                and isinstance(url, str) and dimensions is not False:
             chosen = {
                 "checksum": media.get("checksum"),
                 "height": selected_resource.get("height") if selected_resource else None,
@@ -568,7 +1060,7 @@ def _smithsonian_record(response: dict[str, object]) -> dict[str, object] | None
         "catalog_categories": sorted(set(filter(None, categories))),
         "id": response.get("id"),
         "media": chosen,
-        "record_url": descriptive.get("record_link"),
+        "record_url": record_url,
         "title": response.get("title"),
         "unit_code": descriptive.get("unit_code"),
     }
@@ -834,6 +1326,7 @@ def normalize(arguments: argparse.Namespace) -> int:
     digest, _ = sha256_file(arguments.input)
     if arguments.snapshot_sha256 and digest != arguments.snapshot_sha256:
         raise CorpusPreparationError("input does not match --snapshot-sha256")
+    tag_rules, tag_rules_sha256 = _content_tag_rules(arguments.tag_rules)
     if arguments.catalog == "openimages":
         records = normalize_openimages(arguments.input, arguments.revision, digest)
     elif arguments.catalog == "pass":
@@ -844,20 +1337,29 @@ def normalize(arguments: argparse.Namespace) -> int:
             arguments.archive_index,
         )
     elif arguments.catalog == "commons":
-        records = normalize_commons(arguments.input, arguments.revision, digest)
+        records = normalize_commons(
+            arguments.input, arguments.revision, digest, tag_rules, tag_rules_sha256
+        )
     else:
-        records = normalize_smithsonian(arguments.input, arguments.revision, digest)
+        records = normalize_smithsonian(
+            arguments.input, arguments.revision, digest, tag_rules, tag_rules_sha256
+        )
     materialized = []
+    eligible_index = 0
     for record in records:
         if arguments.eligible_only and record["license"] not in ACCEPTED_LICENSES:
             continue
+        if eligible_index < arguments.start:
+            eligible_index += 1
+            continue
+        eligible_index += 1
         materialized.append(record)
         if arguments.limit is not None and len(materialized) >= arguments.limit:
             break
     write_jsonl(arguments.output, materialized, arguments.force)
     summary = {
         "catalog": arguments.catalog, "format": "rawtherapee-tgmr-catalog-normalization-v1",
-        "input_sha256": digest, "records": len(materialized),
+        "input_sha256": digest, "records": len(materialized), "start": arguments.start,
     }
     sys.stdout.buffer.write(canonical_pretty(summary))
     return 0
@@ -882,30 +1384,60 @@ def _advertised_matches(path: Path, advertised: object) -> bool:
     elif algorithm == "sha1":
         digest = hashlib.sha1()  # noqa: S324 - verifies a catalog identity, not security.
         expected_bytes = expected.lower()
+    elif algorithm == "sha1-base36":
+        if not re.fullmatch(r"[0-9a-z]+", expected.casefold()):
+            raise CorpusPreparationError("malformed base-36 catalog SHA-1")
+        digest = hashlib.sha1()  # noqa: S324 - verifies a catalog identity, not security.
+        expected_bytes = expected.casefold().lstrip("0") or "0"
     else:
         raise CorpusPreparationError(f"unsupported advertised checksum: {algorithm}")
     with path.open("rb") as stream:
         while block := stream.read(CHUNK):
             digest.update(block)
+    if algorithm == "sha1-base36":
+        value = int(digest.hexdigest(), 16)
+        alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+        encoded = "0"
+        if value:
+            digits = []
+            while value:
+                value, remainder = divmod(value, 36)
+                digits.append(alphabet[remainder])
+            encoded = "".join(reversed(digits))
+        return encoded == expected_bytes
     return digest.hexdigest() == expected_bytes
 
 
 def fetch(arguments: argparse.Namespace) -> int:
+    if arguments.jobs <= 0:
+        raise CorpusPreparationError("fetch --jobs must be positive")
     records = list(_jsonl(arguments.candidates))
     chosen = records[arguments.start:]
     if arguments.limit is not None:
         chosen = chosen[:arguments.limit]
     arguments.cache.mkdir(parents=True, exist_ok=True)
-    output: list[dict[str, object]] = []
-    results: list[dict[str, object]] = []
-    failures = 0
-    for record in chosen:
+    filenames = [candidate_cache_filename(record) for record in chosen]
+    if len(filenames) != len(set(filenames)):
+        raise CorpusPreparationError("fetch input maps multiple records to one cache file")
+
+    def fetch_one(record: dict[str, object]) -> tuple[dict[str, object] | None, dict[str, object]]:
         if record.get("format") != CANDIDATE_FORMAT:
             raise CorpusPreparationError("fetch input has the wrong candidate format")
         filename = candidate_cache_filename(record)
         destination = safe_cache_path(arguments.cache, filename)
         destination.parent.mkdir(parents=True, exist_ok=True)
         status = "authenticated-cache"
+        migration_sources = (
+            _unhinted_candidate_cache_filename(record),
+            _legacy_candidate_cache_filename(record),
+        )
+        for migration_name in migration_sources:
+            legacy = safe_cache_path(arguments.cache, migration_name)
+            if not destination.exists() and legacy != destination and legacy.is_file() \
+                    and _advertised_matches(legacy, record.get("advertised_checksum")):
+                os.replace(legacy, destination)
+                status = "migrated-cache"
+                break
         if not destination.exists() or not _advertised_matches(
             destination, record.get("advertised_checksum")
         ):
@@ -929,35 +1461,65 @@ def fetch(arguments: argparse.Namespace) -> int:
                     os.replace(part, destination)
                     status = "downloaded"
                     break
-                except (OSError, urllib.error.URLError, urllib.error.HTTPError):
+                except urllib.error.HTTPError as error:
                     part.unlink(missing_ok=True)
+                    status = f"http-{error.code}"
+                    if attempt < arguments.retry and error.code in (429, 500, 502, 503, 504):
+                        retry_after = error.headers.get("Retry-After")
+                        try:
+                            delay = (
+                                float(retry_after)
+                                if retry_after is not None else float(2 ** attempt)
+                            )
+                        except ValueError:
+                            delay = float(2 ** attempt)
+                        # Wikimedia currently asks bulk clients to pause for
+                        # ten minutes when its upload frontend is saturated.
+                        # Honor such server-directed pacing instead of turning
+                        # a retry loop into a burst of guaranteed failures.
+                        time.sleep(max(1.0, min(delay, 900.0)))
+                        continue
+                    break
+                except (OSError, urllib.error.URLError):
+                    part.unlink(missing_ok=True)
+                    status = "unavailable-or-changed"
                     if attempt < arguments.retry:
                         time.sleep(min(2 ** attempt, 8))
+                        continue
+                    break
             part.unlink(missing_ok=True)
-        if status not in ("authenticated-cache", "downloaded"):
-            failures += 1
-            results.append({
+        if status not in ("authenticated-cache", "downloaded", "migrated-cache"):
+            return None, {
                 "source_id": portable_id(
                     f"{record.get('catalog', '')}:{record.get('upstream_source_id', '')}"
                 ),
                 "status": status,
                 "url": record["original_url"],
-            })
-            continue
+            }
         sha256, size = sha256_file(destination)
         fetched = dict(record)
         fetched.update({
             "bytes": size, "cache_filename": filename, "format": FETCHED_FORMAT,
             "sha256": sha256,
         })
-        output.append(fetched)
-        results.append({
+        return fetched, {
             "bytes": size, "sha256": sha256,
             "source_id": portable_id(
                 f"{record.get('catalog', '')}:{record.get('upstream_source_id', '')}"
             ),
             "status": status,
-        })
+        }
+
+    output: list[dict[str, object]] = []
+    results: list[dict[str, object]] = []
+    failures = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=arguments.jobs) as executor:
+        for fetched, result in executor.map(fetch_one, chosen):
+            results.append(result)
+            if fetched is None:
+                failures += 1
+            else:
+                output.append(fetched)
     write_jsonl(arguments.output, output, arguments.force)
     report = {
         "failures": failures, "format": "rawtherapee-tgmr-candidate-fetch-report-v1",
@@ -995,6 +1557,8 @@ def read_reviews(path: Path | None) -> dict[str, dict[str, object]]:
 
 
 def assemble(arguments: argparse.Namespace) -> int:
+    if arguments.jobs <= 0:
+        raise CorpusPreparationError("assemble --jobs must be positive")
     classifications: dict[str, dict[str, object]] = {}
     for value in _jsonl(arguments.classifications):
         source_id = clean_text(value.get("source_id"), "")
@@ -1002,8 +1566,38 @@ def assemble(arguments: argparse.Namespace) -> int:
             raise CorpusPreparationError(f"duplicate classification for {source_id}")
         classifications[source_id] = value
     reviews = read_reviews(arguments.reviews)
+    candidate_values = list(_jsonl(arguments.candidates))
+    source_paths: dict[str, Path] = {}
+    for candidate_value in candidate_values:
+        candidate_format = candidate_value.get("format")
+        if candidate_format not in (FETCHED_FORMAT, CANDIDATE_FORMAT):
+            raise CorpusPreparationError(
+                "assemble requires fetched or local catalog candidate records"
+            )
+        catalog = clean_text(candidate_value.get("catalog"), "")
+        upstream = clean_text(candidate_value.get("upstream_source_id"), "")
+        source_id = portable_id(f"{catalog}:{upstream}")
+        classification_record = classifications.get(source_id)
+        if classification_record is None:
+            continue
+        cache_filename = clean_text(classification_record.get("cache_filename"), "")
+        if not cache_filename:
+            cache_filename = clean_text(candidate_value.get("cache_filename"), "")
+        source_paths[source_id] = safe_cache_path(arguments.cache, cache_filename)
+
+    def authenticate(item: tuple[str, Path]) -> tuple[str, str]:
+        source_id, source_path = item
+        if not source_path.is_file():
+            raise CorpusPreparationError(f"classified cache file is missing: {source_path}")
+        return source_id, sha256_file(source_path)[0]
+
+    source_sha256s: dict[str, str] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=arguments.jobs) as executor:
+        for source_id, digest in executor.map(authenticate, source_paths.items()):
+            source_sha256s[source_id] = digest
+
     output: list[dict[str, object]] = []
-    for candidate_value in _jsonl(arguments.candidates):
+    for candidate_value in candidate_values:
         candidate_format = candidate_value.get("format")
         if candidate_format not in (FETCHED_FORMAT, CANDIDATE_FORMAT):
             raise CorpusPreparationError(
@@ -1024,10 +1618,7 @@ def assemble(arguments: argparse.Namespace) -> int:
         cache_filename = clean_text(classification_record.get("cache_filename"), "")
         if not cache_filename:
             cache_filename = clean_text(candidate_value.get("cache_filename"), "")
-        source_path = safe_cache_path(arguments.cache, cache_filename)
-        if not source_path.is_file():
-            raise CorpusPreparationError(f"classified cache file is missing: {source_path}")
-        source_sha256, _ = sha256_file(source_path)
+        source_sha256 = source_sha256s[source_id]
         classified_sha256 = clean_text(classification_record.get("source_sha256"), "")
         if classified_sha256 and require_sha256(
             classified_sha256, "classification source_sha256"
@@ -1068,7 +1659,10 @@ def assemble(arguments: argparse.Namespace) -> int:
             reconstruction_url = candidate_value["original_url"]
         review = reviews.get(source_id, {})
         rights_status = str(review.get("rights_review_status") or candidate_value["rights_review_status"])
-        tags = sorted(set(review.get("content_tags") or []))
+        tags = sorted(set(
+            review["content_tags"] if "content_tags" in review
+            else candidate_value.get("content_tags", [])
+        ))
         people_status = str(review.get("people_review_status") or (
             "pending" if "people" in tags else "not-applicable"
         ))
@@ -1133,6 +1727,864 @@ def assemble(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _assigned_split(seed: str, author_id: str) -> str:
+    value = hashlib.sha256((seed + "\0" + author_id).encode()).digest()
+    bucket = int.from_bytes(value[:8], "big") % 20
+    return "train" if bucket < 16 else "validation" if bucket < 18 else "test"
+
+
+def _stable_order(seed: str, identity: str) -> tuple[int, str]:
+    value = hashlib.sha256((seed + "\0" + identity).encode()).digest()
+    return int.from_bytes(value[:8], "big"), identity
+
+
+def _hamming_hex(left: str, right: str) -> int:
+    return (int(left, 16) ^ int(right, 16)).bit_count()
+
+
+def _openimages_tag_map(
+    descriptions_path: Path, rules_path: Path,
+) -> tuple[dict[str, str], dict[str, set[str]], dict[str, object]]:
+    rules = json.loads(rules_path.read_text(encoding="utf-8"))
+    if not isinstance(rules, dict) or rules.get("format") != (
+        "rawtherapee-tgmr-openimages-content-tags-v1"
+    ):
+        raise CorpusPreparationError("wrong Open Images content-tag rules format")
+    label_rules = rules.get("label_names")
+    derived_rules = rules.get("derived_rules")
+    if not isinstance(label_rules, dict) or not isinstance(derived_rules, dict):
+        raise CorpusPreparationError("Open Images content-tag rules are incomplete")
+    if set(label_rules) - CONTENT_TAGS:
+        raise CorpusPreparationError("Open Images rules contain an unknown content tag")
+    by_name: dict[str, str] = {}
+    by_mid: dict[str, str] = {}
+    with descriptions_path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != ["LabelName", "DisplayName"]:
+            raise CorpusPreparationError("Open Images class descriptions have the wrong header")
+        for row in reader:
+            mid = clean_text(row.get("LabelName"), "")
+            name = clean_text(row.get("DisplayName"), "")
+            if not mid or not name or mid in by_mid or name in by_name:
+                raise CorpusPreparationError("Open Images class descriptions are malformed")
+            by_mid[mid] = name
+            by_name[name] = mid
+    tags_by_mid: dict[str, set[str]] = collections.defaultdict(set)
+    for tag, names in label_rules.items():
+        if not isinstance(names, list) or not names or any(
+            not isinstance(name, str) for name in names
+        ):
+            raise CorpusPreparationError(f"Open Images tag rule {tag} is malformed")
+        for name in names:
+            if name not in by_name:
+                raise CorpusPreparationError(
+                    f"Open Images tag rule names an unknown class: {name}"
+                )
+            tags_by_mid[by_name[name]].add(tag)
+    return by_mid, tags_by_mid, derived_rules
+
+
+def _scan_openimages_annotations(
+    path: Path, candidate_ids: set[str], labels: dict[str, set[str]],
+    provenance: dict[str, set[str]], kind: str,
+) -> tuple[int, int]:
+    matched_rows = 0
+    positive_rows = 0
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        required = {"ImageID", "LabelName"}
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise CorpusPreparationError(f"Open Images {kind} annotations have the wrong header")
+        human = "Confidence" in reader.fieldnames
+        for row in reader:
+            identity = str(row.get("ImageID") or "")
+            if identity not in candidate_ids:
+                continue
+            matched_rows += 1
+            if human:
+                try:
+                    positive = float(str(row.get("Confidence") or "nan")) == 1.0
+                except ValueError:
+                    positive = False
+                if not positive:
+                    continue
+            mid = clean_text(row.get("LabelName"), "")
+            if not mid:
+                raise CorpusPreparationError(f"Open Images {kind} annotation lacks a label")
+            labels[identity].add(mid)
+            provenance[identity].add(kind)
+            positive_rows += 1
+    return matched_rows, positive_rows
+
+
+def _openimages_review_html(
+    queue: list[dict[str, object]], cache_root: Path,
+) -> bytes:
+    cards: list[str] = []
+    for entry in queue:
+        source_id = str(entry["source_id"])
+        path = safe_cache_path(cache_root, str(entry["cache_filename"])).absolute()
+        tags = ", ".join(str(value) for value in entry["content_tags"])
+        labels = ", ".join(str(value) for value in entry["positive_labels"])
+        cards.append(
+            '<article class="card" data-source-id="' + html.escape(source_id, quote=True)
+            + '"><img loading="lazy" src="' + html.escape(path.as_uri(), quote=True)
+            + '" alt=""><h2>' + html.escape(source_id) + '</h2><p><b>'
+            + html.escape(str(entry["split"])) + '</b> · '
+            + html.escape(str(entry["author"])) + '</p><p>'
+            + html.escape(str(entry["title"])) + '</p><p>Tags: '
+            + html.escape(tags) + '</p><p>Positive labels: '
+            + html.escape(labels) + '</p><p><a href="'
+            + html.escape(str(entry["landing_page"]), quote=True)
+            + '">source and rights</a></p><label><input class="reject" '
+            + 'type="checkbox"> reject: obvious minor or sensitive content'
+            + '</label></article>'
+        )
+    body = "".join(cards)
+    document = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TGMR people review</title>
+<style>body{font-family:sans-serif;margin:1rem}header{position:sticky;top:0;background:#fff;padding:.5rem;z-index:2}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}.card{border:1px solid #999;padding:.6rem}.card.rejected{border:3px solid #a00;background:#fee}.card img{width:100%;height:240px;object-fit:contain;background:#222}.card h2{font-size:.85rem;overflow-wrap:anywhere}.card p{font-size:.8rem}</style></head>
+<body><header><strong>Unchecked images are approved.</strong> Tick only images
+that must be rejected for an obvious minor or sensitive content.
+<button id="export">Export all decisions</button>
+<span id="count"></span><span id="exportStatus"></span>
+<textarea id="exportText" hidden aria-label="Exported review decisions"></textarea>
+</header><main class="grid">""" + body + """</main>
+<script>'use strict';
+function update(){const inputs=document.querySelectorAll('.reject');for(const input of inputs){input.toggleAttribute('checked',input.checked);input.closest('.card').classList.toggle('rejected',input.checked);}const rejected=document.querySelectorAll('.card.rejected').length;document.getElementById('count').textContent=rejected+' rejected; '+(inputs.length-rejected)+' approved';}
+document.addEventListener('change',update);update();
+function decisions(){const lines=[];for(const card of document.querySelectorAll('.card')){const rejected=card.querySelector('.reject:checked')!==null;lines.push(JSON.stringify({format:'rawtherapee-tgmr-openimages-people-review-decision-v1',people_review_status:rejected?'rejected':'approved-no-minors-or-sensitive-content',source_id:card.dataset.sourceId}));}return lines.join('\\n')+'\\n';}
+document.getElementById('export').addEventListener('click',async()=>{const text=decisions();const area=document.getElementById('exportText');const status=document.getElementById('exportStatus');area.hidden=false;area.value=text;area.focus();area.select();let copied=false;try{await navigator.clipboard.writeText(text);copied=true;}catch(error){}const blob=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='openimages-people-decisions.jsonl';a.hidden=true;document.body.appendChild(a);a.click();status.textContent=' Prepared '+document.querySelectorAll('.card').length+' decisions; '+(copied?'copied to clipboard and ':'')+'download requested. If no file appears, the JSONL is selected below: press Ctrl+C and save it.';setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},30000);});
+</script></body></html>
+"""
+    return document.encode("utf-8")
+
+
+def prepare_openimages_review(arguments: argparse.Namespace) -> int:
+    records = list(_jsonl(arguments.manifest))
+    if not records:
+        raise CorpusPreparationError("Open Images review input is empty")
+    candidate_ids: set[str] = set()
+    for record in records:
+        catalog = record.get("catalog")
+        if record.get("format") != SOURCE_FORMAT or not isinstance(catalog, dict) \
+                or catalog.get("name") != "openimages-cvdf-v5-boxable":
+            raise CorpusPreparationError("Open Images review input contains a foreign record")
+        upstream = clean_text(record.get("upstream_source_id"), "")
+        if not upstream or upstream in candidate_ids:
+            raise CorpusPreparationError("Open Images review input has duplicate identities")
+        candidate_ids.add(upstream)
+
+    expected = {
+        "class descriptions": arguments.class_descriptions_sha256,
+        "human labels": arguments.human_labels_sha256,
+        "boxes": arguments.boxes_sha256,
+        "rules": arguments.rules_sha256,
+    }
+    paths = {
+        "class descriptions": arguments.class_descriptions,
+        "human labels": arguments.human_labels,
+        "boxes": arguments.boxes,
+        "rules": arguments.rules,
+    }
+    identities: dict[str, dict[str, object]] = {}
+    for name, path in paths.items():
+        digest, size = sha256_file(path)
+        required = expected[name]
+        if required and digest != required:
+            raise CorpusPreparationError(f"Open Images {name} SHA-256 differs")
+        identities[name] = {"bytes": size, "sha256": digest}
+
+    class_names, tags_by_mid, derived = _openimages_tag_map(
+        arguments.class_descriptions, arguments.rules
+    )
+    labels: dict[str, set[str]] = collections.defaultdict(set)
+    provenance: dict[str, set[str]] = collections.defaultdict(set)
+    human_rows, human_positive = _scan_openimages_annotations(
+        arguments.human_labels, candidate_ids, labels, provenance, "human-image-label"
+    )
+    box_rows, box_positive = _scan_openimages_annotations(
+        arguments.boxes, candidate_ids, labels, provenance, "object-box"
+    )
+    unknown_labels = sorted({mid for values in labels.values() for mid in values} - class_names.keys())
+    if unknown_labels:
+        raise CorpusPreparationError(
+            "Open Images annotations contain labels absent from class descriptions: "
+            + ", ".join(unknown_labels[:8])
+        )
+
+    low_light = derived.get("low-light")
+    if not isinstance(low_light, dict) or not isinstance(
+        low_light.get("maximum_linear_luminance_mean"), (int, float)
+    ):
+        raise CorpusPreparationError("Open Images low-light rule is malformed")
+    low_light_max = float(low_light["maximum_linear_luminance_mean"])
+
+    reviews: list[dict[str, object]] = []
+    tagged: dict[str, list[str]] = {}
+    rights_approved: set[str] = set()
+    rights_counts: collections.Counter[str] = collections.Counter()
+    for record in records:
+        upstream = str(record["upstream_source_id"])
+        tags = {tag for mid in labels[upstream] for tag in tags_by_mid.get(mid, ())}
+        classification = record.get("classification")
+        if not isinstance(classification, dict):
+            raise CorpusPreparationError("Open Images review input lacks classification")
+        if float(classification.get("luminance_mean", 1.0)) <= low_light_max:
+            tags.add("low-light")
+        tags_list = sorted(tags)
+        tagged[upstream] = tags_list
+        catalog = record["catalog"]
+        complete = (
+            record.get("license") in ACCEPTED_LICENSES
+            and clean_text(record.get("author"), "").casefold() != "unknown"
+            and bool(clean_text(record.get("author_id"), ""))
+            and all(str(record.get(field, "")).startswith(("https://", "http://"))
+                    for field in ("author_url", "landing_page", "license_url"))
+            and isinstance(catalog, dict)
+            and bool(clean_text(catalog.get("revision"), ""))
+            and bool(re.fullmatch(r"[0-9a-f]{64}", str(catalog.get("snapshot_sha256", ""))))
+        )
+        rights_status = "approved" if complete else "pending"
+        if complete:
+            rights_approved.add(str(record["source_id"]))
+        rights_counts[rights_status] += 1
+        reviews.append({
+            "content_tags": tags_list,
+            "format": REVIEW_FORMAT,
+            "people_review_status": "pending" if "people" in tags else "not-applicable",
+            "rights_evidence_revision": catalog["revision"],
+            "rights_evidence_sha256": catalog["snapshot_sha256"],
+            "rights_evidence_url": record["license_url"],
+            "rights_review_status": rights_status,
+            "source_id": record["source_id"],
+        })
+
+    quality_eligible = [record for record in records if (
+        min(int(record["width"]), int(record["height"])) >= 512
+        and int(record["width"]) * int(record["height"]) >= 750000
+        and str(record["source_id"]) in rights_approved
+    )]
+    seed = CORPUS_SELECTION_SEED
+    split_quotas = {"train": 3200, "validation": 400, "test": 400}
+    split_surplus_targets = {
+        split: (quota * 120 + 99) // 100 for split, quota in split_quotas.items()
+    }
+    author_counts: collections.Counter[tuple[str, str]] = collections.Counter()
+    split_capacity: collections.Counter[str] = collections.Counter()
+    deduplicated_capacity: collections.Counter[str] = collections.Counter()
+    duplicate_rejections: collections.Counter[str] = collections.Counter()
+    bytes_seen: set[str] = set()
+    pixels_seen: set[str] = set()
+    flickr_seen: set[str] = set()
+    signatures: list[tuple[str, str]] = []
+    for record in sorted(
+        quality_eligible,
+        key=lambda value: _stable_order(seed, str(value["source_id"])),
+    ):
+        split = _assigned_split(seed, str(record["author_id"]))
+        author_key = split, str(record["author_id"])
+        if author_counts[author_key] >= 5:
+            continue
+        author_counts[author_key] += 1
+        split_capacity[split] += 1
+        classification = record["classification"]
+        assert isinstance(classification, dict)
+        source_bytes = str(record["sha256"])
+        source_pixels = str(record["decoded_pixel_sha256"])
+        flickr = str(record.get("upstream_flickr_id") or "")
+        dhash = str(classification["dhash"])
+        phash = str(classification["phash"])
+        if source_bytes in bytes_seen:
+            duplicate_rejections["compressed-sha256"] += 1
+            continue
+        if source_pixels in pixels_seen:
+            duplicate_rejections["decoded-sha256"] += 1
+            continue
+        if flickr and flickr in flickr_seen:
+            duplicate_rejections["flickr-photo-id"] += 1
+            continue
+        duplicate_kind = next((
+            "dhash" if _hamming_hex(dhash, old_d) <= 5 else "phash"
+            for old_d, old_p in signatures
+            if _hamming_hex(dhash, old_d) <= 5 or _hamming_hex(phash, old_p) <= 8
+        ), None)
+        if duplicate_kind is not None:
+            duplicate_rejections[duplicate_kind] += 1
+            continue
+        deduplicated_capacity[split] += 1
+        bytes_seen.add(source_bytes)
+        pixels_seen.add(source_pixels)
+        if flickr:
+            flickr_seen.add(flickr)
+        signatures.append((dhash, phash))
+
+    eligible = [record for record in quality_eligible
+                if "people" in tagged[str(record["upstream_source_id"])]]
+    targets = {"train": 750, "validation": 94, "test": 94}
+    available: collections.Counter[str] = collections.Counter()
+    pools: dict[str, list[dict[str, object]]] = {name: [] for name in targets}
+    for record in eligible:
+        split = _assigned_split(seed, str(record["author_id"]))
+        available[split] += 1
+        pools[split].append(record)
+    ordered_people: list[tuple[str, dict[str, object]]] = []
+    for split, pool in pools.items():
+        for record in pool:
+            ordered_people.append((split, record))
+    ordered_people.sort(key=lambda item: _stable_order(seed, str(item[1]["source_id"])))
+    queue: list[dict[str, object]] = []
+    queued: collections.Counter[str] = collections.Counter()
+    authors: collections.Counter[str] = collections.Counter()
+    bytes_seen = set()
+    pixels_seen = set()
+    flickr_seen = set()
+    signatures = []
+    for split, record in ordered_people:
+        if queued[split] >= targets[split]:
+            continue
+        author = str(record["author_id"])
+        flickr = str(record.get("upstream_flickr_id") or "")
+        classification = record["classification"]
+        assert isinstance(classification, dict)
+        dhash = str(classification["dhash"])
+        phash = str(classification["phash"])
+        if authors[author] >= 5 or str(record["sha256"]) in bytes_seen \
+                or str(record["decoded_pixel_sha256"]) in pixels_seen \
+                or (flickr and flickr in flickr_seen) \
+                or any(_hamming_hex(dhash, old_d) <= 5
+                       or _hamming_hex(phash, old_p) <= 8
+                       for old_d, old_p in signatures):
+            continue
+        upstream = str(record["upstream_source_id"])
+        queue.append({
+            "annotation_sources": sorted(provenance[upstream]),
+            "author": record["author"],
+            "cache_filename": record["cache_filename"],
+            "content_tags": tagged[upstream],
+            "format": OPENIMAGES_REVIEW_QUEUE_FORMAT,
+            "landing_page": record["landing_page"],
+            "positive_labels": sorted(class_names[mid] for mid in labels[upstream]),
+            "source_id": record["source_id"],
+            "split": split,
+            "title": record["title"],
+        })
+        queued[split] += 1
+        authors[author] += 1
+        bytes_seen.add(str(record["sha256"]))
+        pixels_seen.add(str(record["decoded_pixel_sha256"]))
+        if flickr:
+            flickr_seen.add(flickr)
+        signatures.append((dhash, phash))
+
+    queue.sort(key=lambda entry: (
+        ("train", "validation", "test").index(str(entry["split"])),
+        _stable_order(seed, str(entry["source_id"])),
+    ))
+    write_jsonl(arguments.reviews, reviews, arguments.force)
+    write_jsonl(arguments.people_queue, queue, arguments.force)
+    if arguments.html:
+        atomic_bytes(arguments.html, _openimages_review_html(queue, arguments.cache), arguments.force)
+    expansion_required = {
+        split: deduplicated_capacity[split] < split_surplus_targets[split]
+        for split in split_quotas
+    }
+    report = {
+        "annotation_rows": {
+            "boxes_matched": box_rows, "boxes_positive": box_positive,
+            "human_matched": human_rows, "human_positive": human_positive,
+        },
+        "annotation_snapshots": identities,
+        "auto_rights": dict(sorted(rights_counts.items())),
+        "candidate_manifest": {
+            "records": len(records), "sha256": sha256_file(arguments.manifest)[0],
+        },
+        "format": "rawtherapee-tgmr-openimages-review-preparation-report-v1",
+        "people_candidates_by_split": dict(sorted(available.items())),
+        "people_queue_by_split": dict(sorted(queued.items())),
+        "people_queue_sha256": sha256_file(arguments.people_queue)[0],
+        "people_queue_targets": targets,
+        "preselection_duplicate_rejections": dict(sorted(duplicate_rejections.items())),
+        "quality_author_capacity_by_split": {
+            split: split_capacity[split] for split in split_quotas
+        },
+        "quality_author_deduplicated_capacity_by_split": {
+            split: deduplicated_capacity[split] for split in split_quotas
+        },
+        "reviews_sha256": sha256_file(arguments.reviews)[0],
+        "split_quotas": split_quotas,
+        "split_surplus_20_percent_targets": split_surplus_targets,
+        "split_surplus_expansion_required": expansion_required,
+        "suggested_next_candidate_batch": {
+            "count": 2000,
+            "start": arguments.candidate_pool_size,
+        } if any(expansion_required.values()) else None,
+        "tagged_candidates": sum(bool(values) for values in tagged.values()),
+    }
+    atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
+    sys.stdout.buffer.write(canonical_pretty(report))
+    if any(queued[split] < target for split, target in targets.items()):
+        return 1
+    return 0
+
+
+def apply_openimages_people_decisions(arguments: argparse.Namespace) -> int:
+    reviews = list(_jsonl(arguments.reviews))
+    queue = list(_jsonl(arguments.people_queue))
+    queued_ids = {str(record.get("source_id") or "") for record in queue}
+    if len(queued_ids) != len(queue) or any(
+        record.get("format") != OPENIMAGES_REVIEW_QUEUE_FORMAT for record in queue
+    ):
+        raise CorpusPreparationError("Open Images people queue is malformed")
+    decisions: dict[str, str] = {}
+    for record in _jsonl(arguments.decisions):
+        if record.get("format") != OPENIMAGES_PEOPLE_DECISION_FORMAT:
+            raise CorpusPreparationError("wrong Open Images people-decision format")
+        source_id = clean_text(record.get("source_id"), "")
+        status = record.get("people_review_status")
+        if source_id not in queued_ids or source_id in decisions:
+            raise CorpusPreparationError("people decision has an unknown or duplicate source")
+        if status not in ("approved-no-minors-or-sensitive-content", "rejected"):
+            raise CorpusPreparationError("people decision has an invalid status")
+        decisions[source_id] = str(status)
+    if arguments.require_complete and decisions.keys() != queued_ids:
+        raise CorpusPreparationError("people review decisions are incomplete")
+    output = []
+    for record in reviews:
+        if record.get("format") != REVIEW_FORMAT:
+            raise CorpusPreparationError("base source review is malformed")
+        source_id = str(record.get("source_id") or "")
+        updated = dict(record)
+        if source_id in decisions:
+            updated["people_review_status"] = decisions[source_id]
+        output.append(updated)
+    write_jsonl(arguments.output, output, arguments.force)
+    report = {
+        "approved": sum(status == "approved-no-minors-or-sensitive-content"
+                        for status in decisions.values()),
+        "decisions": len(decisions),
+        "format": "rawtherapee-tgmr-openimages-people-review-application-v1",
+        "output_sha256": sha256_file(arguments.output)[0],
+        "rejected": sum(status == "rejected" for status in decisions.values()),
+    }
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
+
+
+def _catalog_people_review_html(
+    queue: list[dict[str, object]], cache_root: Path,
+) -> bytes:
+    cards = []
+    for entry in queue:
+        source_id = str(entry["source_id"])
+        path = safe_cache_path(cache_root, str(entry["cache_filename"])).absolute()
+        cards.append(
+            '<article class="card" data-source-id="' + html.escape(source_id, quote=True)
+            + '"><img loading="lazy" src="' + html.escape(path.as_uri(), quote=True)
+            + '" alt=""><h2>' + html.escape(source_id) + '</h2><p><b>'
+            + html.escape(str(entry["split"])) + '</b> · '
+            + html.escape(str(entry["author"])) + '</p><p>'
+            + html.escape(str(entry["title"])) + '</p><p>Tags: '
+            + html.escape(", ".join(map(str, entry["content_tags"])))
+            + '</p><p><a href="' + html.escape(str(entry["landing_page"]), quote=True)
+            + '">source and rights</a></p><label><input type="radio" name="'
+            + html.escape(source_id, quote=True)
+            + '" value="approved-no-minors-or-sensitive-content"> approve</label> '
+            + '<label><input type="radio" name="' + html.escape(source_id, quote=True)
+            + '" value="rejected"> reject</label></article>'
+        )
+    document = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TGMR people review</title>
+<style>body{font-family:sans-serif;margin:1rem}header{position:sticky;top:0;background:#fff;padding:.5rem;z-index:2}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}.card{border:1px solid #999;padding:.6rem}.card.approved{border:3px solid #176b2c;background:#efe}.card.rejected{border:3px solid #a00;background:#fee}.card img{width:100%;height:240px;object-fit:contain;background:#222}.card h2{font-size:.85rem;overflow-wrap:anywhere}.card p{font-size:.8rem}</style></head>
+<body><header><button id="export">Export decided JSONL</button> <span id="count"></span><span id="exportStatus"></span>
+<textarea id="exportText" hidden aria-label="Exported review decisions"></textarea>
+</header><main class="grid">""" + "".join(cards) + """</main>
+<script>'use strict';
+function update(){for(const input of document.querySelectorAll('input[type=radio]')){input.toggleAttribute('checked',input.checked);}for(const card of document.querySelectorAll('.card')){const chosen=card.querySelector('input:checked');card.classList.toggle('approved',chosen!==null&&chosen.value==='approved-no-minors-or-sensitive-content');card.classList.toggle('rejected',chosen!==null&&chosen.value==='rejected');}document.getElementById('count').textContent=document.querySelectorAll('input:checked').length+' of '+document.querySelectorAll('.card').length+' decisions';}
+document.addEventListener('change',update);update();
+function decisions(){const lines=[];for(const card of document.querySelectorAll('.card')){const chosen=card.querySelector('input:checked');if(!chosen)continue;lines.push(JSON.stringify({format:'rawtherapee-tgmr-people-review-decision-v1',people_review_status:chosen.value,source_id:card.dataset.sourceId}));}return lines.join('\\n')+(lines.length?'\\n':'');}
+document.getElementById('export').addEventListener('click',async()=>{update();const text=decisions();const area=document.getElementById('exportText');const status=document.getElementById('exportStatus');area.hidden=false;area.value=text;area.focus();area.select();let copied=false;try{await navigator.clipboard.writeText(text);copied=true;}catch(error){}const blob=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tgmr-people-decisions.jsonl';a.hidden=true;document.body.appendChild(a);a.click();status.textContent=' Prepared '+document.querySelectorAll('input:checked').length+' decisions; '+(copied?'copied to clipboard and ':'')+'download requested. If no file appears, the JSONL is selected below: press Ctrl+C and save it.';setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},30000);});
+</script></body></html>
+"""
+    return document.encode("utf-8")
+
+
+def prepare_catalog_people_review(arguments: argparse.Namespace) -> int:
+    records = list(_jsonl(arguments.manifest))
+    reviews = []
+    queue = []
+    seen = set()
+    seed = CORPUS_SELECTION_SEED
+    for record in records:
+        source_id = clean_text(record.get("source_id"), "")
+        if record.get("format") != SOURCE_FORMAT or not source_id or source_id in seen:
+            raise CorpusPreparationError("catalog people-review manifest is malformed")
+        seen.add(source_id)
+        tags = record.get("content_tags")
+        rights = record.get("rights")
+        if not isinstance(tags, list) or any(tag not in CONTENT_TAGS for tag in tags) \
+                or not isinstance(rights, dict):
+            raise CorpusPreparationError("catalog people-review metadata is malformed")
+        people_status = "pending" if "people" in tags else "not-applicable"
+        reviews.append({
+            "content_tags": sorted(set(map(str, tags))), "format": REVIEW_FORMAT,
+            "normalized_author_id": record["author_id"],
+            "people_review_status": people_status,
+            "rights_evidence_revision": rights["evidence_revision"],
+            "rights_evidence_sha256": rights["evidence_sha256"],
+            "rights_evidence_url": rights["evidence_url"],
+            "rights_review_status": rights["review_status"], "source_id": source_id,
+        })
+        if people_status == "pending":
+            queue.append({
+                "author": record["author"], "cache_filename": record["cache_filename"],
+                "content_tags": sorted(set(map(str, tags))),
+                "format": PEOPLE_REVIEW_QUEUE_FORMAT,
+                "landing_page": record["landing_page"], "source_id": source_id,
+                "split": _assigned_split(seed, str(record["author_id"])),
+                "title": record["title"],
+            })
+    reviews.sort(key=lambda value: str(value["source_id"]))
+    queue.sort(key=lambda value: (
+        ("train", "validation", "test").index(str(value["split"])),
+        _stable_order(seed, str(value["source_id"])),
+    ))
+    write_jsonl(arguments.reviews, reviews, arguments.force)
+    write_jsonl(arguments.people_queue, queue, arguments.force)
+    if arguments.html is not None:
+        atomic_bytes(
+            arguments.html, _catalog_people_review_html(queue, arguments.cache), arguments.force
+        )
+    report = {
+        "format": "rawtherapee-tgmr-catalog-people-review-preparation-v1",
+        "manifest_sha256": sha256_file(arguments.manifest)[0],
+        "people_by_split": dict(sorted(collections.Counter(
+            str(value["split"]) for value in queue
+        ).items())),
+        "people_queue_sha256": sha256_file(arguments.people_queue)[0],
+        "records": len(records), "reviews_sha256": sha256_file(arguments.reviews)[0],
+    }
+    if arguments.report is not None:
+        atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
+
+
+def apply_catalog_people_decisions(arguments: argparse.Namespace) -> int:
+    reviews = list(_jsonl(arguments.reviews))
+    queue = list(_jsonl(arguments.people_queue))
+    queued_ids = {str(record.get("source_id") or "") for record in queue}
+    if len(queued_ids) != len(queue) or any(
+        record.get("format") != PEOPLE_REVIEW_QUEUE_FORMAT for record in queue
+    ):
+        raise CorpusPreparationError("catalog people queue is malformed")
+    decisions: dict[str, str] = {}
+    for record in _jsonl(arguments.decisions):
+        if record.get("format") != PEOPLE_DECISION_FORMAT:
+            raise CorpusPreparationError("wrong catalog people-decision format")
+        source_id = clean_text(record.get("source_id"), "")
+        status = record.get("people_review_status")
+        if source_id not in queued_ids or source_id in decisions:
+            raise CorpusPreparationError("people decision has an unknown or duplicate source")
+        if status not in ("approved-no-minors-or-sensitive-content", "rejected"):
+            raise CorpusPreparationError("people decision has an invalid status")
+        decisions[source_id] = str(status)
+    if arguments.require_complete and decisions.keys() != queued_ids:
+        raise CorpusPreparationError("people review decisions are incomplete")
+    output = []
+    for record in reviews:
+        if record.get("format") != REVIEW_FORMAT:
+            raise CorpusPreparationError("base source review is malformed")
+        updated = dict(record)
+        source_id = str(record.get("source_id") or "")
+        if source_id in decisions:
+            updated["people_review_status"] = decisions[source_id]
+        output.append(updated)
+    write_jsonl(arguments.output, output, arguments.force)
+    report = {
+        "approved": sum(value == "approved-no-minors-or-sensitive-content"
+                        for value in decisions.values()),
+        "decisions": len(decisions),
+        "format": "rawtherapee-tgmr-catalog-people-review-application-v1",
+        "output_sha256": sha256_file(arguments.output)[0],
+        "rejected": sum(value == "rejected" for value in decisions.values()),
+    }
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
+
+
+def _duplicate_review_html(
+    queue: list[dict[str, object]], cache_root: Path,
+) -> bytes:
+    cards = []
+    for entry in queue:
+        cluster_id = str(entry["cluster_id"])
+        members = entry["members"]
+        assert isinstance(members, list)
+        images = []
+        for member in members:
+            assert isinstance(member, dict)
+            path = safe_cache_path(cache_root, str(member["cache_filename"])).absolute()
+            images.append(
+                '<section><img loading="lazy" src="'
+                + html.escape(path.as_uri(), quote=True) + '" alt=""><h3>'
+                + html.escape(str(member["source_id"])) + '</h3><p>'
+                + html.escape(str(member["author"])) + '</p><p>'
+                + html.escape(str(member["title"])) + '</p><p><a href="'
+                + html.escape(str(member["landing_page"]), quote=True)
+                + '">source and rights</a></p><label><input class="reject" '
+                + 'type="checkbox" data-source-id="'
+                + html.escape(str(member["source_id"]), quote=True)
+                + '"> reject as duplicate</label></section>'
+            )
+        cards.append(
+            '<article class="card" data-cluster-id="'
+            + html.escape(cluster_id, quote=True) + '"><h2>'
+            + str(len(members)) + ' images, ' + str(len(entry["pairs"]))
+            + ' borderline pair(s)</h2><label><input class="reviewed" '
+            + 'type="checkbox"> cluster fully reviewed</label><div class="images">'
+            + ''.join(images) + '</div></article>'
+        )
+    document = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TGMR duplicate review</title>
+<style>body{font-family:sans-serif;margin:1rem}header{position:sticky;top:0;background:#fff;padding:.5rem;z-index:2}.card{border:1px solid #999;padding:.8rem;margin:1rem 0}.card.reviewed-cluster{border-color:#176b2c}.images{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}.images section.rejected{border:3px solid #a00;background:#fee}.images img{width:100%;height:260px;object-fit:contain;background:#222}.images h3{font-size:.8rem;overflow-wrap:anywhere}.images p{font-size:.8rem}</style></head>
+<body><header><button id="export">Export reviewed clusters</button> <span id="count"></span><span id="exportStatus"></span>
+<textarea id="exportText" hidden aria-label="Exported duplicate-review decisions"></textarea>
+</header><main>""" + "".join(cards) + """</main>
+<script>'use strict';
+function update(){for(const input of document.querySelectorAll('.reviewed,.reject')){input.toggleAttribute('checked',input.checked);}for(const card of document.querySelectorAll('.card')){card.classList.toggle('reviewed-cluster',card.querySelector('.reviewed').checked);for(const input of card.querySelectorAll('.reject')){input.closest('section').classList.toggle('rejected',input.checked);}}document.getElementById('count').textContent=document.querySelectorAll('.reviewed:checked').length+' of '+document.querySelectorAll('.card').length+' reviewed clusters; '+document.querySelectorAll('.reject:checked').length+' rejected images';}
+document.addEventListener('change',update);update();
+function decisions(){const lines=[];for(const card of document.querySelectorAll('.card')){if(!card.querySelector('.reviewed:checked'))continue;const rejected=[...card.querySelectorAll('.reject:checked')].map(x=>x.dataset.sourceId).sort();lines.push(JSON.stringify({cluster_id:card.dataset.clusterId,duplicate_review_status:'resolved',format:'rawtherapee-tgmr-duplicate-review-decision-v1',reject_source_ids:rejected}));}return lines.join('\\n')+(lines.length?'\\n':'');}
+document.getElementById('export').addEventListener('click',async()=>{update();const text=decisions();const area=document.getElementById('exportText');const status=document.getElementById('exportStatus');area.hidden=false;area.value=text;area.focus();area.select();let copied=false;try{await navigator.clipboard.writeText(text);copied=true;}catch(error){}const blob=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tgmr-duplicate-decisions.jsonl';a.hidden=true;document.body.appendChild(a);a.click();status.textContent=' Prepared '+document.querySelectorAll('.reviewed:checked').length+' reviewed-cluster decisions; '+(copied?'copied to clipboard and ':'')+'download requested. If no file appears, the JSONL is selected below: press Ctrl+C and save it.';setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},30000);});
+</script></body></html>
+"""
+    return document.encode("utf-8")
+
+
+def _source_review_candidate(record: dict[str, object]) -> bool:
+    rights = record.get("rights")
+    return (
+        record.get("format") == SOURCE_FORMAT
+        and isinstance(rights, dict)
+        and rights.get("review_status") == "approved"
+        and record.get("license") in ACCEPTED_LICENSES
+        and min(int(record.get("width", 0)), int(record.get("height", 0))) >= 512
+        and int(record.get("width", 0)) * int(record.get("height", 0)) >= 750000
+    )
+
+
+def prepare_duplicate_review(arguments: argparse.Namespace) -> int:
+    records = list(_jsonl(arguments.manifest))
+    if not records:
+        raise CorpusPreparationError("duplicate review input is empty")
+    candidates = []
+    author_counts: collections.Counter[tuple[str, str]] = collections.Counter()
+    for record in sorted(
+        (value for value in records if _source_review_candidate(value)),
+        key=lambda value: _stable_order(CORPUS_SELECTION_SEED, str(value["source_id"])),
+    ):
+        classification = record.get("classification")
+        if not isinstance(classification, dict):
+            raise CorpusPreparationError("duplicate review input lacks classification")
+        dhash = str(classification.get("dhash") or "")
+        phash = str(classification.get("phash") or "")
+        if not re.fullmatch(r"[0-9a-f]{16}", dhash) or not re.fullmatch(
+            r"[0-9a-f]{16}", phash
+        ):
+            raise CorpusPreparationError("duplicate review input has malformed signatures")
+        split = _assigned_split(CORPUS_SELECTION_SEED, str(record["author_id"]))
+        author_key = split, str(record["author_id"])
+        # The review queue covers every candidate that can survive the frozen
+        # five-image author cap. Final selection still rechecks all hard
+        # duplicate identities and distances independently.
+        if author_counts[author_key] >= 5:
+            continue
+        author_counts[author_key] += 1
+        candidates.append((record, split, int(dhash, 16), int(phash, 16)))
+
+    borderline_pairs = []
+    hard_pairs = collections.Counter()
+    candidate_details = {}
+    adjacency: collections.defaultdict[str, set[str]] = collections.defaultdict(set)
+    for right_index, (right, right_split, right_dhash, right_phash) in enumerate(candidates):
+        for left, left_split, left_dhash, left_phash in candidates[:right_index]:
+            dhash_distance = (left_dhash ^ right_dhash).bit_count()
+            phash_distance = (left_phash ^ right_phash).bit_count()
+            if dhash_distance <= HARD_DHASH_DISTANCE or phash_distance <= HARD_PHASH_DISTANCE:
+                hard_pairs[
+                    "dhash" if dhash_distance <= HARD_DHASH_DISTANCE else "phash"
+                ] += 1
+                continue
+            if dhash_distance > BORDERLINE_DHASH_DISTANCE \
+                    and phash_distance > BORDERLINE_PHASH_DISTANCE:
+                continue
+            left_id, right_id = sorted((str(left["source_id"]), str(right["source_id"])))
+            if left_id == str(left["source_id"]):
+                left_record, right_record = left, right
+                canonical_left_split, canonical_right_split = left_split, right_split
+            else:
+                left_record, right_record = right, left
+                canonical_left_split, canonical_right_split = right_split, left_split
+            borderline_pairs.append({
+                "dhash_distance": dhash_distance,
+                "left_source_id": left_id,
+                "phash_distance": phash_distance,
+                "right_source_id": right_id,
+            })
+            candidate_details[left_id] = {
+                "author": left_record["author"],
+                "cache_filename": left_record["cache_filename"],
+                "landing_page": left_record["landing_page"], "source_id": left_id,
+                "split": canonical_left_split, "title": left_record["title"],
+            }
+            candidate_details[right_id] = {
+                "author": right_record["author"],
+                "cache_filename": right_record["cache_filename"],
+                "landing_page": right_record["landing_page"], "source_id": right_id,
+                "split": canonical_right_split, "title": right_record["title"],
+            }
+            adjacency[left_id].add(right_id)
+            adjacency[right_id].add(left_id)
+
+    queue = []
+    seen: set[str] = set()
+    for source_id in sorted(adjacency):
+        if source_id in seen:
+            continue
+        stack = [source_id]
+        seen.add(source_id)
+        component = []
+        while stack:
+            current = stack.pop()
+            component.append(current)
+            for neighbor in sorted(adjacency[current], reverse=True):
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    stack.append(neighbor)
+        component.sort()
+        component_set = set(component)
+        pairs = sorted(
+            (pair for pair in borderline_pairs
+             if str(pair["left_source_id"]) in component_set
+             and str(pair["right_source_id"]) in component_set),
+            key=lambda pair: (str(pair["left_source_id"]), str(pair["right_source_id"])),
+        )
+        cluster_id = "duplicate-cluster-" + hashlib.sha256(
+            "\0".join(component).encode()
+        ).hexdigest()[:24]
+        queue.append({
+            "cluster_id": cluster_id,
+            "format": DUPLICATE_REVIEW_QUEUE_FORMAT,
+            "members": [candidate_details[value] for value in component],
+            "pairs": pairs,
+        })
+    queue.sort(key=lambda value: str(value["cluster_id"]))
+    involved = set(adjacency)
+
+    pending = []
+    for record in records:
+        updated = dict(record)
+        if str(record.get("source_id") or "") in involved:
+            updated["selection_status"] = "candidate-pending-duplicate-review"
+        pending.append(updated)
+    write_jsonl(arguments.pending_manifest, pending, arguments.force)
+    write_jsonl(arguments.duplicate_queue, queue, arguments.force)
+    if arguments.html is not None:
+        atomic_bytes(
+            arguments.html, _duplicate_review_html(queue, arguments.cache), arguments.force
+        )
+    report = {
+        "borderline_dhash_hamming_max": BORDERLINE_DHASH_DISTANCE,
+        "borderline_clusters": len(queue),
+        "borderline_pairs": len(borderline_pairs),
+        "borderline_phash_hamming_max": BORDERLINE_PHASH_DISTANCE,
+        "candidate_manifest_sha256": sha256_file(arguments.manifest)[0],
+        "candidates_after_author_cap": len(candidates),
+        "format": "rawtherapee-tgmr-duplicate-review-preparation-v1",
+        "hard_dhash_hamming_max": HARD_DHASH_DISTANCE,
+        "hard_duplicate_pairs": dict(sorted(hard_pairs.items())),
+        "hard_phash_hamming_max": HARD_PHASH_DISTANCE,
+        "involved_sources": len(involved),
+        "pending_manifest_sha256": sha256_file(arguments.pending_manifest)[0],
+        "queue_sha256": sha256_file(arguments.duplicate_queue)[0],
+    }
+    if arguments.report is not None:
+        atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
+
+
+def apply_duplicate_decisions(arguments: argparse.Namespace) -> int:
+    records = list(_jsonl(arguments.pending_manifest))
+    queue = list(_jsonl(arguments.duplicate_queue))
+    clusters: dict[str, set[str]] = {}
+    source_cluster: dict[str, str] = {}
+    for entry in queue:
+        if entry.get("format") != DUPLICATE_REVIEW_QUEUE_FORMAT:
+            raise CorpusPreparationError("wrong duplicate-review queue format")
+        cluster_id = clean_text(entry.get("cluster_id"), "")
+        members = entry.get("members")
+        if not cluster_id or cluster_id in clusters or not isinstance(members, list):
+            raise CorpusPreparationError("duplicate-review cluster identity is malformed")
+        source_ids = {
+            clean_text(member.get("source_id"), "")
+            for member in members if isinstance(member, dict)
+        }
+        if len(source_ids) != len(members) or len(source_ids) < 2 or "" in source_ids:
+            raise CorpusPreparationError("duplicate-review cluster members are malformed")
+        if any(source_id in source_cluster for source_id in source_ids):
+            raise CorpusPreparationError("source occurs in multiple duplicate-review clusters")
+        clusters[cluster_id] = source_ids
+        for source_id in source_ids:
+            source_cluster[source_id] = cluster_id
+
+    decisions: dict[str, set[str]] = {}
+    for entry in _jsonl(arguments.decisions):
+        if entry.get("format") != DUPLICATE_DECISION_FORMAT:
+            raise CorpusPreparationError("wrong duplicate-review decision format")
+        cluster_id = clean_text(entry.get("cluster_id"), "")
+        status = entry.get("duplicate_review_status")
+        rejected_values = entry.get("reject_source_ids")
+        if cluster_id not in clusters or cluster_id in decisions:
+            raise CorpusPreparationError("duplicate decision has an unknown or duplicate cluster")
+        if status != "resolved" or not isinstance(rejected_values, list):
+            raise CorpusPreparationError("duplicate decision has an invalid status")
+        rejected_values = list(map(str, rejected_values))
+        rejected = set(rejected_values)
+        if len(rejected) != len(rejected_values) or not rejected.issubset(clusters[cluster_id]):
+            raise CorpusPreparationError("duplicate decision rejects an invalid source")
+        decisions[cluster_id] = rejected
+    if arguments.require_complete and decisions.keys() != clusters.keys():
+        raise CorpusPreparationError("duplicate review decisions are incomplete")
+
+    rejected = set().union(*decisions.values()) if decisions else set()
+    output = []
+    for record in records:
+        if record.get("format") != SOURCE_FORMAT:
+            raise CorpusPreparationError("duplicate-review manifest contains a foreign record")
+        updated = dict(record)
+        source_id = str(record.get("source_id") or "")
+        if source_id in rejected:
+            updated["selection_status"] = "candidate-rejected-duplicate"
+        elif source_id in source_cluster:
+            updated["selection_status"] = (
+                "candidate-reviewed"
+                if source_cluster[source_id] in decisions
+                else "candidate-pending-duplicate-review"
+            )
+        output.append(updated)
+    write_jsonl(arguments.output, output, arguments.force)
+    report = {
+        "decisions": len(decisions),
+        "distinct_clusters": sum(not value for value in decisions.values()),
+        "format": "rawtherapee-tgmr-duplicate-review-application-v1",
+        "output_sha256": sha256_file(arguments.output)[0],
+        "rejected_sources": len(rejected),
+    }
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
+
+
 def release_manifest(arguments: argparse.Namespace) -> int:
     artifacts = []
     for role, path in (
@@ -1174,6 +2626,10 @@ def merge_jsonl(arguments: argparse.Namespace) -> int:
                 value.get("source_id")
                 or f"{value.get('catalog', '')}:{value.get('upstream_source_id', '')}"
             )
+            if identity == ":":
+                identity = value.get("id") or value.get("title")
+            if not identity:
+                raise CorpusPreparationError("merged JSONL record has no stable identity")
             if identity in identities:
                 raise CorpusPreparationError(f"duplicate merged identity: {identity}")
             identities.add(identity)
@@ -1187,7 +2643,8 @@ def merge_jsonl(arguments: argparse.Namespace) -> int:
         if isinstance(catalog, dict):
             catalog = catalog.get("name")
         return catalog_order.get(str(catalog), 99), str(
-            value.get("source_id") or value.get("upstream_source_id") or ""
+            value.get("source_id") or value.get("upstream_source_id")
+            or value.get("id") or value.get("title") or ""
         )
     records.sort(key=key)
     write_jsonl(arguments.output, records, arguments.force)
@@ -1214,6 +2671,17 @@ def parser() -> argparse.ArgumentParser:
     commons_parser.add_argument("output", type=Path)
     commons_parser.add_argument("--force", action="store_true")
     commons_parser.set_defaults(function=collect_commons)
+
+    commons_categories_parser = commands.add_parser(
+        "collect-commons-categories",
+        help="freeze a rights-filtered Commons snapshot from reviewed category roots",
+    )
+    commons_categories_parser.add_argument("recipe", type=Path)
+    commons_categories_parser.add_argument("output", type=Path)
+    commons_categories_parser.add_argument("--report", type=Path)
+    commons_categories_parser.add_argument("--limit", type=int)
+    commons_categories_parser.add_argument("--force", action="store_true")
+    commons_categories_parser.set_defaults(function=collect_commons_categories)
 
     smithsonian_parser = commands.add_parser(
         "collect-smithsonian",
@@ -1250,7 +2718,12 @@ def parser() -> argparse.ArgumentParser:
     normalize_parser.add_argument("--snapshot-sha256")
     normalize_parser.add_argument("--urls", type=Path)
     normalize_parser.add_argument("--archive-index", type=Path)
+    normalize_parser.add_argument(
+        "--tag-rules", type=Path,
+        default=Path(__file__).with_name("catalog-content-tags-v1.json"),
+    )
     normalize_parser.add_argument("--limit", type=int)
+    normalize_parser.add_argument("--start", type=int, default=0)
     normalize_parser.add_argument("--eligible-only", action="store_true")
     normalize_parser.add_argument("--force", action="store_true")
     normalize_parser.set_defaults(function=normalize)
@@ -1262,6 +2735,7 @@ def parser() -> argparse.ArgumentParser:
     fetch_parser.add_argument("--start", type=int, default=0)
     fetch_parser.add_argument("--limit", type=int)
     fetch_parser.add_argument("--retry", type=int, default=2)
+    fetch_parser.add_argument("--jobs", type=int, default=1)
     fetch_parser.add_argument("--report", type=Path)
     fetch_parser.add_argument("--force", action="store_true")
     fetch_parser.set_defaults(function=fetch)
@@ -1272,8 +2746,78 @@ def parser() -> argparse.ArgumentParser:
     assemble_parser.add_argument("cache", type=Path)
     assemble_parser.add_argument("output", type=Path)
     assemble_parser.add_argument("--reviews", type=Path)
+    assemble_parser.add_argument("--jobs", type=int, default=4)
     assemble_parser.add_argument("--force", action="store_true")
     assemble_parser.set_defaults(function=assemble)
+
+    openimages_review_parser = commands.add_parser("prepare-openimages-review")
+    openimages_review_parser.add_argument("manifest", type=Path)
+    openimages_review_parser.add_argument("class_descriptions", type=Path)
+    openimages_review_parser.add_argument("human_labels", type=Path)
+    openimages_review_parser.add_argument("boxes", type=Path)
+    openimages_review_parser.add_argument("cache", type=Path)
+    openimages_review_parser.add_argument("reviews", type=Path)
+    openimages_review_parser.add_argument("people_queue", type=Path)
+    openimages_review_parser.add_argument("report", type=Path)
+    openimages_review_parser.add_argument(
+        "--rules", type=Path,
+        default=Path(__file__).with_name("openimages-content-tags-v1.json"),
+    )
+    openimages_review_parser.add_argument("--class-descriptions-sha256")
+    openimages_review_parser.add_argument("--human-labels-sha256")
+    openimages_review_parser.add_argument("--boxes-sha256")
+    openimages_review_parser.add_argument("--rules-sha256")
+    openimages_review_parser.add_argument("--candidate-pool-size", type=int)
+    openimages_review_parser.add_argument("--html", type=Path)
+    openimages_review_parser.add_argument("--force", action="store_true")
+    openimages_review_parser.set_defaults(function=prepare_openimages_review)
+
+    apply_people_parser = commands.add_parser("apply-openimages-people-decisions")
+    apply_people_parser.add_argument("reviews", type=Path)
+    apply_people_parser.add_argument("people_queue", type=Path)
+    apply_people_parser.add_argument("decisions", type=Path)
+    apply_people_parser.add_argument("output", type=Path)
+    apply_people_parser.add_argument("--require-complete", action="store_true")
+    apply_people_parser.add_argument("--force", action="store_true")
+    apply_people_parser.set_defaults(function=apply_openimages_people_decisions)
+
+    catalog_people_parser = commands.add_parser("prepare-catalog-people-review")
+    catalog_people_parser.add_argument("manifest", type=Path)
+    catalog_people_parser.add_argument("cache", type=Path)
+    catalog_people_parser.add_argument("reviews", type=Path)
+    catalog_people_parser.add_argument("people_queue", type=Path)
+    catalog_people_parser.add_argument("--report", type=Path)
+    catalog_people_parser.add_argument("--html", type=Path)
+    catalog_people_parser.add_argument("--force", action="store_true")
+    catalog_people_parser.set_defaults(function=prepare_catalog_people_review)
+
+    apply_catalog_people_parser = commands.add_parser("apply-catalog-people-decisions")
+    apply_catalog_people_parser.add_argument("reviews", type=Path)
+    apply_catalog_people_parser.add_argument("people_queue", type=Path)
+    apply_catalog_people_parser.add_argument("decisions", type=Path)
+    apply_catalog_people_parser.add_argument("output", type=Path)
+    apply_catalog_people_parser.add_argument("--require-complete", action="store_true")
+    apply_catalog_people_parser.add_argument("--force", action="store_true")
+    apply_catalog_people_parser.set_defaults(function=apply_catalog_people_decisions)
+
+    duplicate_parser = commands.add_parser("prepare-duplicate-review")
+    duplicate_parser.add_argument("manifest", type=Path)
+    duplicate_parser.add_argument("cache", type=Path)
+    duplicate_parser.add_argument("pending_manifest", type=Path)
+    duplicate_parser.add_argument("duplicate_queue", type=Path)
+    duplicate_parser.add_argument("--report", type=Path)
+    duplicate_parser.add_argument("--html", type=Path)
+    duplicate_parser.add_argument("--force", action="store_true")
+    duplicate_parser.set_defaults(function=prepare_duplicate_review)
+
+    apply_duplicate_parser = commands.add_parser("apply-duplicate-decisions")
+    apply_duplicate_parser.add_argument("pending_manifest", type=Path)
+    apply_duplicate_parser.add_argument("duplicate_queue", type=Path)
+    apply_duplicate_parser.add_argument("decisions", type=Path)
+    apply_duplicate_parser.add_argument("output", type=Path)
+    apply_duplicate_parser.add_argument("--require-complete", action="store_true")
+    apply_duplicate_parser.add_argument("--force", action="store_true")
+    apply_duplicate_parser.set_defaults(function=apply_duplicate_decisions)
 
     release_parser = commands.add_parser("release-manifest")
     release_parser.add_argument("source_manifest", type=Path)
@@ -1304,10 +2848,23 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("--start and --retry must be non-negative")
     if getattr(arguments, "per_unit_limit", None) is not None and arguments.per_unit_limit < 0:
         raise SystemExit("--per-unit-limit must be non-negative")
+    if getattr(arguments, "candidate_pool_size", None) is not None \
+            and arguments.candidate_pool_size < 0:
+        raise SystemExit("--candidate-pool-size must be non-negative")
+    if getattr(arguments, "jobs", 1) < 1:
+        raise SystemExit("--jobs must be positive")
     if getattr(arguments, "sha256", None):
         require_sha256(arguments.sha256, "--sha256")
     if getattr(arguments, "snapshot_sha256", None):
         require_sha256(arguments.snapshot_sha256, "--snapshot-sha256")
+    for attribute in (
+        "class_descriptions_sha256", "human_labels_sha256", "boxes_sha256",
+        "rules_sha256",
+    ):
+        if getattr(arguments, attribute, None):
+            require_sha256(getattr(arguments, attribute), "--" + attribute.replace("_", "-"))
+    if hasattr(arguments, "candidate_pool_size") and arguments.candidate_pool_size is None:
+        arguments.candidate_pool_size = sum(1 for _ in _jsonl(arguments.manifest))
     return int(arguments.function(arguments))
 
 

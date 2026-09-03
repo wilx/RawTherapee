@@ -80,12 +80,21 @@ corpus identity. V2 additionally freezes the catalog snapshot, upstream source
 and author identities, rights evidence, archive-member fallbacks, content tags,
 people review, selection state, dHash, DCT pHash, and image histograms.
 
+Sparse stellar detail is retained as an explicit demosaicing safety class,
+separate from ordinary low-light photography. A Commons source receives the
+`astronomy-star-field` tag only when it was discovered through the reviewed
+astronomy category and its title also matches the tracked stellar-title rule.
+Final selection requires at least 12 training, one validation, and one test
+source with this tag. If any held-out split cannot meet that minimum, its
+candidate pool must be expanded rather than silently substituting generic
+night photography.
+
 The frozen production mix is:
 
 | Catalog | Candidate pool | Train | Validation | Test |
 | --- | ---: | ---: | ---: | ---: |
-| CVDF Open Images V4/V5 boxable subset | 10,000 | 2,000 | 250 | 250 |
-| PASS | 6,000 | 1,200 | 150 | 150 |
+| CVDF Open Images V4/V5 boxable subset | 12,000 | 3,200 | 400 | 400 |
+| PASS | 0 | 0 | 0 | 0 |
 | Wikimedia Commons | 3,000 | 480 | 60 | 60 |
 | Smithsonian Open Access | 2,000 | 320 | 40 | 40 |
 
@@ -93,8 +102,12 @@ Catalog locations and immutable-snapshot procedure are recorded in
 [`catalog-acquisition-v1.json`](catalog-acquisition-v1.json); selection policy
 and exact quotas are frozen in
 [`corpus-selection-v1.json`](corpus-selection-v1.json). Catalog metadata is
-evidence, not automatic permission. Every selected record must have an approved
-rights review and may use only CC0, Public Domain Mark, or CC BY 2.0/3.0/4.0.
+the frozen rights evidence. Complete authenticated Open Images, Commons, and
+Smithsonian rows using a whitelisted license are approved automatically only
+when author, author/profile, landing-page, license, catalog revision, and
+catalog digest evidence are complete. Every selected record must have an
+approved rights status and may use only CC0, Public Domain Mark, or CC BY
+2.0/3.0/4.0.
 NC, ND, SA, unknown, ambiguous, and Smithsonian records lacking explicit CC0
 are rejected. People records additionally require an explicit non-sensitive,
 no-obvious-minors review.
@@ -108,14 +121,24 @@ Open Images uses
 `OriginalURL` and its advertised checksum as provenance; its changing
 thumbnail URL is never canonical. PASS uses the official individual URL and
 may name an authenticated Zenodo archive/member as a byte-identical fallback.
-PASS's metadata `hash` is a variable-length hexadecimal source/filename
+PASS is retained as a supported research input, but it has no corpus-v1 quota:
+the distributed files have a maximum long side of roughly 500 pixels and fail
+the frozen resolution gate. PASS's metadata `hash` is a variable-length hexadecimal source/filename
 identity, not an image-content MD5; downloaded originals receive a local
 SHA-256 before they become corpus inputs.
-Commons freezes the upload revision, original URL, API SHA-1, and local SHA-256.
+Commons freezes a deterministic, bounded category recipe, upload revision,
+original URL, API SHA-1, and local SHA-256. The production candidate snapshot
+combines subject-tagged Quality Images with explicit CC BY/CC0 license
+categories because most Quality Images use the excluded ShareAlike license.
 Smithsonian freezes exact anonymous Open Data on AWS index and metadata-shard
 bytes, then selects a named high-resolution JPEG rendition. Both the record's
 metadata usage and the selected image's media usage must be exactly CC0. No
-Smithsonian REST API key or AWS account is required.
+Smithsonian REST API key or AWS account is required. Records without a stable
+landing page are rejected before normalization.
+The normalized record also carries the catalog-declared JPEG type so delivery-
+service URLs without a filename extension receive a portable `.jpg` cache
+name; authenticated files created by the earlier `.img` rule are migrated in
+place.
 
 Reconstruct or audit the exact listed originals without third-party Python
 modules:
@@ -147,19 +170,31 @@ TOOL=/tmp/rt-tgmr-trainer/rt-tgmr-train
 CACHE=/data/tgmr/source-cache
 PREP=tools/tgmr_trainer/prepare_corpus.py
 
-# Download and authenticate the four catalog snapshots. The reviewed release
+# Download and authenticate the production catalog snapshots. The reviewed release
 # records their actual SHA-256 values; examples omit them because this tree does
 # not contain the external snapshots.
 python3 "$PREP" snapshot \
     https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv \
     oi.csv
-python3 "$PREP" snapshot PASS_METADATA_URL pass.csv
-python3 "$PREP" snapshot PASS_URL_LIST pass-urls.txt
+python3 "$PREP" snapshot \
+    https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions-boxable.csv \
+    oi-class-descriptions.csv
+python3 "$PREP" snapshot \
+    https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv \
+    oi-human-labels.csv
+python3 "$PREP" snapshot \
+    https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv \
+    oi-boxes.csv
 
-# Commons identifier lists are curated inputs. Smithsonian is collected from
-# explicitly selected units and hexadecimal metadata shards in its public AWS
-# bucket. Both commands freeze their live inputs; normalization is offline.
-python3 "$PREP" collect-commons commons-file-titles.txt commons-api.jsonl
+# Commons discovery uses a tracked, bounded category recipe. Its output is the
+# complete live-API snapshot consumed by every later offline step.
+python3 "$PREP" collect-commons-categories \
+    tools/tgmr_trainer/commons-category-recipe-v1.json commons-api.jsonl \
+    --report commons-api-report.json
+
+# Smithsonian is collected from explicitly selected units and hexadecimal
+# metadata shards in its public AWS bucket. Both commands freeze their live
+# inputs; normalization is offline.
 python3 "$PREP" collect-smithsonian smithsonian-aws.jsonl \
     --unit chndm --unit fsg --unit nmah --unit nmnhbirds --unit nmnhbotany \
     --unit nmnhento --unit nmnhminsci --unit nmnhpaleo --unit npm --unit saam \
@@ -171,31 +206,81 @@ python3 "$PREP" normalize openimages oi.csv oi-candidates.jsonl \
     --revision cvdf-open-images-v5-boxable-05f3d68dbbb0 \
     --snapshot-sha256 \
     05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0 \
-    --eligible-only --limit 10000
-python3 "$PREP" normalize pass pass.csv pass-candidates.jsonl \
-    --revision PASS_REVISION --snapshot-sha256 SHA256 --urls pass-urls.txt \
-    --archive-index pass-archive-members.json --limit 6000
+    --eligible-only --limit 12000
 python3 "$PREP" normalize commons commons-api.jsonl commons-candidates.jsonl \
-    --revision COMMONS_SNAPSHOT_REVISION --snapshot-sha256 SHA256 --limit 3000
+    --revision COMMONS_SNAPSHOT_REVISION --snapshot-sha256 SHA256 \
+    --tag-rules tools/tgmr_trainer/catalog-content-tags-v1.json --limit 3000
 python3 "$PREP" normalize smithsonian smithsonian-aws.jsonl \
     smithsonian-candidates.jsonl --revision SMITHSONIAN_SNAPSHOT_REVISION \
-    --snapshot-sha256 SHA256 --limit 2000
-python3 "$PREP" merge candidates.jsonl oi-candidates.jsonl \
-    pass-candidates.jsonl commons-candidates.jsonl smithsonian-candidates.jsonl
+    --snapshot-sha256 SHA256 \
+    --tag-rules tools/tgmr_trainer/catalog-content-tags-v1.json --limit 2000
 
-# Download originals, preserving authenticated cache names and a machine-
-# readable availability report. Classification is performed by the C++ tool.
-python3 "$PREP" fetch candidates.jsonl "$CACHE" fetched.jsonl \
-    --retry 2 --report fetch-report.json
-"$TOOL" corpus classify fetched.jsonl "$CACHE" classifications.jsonl \
-    --candidates
+# Download, classify, and assemble each catalog separately. The separate files
+# keep the Open Images annotation join isolated from the generic Commons and
+# Smithsonian review path. All catalogs may share the authenticated cache.
+python3 "$PREP" fetch oi-candidates.jsonl "$CACHE" oi-fetched.jsonl \
+    --retry 2 --jobs 4 --report oi-fetch-report.json
+"$TOOL" corpus classify oi-fetched.jsonl "$CACHE" oi-classifications.jsonl \
+    --candidates --jobs 4 --checkpoint-images 100 --checkpoint-seconds 120
+python3 "$PREP" assemble oi-fetched.jsonl oi-classifications.jsonl "$CACHE" \
+    oi-assembled-pending-review.jsonl --jobs 4
 
-# Human review records bind rights evidence, content tags, and the controlled
-# people review. They may also provide normalized_author_id when one person is
-# represented differently in multiple catalogs. Assembly refuses mismatched
-# source/cache identities.
-python3 "$PREP" assemble fetched.jsonl classifications.jsonl "$CACHE" \
-    reviewed-candidates.jsonl --reviews reviews.jsonl
+# Open Images rights are approved from its authenticated catalog row only when
+# author, author profile, landing page, accepted CC BY license, catalog revision,
+# and catalog digest are complete. Positive human labels and bounding boxes
+# create advisory content tags. Machine-generated labels are not used for
+# automatic rejection because Open Images documents substantial false positives.
+# The generated HTML deliberately leaves people/minor/sensitive-content decisions
+# to a human and exports canonical decision JSONL.
+python3 "$PREP" prepare-openimages-review oi-assembled-pending-review.jsonl \
+    oi-class-descriptions.csv oi-human-labels.csv oi-boxes.csv "$CACHE" \
+    oi-auto-reviews.jsonl oi-people-queue.jsonl oi-review-report.json \
+    --class-descriptions-sha256 SHA256 --human-labels-sha256 SHA256 \
+    --boxes-sha256 SHA256 --rules-sha256 SHA256 \
+    --candidate-pool-size 12000 --html oi-people-review.html
+python3 "$PREP" apply-openimages-people-decisions oi-auto-reviews.jsonl \
+    oi-people-queue.jsonl oi-people-decisions.jsonl oi-reviews.jsonl \
+    --require-complete
+python3 "$PREP" assemble oi-fetched.jsonl oi-classifications.jsonl "$CACHE" \
+    oi-reviewed-candidates.jsonl --reviews oi-reviews.jsonl --jobs 4
+
+python3 "$PREP" fetch commons-candidates.jsonl "$CACHE" commons-fetched.jsonl \
+    --retry 2 --jobs 4 --report commons-fetch-report.json
+python3 "$PREP" fetch smithsonian-candidates.jsonl "$CACHE" smithsonian-fetched.jsonl \
+    --retry 2 --jobs 4 --report smithsonian-fetch-report.json
+"$TOOL" corpus classify commons-fetched.jsonl "$CACHE" commons-classifications.jsonl \
+    --candidates --jobs 4 --checkpoint-images 100 --checkpoint-seconds 120
+"$TOOL" corpus classify smithsonian-fetched.jsonl "$CACHE" \
+    smithsonian-classifications.jsonl --candidates --jobs 4 \
+    --checkpoint-images 100 --checkpoint-seconds 120
+python3 "$PREP" assemble commons-fetched.jsonl commons-classifications.jsonl \
+    "$CACHE" commons-assembled-pending-review.jsonl --jobs 4
+python3 "$PREP" assemble smithsonian-fetched.jsonl smithsonian-classifications.jsonl \
+    "$CACHE" smithsonian-assembled-pending-review.jsonl --jobs 4
+python3 "$PREP" merge supplemental-assembled-pending-review.jsonl \
+    commons-assembled-pending-review.jsonl smithsonian-assembled-pending-review.jsonl
+python3 "$PREP" prepare-catalog-people-review \
+    supplemental-assembled-pending-review.jsonl "$CACHE" \
+    supplemental-auto-reviews.jsonl supplemental-people-queue.jsonl \
+    --html supplemental-people-review.html --report supplemental-review-report.json
+python3 "$PREP" apply-catalog-people-decisions supplemental-auto-reviews.jsonl \
+    supplemental-people-queue.jsonl supplemental-people-decisions.jsonl \
+    supplemental-reviews.jsonl --require-complete
+python3 "$PREP" assemble commons-fetched.jsonl commons-classifications.jsonl \
+    "$CACHE" commons-reviewed-candidates.jsonl --reviews supplemental-reviews.jsonl \
+    --jobs 4
+python3 "$PREP" assemble smithsonian-fetched.jsonl smithsonian-classifications.jsonl \
+    "$CACHE" smithsonian-reviewed-candidates.jsonl \
+    --reviews supplemental-reviews.jsonl --jobs 4
+
+python3 "$PREP" merge reviewed-preduplicate.jsonl oi-reviewed-candidates.jsonl \
+    commons-reviewed-candidates.jsonl smithsonian-reviewed-candidates.jsonl
+python3 "$PREP" prepare-duplicate-review reviewed-preduplicate.jsonl "$CACHE" \
+    reviewed-pending-duplicates.jsonl duplicate-review-queue.jsonl \
+    --html duplicate-review.html --report duplicate-review-report.json
+python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
+    duplicate-review-queue.jsonl duplicate-decisions.jsonl \
+    reviewed-candidates.jsonl --require-complete
 "$TOOL" corpus report reviewed-candidates.jsonl --sources \
     --json candidate-statistics.json --csv candidate-statistics.csv \
     --html candidate-statistics.html
@@ -228,6 +313,41 @@ python3 "$PREP" release-manifest corpus-v1.jsonl tgmr-corpus-v1.tgpc \
     --zenodo-doi DOI --github-release-url URL
 ```
 
+`prepare-openimages-review` authenticates its V7 boxable class-description,
+V5 human-image-label, V6 bounding-box, and tracked content-rule inputs before
+joining them to the V5 boxable image population. The class vocabulary is
+stable across those annotation snapshots, and the exact cross-version binding
+is part of the report. Only positive human labels are accepted; negative human
+labels and machine predictions cannot silently reject a candidate. The report
+requires a 25% people-review surplus and a 20% quality/author-cap surplus for
+each projected split. If a split misses the latter gate, append exactly 2,000
+more catalog candidates using `normalize --start N --limit 2000`, classify only
+that tranche, merge it, and rerun review preparation.
+The Open Images people page is reject-only: every unchecked image is exported
+as approved, while a checked image is exported as rejected. This preserves the
+manual safety scan without requiring a separate approval click on every image.
+Export attempts both a normal browser download and a clipboard copy, and also
+shows and selects the complete JSONL in the page as a browser-independent
+fallback.
+
+`collect-commons-categories` follows the MediaWiki `categorymembers`
+continuation protocol, but every root has explicit category, member, depth, and
+file caps. It prefilters dimensions, MIME type, and the accepted license set
+before freezing exactly 3,000 metadata records. The tracked recipe currently
+discovers 23,850 unique files; its frozen snapshot retains 3,000 after rejecting
+3,304 disallowed licenses, 1,567 undersized images, 677 unsupported raster
+types, and 14,051 otherwise eligible records above the ten-candidate
+acquisition cap per author. The resulting 1,063 authors provide five-image-cap
+capacities of 1,814 train, 247 validation, and 180 test candidates. The snapshot
+also deliberately samples astronomy and night-photography categories. The
+tracked content-tag rules distinguish star-field candidates from the broader
+`low-light` population using both category provenance and title evidence.
+SHA-256 is
+`c03fb6265aae1462b0e37c06627caca4ddc6e25079fa3dd7ff4363d1a71af0b6`;
+the normalized candidate JSONL SHA-256 is
+`886e3d196e30258a65bfd1b59bd3649b6c15c95e4037c6011e274eb6c8482221`.
+Later normalization and source reconstruction never query the live API.
+
 `collect-smithsonian` uses standard-library HTTPS directly against the public
 bucket. It streams every chosen shard, records SHA-256 and byte size for the
 root index, unit indexes, and shards in the report, and emits only compact
@@ -238,6 +358,38 @@ must reproduce the compact JSONL and report byte-for-byte without network
 access. The REST command remains available as
 `collect-smithsonian-api` for diagnostics involving an explicit record-ID list;
 it is not part of the canonical corpus recipe.
+
+Catalog-derived tags are produced by
+[`catalog-content-tags-v1.json`](catalog-content-tags-v1.json). Any Commons or
+Smithsonian candidate tagged `people` remains ineligible until a human decision
+is recorded. After assembly, `prepare-catalog-people-review` creates a local
+contact sheet and canonical queue; `apply-catalog-people-decisions
+--require-complete` applies the exported decisions. This is separate from the
+annotation-rich Open Images queue and uses the same no-obvious-minors or
+sensitive-content policy.
+
+`fetch --jobs N` downloads distinct candidates concurrently but preserves input
+order in its canonical output. Every worker writes a unique `.part` file,
+authenticates the catalog checksum when available, and publishes atomically.
+Completed cache files therefore act as per-image restart checkpoints even when
+the final fetch JSONL has not yet been written. Cache filenames contain only
+portable filename characters plus a truncated identity digest. A rerun adopts
+and renames authenticated files written by the earlier colon-containing cache
+scheme instead of downloading them again. HTTP 429 and transient server errors
+honor `Retry-After` (up to 15 minutes) before retrying; use low concurrency for
+public mirrors that advertise a bulk-download throttle.
+
+`prepare-duplicate-review` independently repeats the frozen five-image author
+cap and identifies the narrow band just outside automatic rejection: dHash
+distance 6-7 or DCT pHash distance 9-10. It groups connected pairs into a
+side-by-side cluster contact sheet and marks every involved candidate
+`candidate-pending-duplicate-review`. Reviewers affirm each complete cluster
+and mark any redundant sources for rejection. `apply-duplicate-decisions
+--require-complete` is the only path back to
+`candidate-reviewed`; rejected and unresolved candidates cannot enter final
+selection. Exact identities, shared Flickr IDs, dHash distance at most 5, and
+DCT pHash distance at most 8 remain automatic hard exclusions rechecked by the
+C++ selector.
 
 The stdout from each `snapshot`, `collect-*`, `normalize`, `fetch`, `select`,
 `balance`, and `release-manifest` command is canonical JSON and should be saved
@@ -320,11 +472,13 @@ grayscale JPEGs are expanded to neutral linear RGB through their one-component
 profile rather than being incorrectly presented to LittleCMS as RGB-profile
 input.
 
-Bulk CVDF Open Images archives do not need a separate per-file SHA-256 pass.
+Bulk CVDF Open Images archives do not need a separate preliminary per-file
+SHA-256 pass; classification still authenticates every selected local object.
 The tar files contain only the V4/V5 boxable subset and therefore must be paired
-with the matching boxable image-information snapshot, not the V6/V7
-human-verified-label metadata. After metadata filtering has produced canonical
-catalog-candidate JSONL, point the classifier at the extracted split root:
+with the matching boxable image-information snapshot. Content tagging separately
+uses the authenticated human-label and box snapshots named above; it never
+changes the underlying image identity. After metadata filtering has produced
+canonical catalog-candidate JSONL, point the classifier at the extracted split root:
 
 ```sh
 rt-tgmr-train corpus classify oi-shortlist.jsonl /data/open-images \
@@ -363,9 +517,11 @@ statistics, and attribution notice.
 Selection deliberately fails if the reviewed pool cannot satisfy a catalog,
 split, people, author, quality, or deduplication constraint. The remedy is to
 expand the corresponding candidate source, never to relax licensing or reuse
-duplicates. Manual inspection remains required for rights evidence, borderline
-near-duplicate clusters, controlled people content, and guardrail categories.
-The program cannot turn a syntactically valid manifest into a legal conclusion.
+duplicates. Catalog rights metadata is the frozen rights decision for Open
+Images; individual landing pages are not manually re-reviewed. Manual inspection
+remains required for borderline near-duplicate clusters, controlled people
+content, and ambiguous content cases. The program cannot turn a syntactically
+valid manifest into a legal conclusion.
 
 ## Fitting, checkpoints, export, and benchmark
 

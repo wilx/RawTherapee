@@ -12,7 +12,7 @@
     "catalog": {"$ref": "#/$defs/catalog"},
     "classification": {"$ref": "#/$defs/classification"},
     "content_tags": {
-      "items": {"enum": ["people", "skin-hair-clothing", "foliage", "fur-feathers", "architecture-brick", "textile-print", "metal-specular-jewelry", "food", "water-sky", "low-light", "macro-specimen"]},
+      "items": {"enum": ["people", "skin-hair-clothing", "foliage", "fur-feathers", "architecture-brick", "textile-print", "metal-specular-jewelry", "food", "water-sky", "low-light", "astronomy-star-field", "macro-specimen"]},
       "type": "array",
       "uniqueItems": true
     },
@@ -37,7 +37,13 @@
     "people_review_status": {"enum": ["not-applicable", "approved-no-minors-or-sensitive-content", "rejected", "pending"]},
     "rights": {"$ref": "#/$defs/rights"},
     "selected": {"type": "boolean"},
-    "selection_status": {"minLength": 1, "type": "string"},
+    "selection_status": {
+      "enum": [
+        "candidate-pending-review", "candidate-reviewed",
+        "candidate-pending-duplicate-review", "candidate-rejected-duplicate",
+        "accepted-corpus-v1"
+      ]
+    },
     "sha256": {"$ref": "#/$defs/sha256"},
     "source_id": {"pattern": "^[A-Za-z0-9._:-]+$", "type": "string"},
     "split": {"enum": ["unassigned", "train", "validation", "test"]},

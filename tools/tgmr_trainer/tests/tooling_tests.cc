@@ -555,7 +555,7 @@ void testImageManifestAndPack()
            "\"coverage\":true,\"coverage_class\":3,\"x\":2,\"y\":2}],"
         << "\"patch_sampling_seed\":\"0x52545447\","
         << "\"selected\":true,"
-        << "\"selection_status\":\"accepted-test-fixture\","
+        << "\"selection_status\":\"accepted-corpus-v1\","
         << "\"sha256\":\"" << tgmr::hex(tgmr::sha256File(imagePath)) << "\","
         << "\"source_id\":\"fixture-png-1\","
         << "\"split\":\"train\","
@@ -870,7 +870,7 @@ void testManifestNearDuplicateLeakage()
             << "\"orientation\":1,\"original_url\":\"https://example.invalid/"
             << id << ".png\",\"patch_coordinates\":[],"
             << "\"patch_sampling_seed\":1,\"selected\":true,"
-            << "\"selection_status\":\"accepted-test-fixture\",\"sha256\":\""
+            << "\"selection_status\":\"accepted-corpus-v1\",\"sha256\":\""
             << std::string(64, decodedDigit) << "\",\"source_id\":\"" << id
             << "\",\"split\":\"" << split << "\",\"title\":\"fixture\","
             << "\"width\":7}\n";
@@ -908,6 +908,9 @@ void testProductionSourceSelection()
             record.selected = false;
             record.splitAssigned = false;
             record.selectionStatus = "candidate-reviewed";
+            if (catalog == 0 && index == 0) {
+                record.selectionStatus = "candidate-pending-duplicate-review";
+            }
             record.advertisedChecksum = "sha1:" + std::string(40, 'a');
             record.cacheFilename = "fixture-" + std::to_string(catalog) + '-'
                 + std::to_string(index) + ".jpg";
@@ -941,6 +944,9 @@ void testProductionSourceSelection()
                 ? "approved-no-minors-or-sensitive-content" : "not-applicable";
             if (people) record.contentTags = {"people", "skin-hair-clothing"};
             else record.contentTags = {index % 2 ? "foliage" : "architecture-brick"};
+            if (catalog == 2 && index % 3 == 1) {
+                record.contentTags.emplace_back("astronomy-star-field");
+            }
             const auto identity = tgmr::sha256(
                 record.sourceId.data(), record.sourceId.size());
             const std::string identityText = tgmr::hex(identity);
@@ -979,10 +985,12 @@ void testProductionSourceSelection()
     {
         std::ofstream stream(recipe, std::ios::binary);
         stream << "{\"author_image_cap\":5,"
+            "\"content_tag_minimum_sources\":{"
+            "\"astronomy-star-field\":{\"test\":1,\"train\":12,\"validation\":1}},"
             "\"format\":\"rawtherapee-tgmr-corpus-selection-v1\","
             "\"quotas\":{"
-            "\"openimages-cvdf-v5-boxable\":{\"test\":250,\"train\":2000,\"validation\":250},"
-            "\"pass-v3\":{\"test\":150,\"train\":1200,\"validation\":150},"
+            "\"openimages-cvdf-v5-boxable\":{\"test\":400,\"train\":3200,\"validation\":400},"
+            "\"pass-v3\":{\"test\":0,\"train\":0,\"validation\":0},"
             "\"smithsonian-open-access\":{\"test\":40,\"train\":320,\"validation\":40},"
             "\"wikimedia-commons\":{\"test\":60,\"train\":480,\"validation\":60}},"
             "\"seed\":\"rawtherapee-tgmr-corpus-v1-selection\"}\n";
@@ -1002,8 +1010,11 @@ void testProductionSourceSelection()
             "production selector emitted the wrong number of records");
     std::array<std::uint64_t, 3> splits{};
     std::array<std::uint64_t, 3> people{};
+    std::array<std::uint64_t, 3> astronomy{};
     std::map<std::string, std::size_t> authors;
     for (const auto &record : selected) {
+        require(record.sourceId != "openimages-cvdf-v5-boxable:fixture-0",
+                "production selector accepted unresolved duplicate review");
         require(record.selected && record.manifestV2
             && record.rightsReviewStatus == "approved",
             "selected source lost v2 provenance or rights approval");
@@ -1012,10 +1023,16 @@ void testProductionSourceSelection()
         ++authors[record.authorId];
         if (std::find(record.contentTags.begin(), record.contentTags.end(), "people")
             != record.contentTags.end()) ++people[split];
+        if (std::find(record.contentTags.begin(), record.contentTags.end(),
+                      "astronomy-star-field") != record.contentTags.end()) {
+            ++astronomy[split];
+        }
     }
     require(splits == std::array<std::uint64_t, 3>{{4000,500,500}}
         && people[0] >= 600 && people[1] >= 75 && people[2] >= 75,
         "production selector changed split or people quotas");
+    require(astronomy[0] >= 12 && astronomy[1] >= 1 && astronomy[2] >= 1,
+        "production selector did not preserve the astronomy star-field guardrail");
     require(std::all_of(authors.begin(), authors.end(), [](const auto &entry) {
         return entry.second <= 5;
     }), "production selector exceeded its author cap");

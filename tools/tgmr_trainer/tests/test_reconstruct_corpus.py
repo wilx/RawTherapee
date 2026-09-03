@@ -15,7 +15,7 @@ def record(source: Path, data: bytes) -> dict[str, object]:
         "source_id": "fixture-1",
         "split": "train",
         "selected": True,
-        "selection_status": "accepted-test-fixture",
+        "selection_status": "accepted-corpus-v1",
         "original_url": source.as_uri(),
         "fallback_urls": [],
         "landing_page": "https://example.invalid/fixture-1",

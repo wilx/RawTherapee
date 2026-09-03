@@ -36,7 +36,7 @@ const std::array<const char *, CATALOGS> CATALOG_NAMES{{
 const std::array<const char *, SPLITS> SPLIT_NAMES{{"train", "validation", "test"}};
 
 const std::array<std::array<std::size_t, SPLITS>, CATALOGS> FROZEN_QUOTAS{{
-    {{2000,250,250}}, {{1200,150,150}}, {{480,60,60}}, {{320,40,40}},
+    {{3200,400,400}}, {{0,0,0}}, {{480,60,60}}, {{320,40,40}},
 }};
 
 std::string readText(const std::string &path)
@@ -314,6 +314,7 @@ bool suitable(const SourceRecord &record)
         "CC0-1.0", "PDM-1.0", "CC-BY-2.0", "CC-BY-3.0", "CC-BY-4.0",
     };
     if (!record.manifestV2 || record.selected || record.splitAssigned
+        || record.selectionStatus != "candidate-reviewed"
         || record.rightsReviewStatus != "approved"
         || licenses.find(record.license) == licenses.end()
         || std::min(record.width, record.height) < 512
@@ -513,6 +514,7 @@ std::string selectProductionSources(
         throw std::runtime_error("corpus selection recipe is not a JSON object");
     }
     std::string seed;
+    const std::array<std::size_t, SPLITS> astronomyTargets{{12,1,1}};
     try {
         if (requiredText(recipe, "format") != "rawtherapee-tgmr-corpus-selection-v1") {
             throw std::runtime_error("wrong corpus selection recipe format");
@@ -528,6 +530,14 @@ std::string selectProductionSources(
                 if (exactSize(entry, SPLIT_NAMES[split]) != FROZEN_QUOTAS[catalog][split]) {
                     throw std::runtime_error("selection recipe changes a frozen source quota");
                 }
+            }
+        }
+        const cJSON *tagMinimums = required(recipe, "content_tag_minimum_sources");
+        const cJSON *astronomy = required(tagMinimums, "astronomy-star-field");
+        for (std::size_t split = 0; split < SPLITS; ++split) {
+            if (exactSize(astronomy, SPLIT_NAMES[split]) != astronomyTargets[split]) {
+                throw std::runtime_error(
+                    "selection recipe changes the frozen astronomy-star-field minimum");
             }
         }
     } catch (...) {
@@ -595,6 +605,7 @@ std::string selectProductionSources(
     std::vector<std::uint64_t> pHashes;
     std::array<std::array<std::size_t, SPLITS>, CATALOGS> counts{};
     std::array<std::size_t, SPLITS> people{};
+    std::array<std::size_t, SPLITS> astronomy{};
     std::size_t authorCapRejects = 0;
     struct DuplicateRejection final {
         std::string sourceId;
@@ -654,8 +665,33 @@ std::string selectProductionSources(
         dHashes.push_back(dHash);
         pHashes.push_back(pHash);
         if (hasTag(record, "people")) ++people[candidate.split];
+        if (hasTag(record, "astronomy-star-field")) ++astronomy[candidate.split];
         return true;
     };
+
+    // Sparse stellar detail is a known demosaicing safety class and cannot be
+    // represented by the generic low-light population alone. Establish its
+    // source-held-out guardrail before general stratum filling.
+    for (std::size_t split = 0; split < SPLITS; ++split) {
+        bool progress = true;
+        while (astronomy[split] < astronomyTargets[split] && progress) {
+            progress = false;
+            for (std::size_t catalog = 0; catalog < CATALOGS
+                 && astronomy[split] < astronomyTargets[split]; ++catalog) {
+                for (const Candidate &candidate : pools[catalog][split]) {
+                    if (hasTag(candidate.record, "astronomy-star-field")
+                        && accept(candidate)) {
+                        progress = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (astronomy[split] < astronomyTargets[split]) {
+            throw std::runtime_error(
+                "candidate pool cannot satisfy astronomy-star-field minimum");
+        }
+    }
 
     // Establish the controlled 15% people population before general filling.
     const std::array<std::size_t, SPLITS> peopleTargets{{600,75,75}};
@@ -726,7 +762,10 @@ std::string selectProductionSources(
         return std::tie(left.split, left.catalogName, left.sourceId)
             < std::tie(right.split, right.catalogName, right.sourceId);
     });
-    for (SourceRecord &record : selected) record.selected = true;
+    for (SourceRecord &record : selected) {
+        record.selected = true;
+        record.selectionStatus = "accepted-corpus-v1";
+    }
     writeSourceManifestV2(selected, outputManifest, force);
 
     std::ostringstream report;
@@ -748,6 +787,9 @@ std::string selectProductionSources(
     if (!duplicateRejects.empty()) report << '\n';
     report << "  ],\n  \"eligible_candidates\": " << eligible.size()
         << ",\n  \"format\": \"rawtherapee-tgmr-corpus-selection-report-v1\",\n"
+        << "  \"astronomy_star_field\": {\"test\": " << astronomy[2]
+        << ", \"train\": " << astronomy[0] << ", \"validation\": "
+        << astronomy[1] << "},\n"
         << "  \"people\": {\"test\": " << people[2] << ", \"train\": "
         << people[0] << ", \"validation\": " << people[1] << "},\n"
         << "  \"recipe_sha256\": \""
