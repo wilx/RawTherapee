@@ -172,9 +172,11 @@ class PreparationTests(unittest.TestCase):
             report = root / "fetch-report.json"
             self.assertEqual(prepare_corpus.main([
                 "fetch", str(candidates), str(cache), str(fetched),
-                "--retry", "0", "--jobs", "2", "--report", str(report),
+                "--retry", "0", "--jobs", "2", "--request-delay", "0.001",
+                "--report", str(report),
             ]), 0)
             fetched_record = json.loads(fetched.read_text())
+            self.assertEqual(json.loads(report.read_text())["request_delay_seconds"], 0.001)
             self.assertNotIn(":", fetched_record["cache_filename"])
             source_id = "openimages-cvdf-v5-boxable:abc1234567890def"
             classification = root / "classifications.jsonl"
@@ -281,8 +283,20 @@ class PreparationTests(unittest.TestCase):
                     "fetch", str(candidates), str(root / "cache"), str(output),
                     "--retry", "1",
                 ]), 0)
-            sleep.assert_called_once_with(2.0)
+            sleep.assert_called_once()
+            self.assertAlmostEqual(sleep.call_args.args[0], 2.0, places=3)
             self.assertEqual(json.loads(output.read_text())["bytes"], len(payload))
+
+    def test_fetch_rejects_negative_request_delay(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(
+                prepare_corpus.CorpusPreparationError, "request-delay"
+            ):
+                prepare_corpus.main([
+                    "fetch", str(root / "missing.jsonl"), str(root / "cache"),
+                    str(root / "output.jsonl"), "--request-delay", "-0.1",
+                ])
 
     def test_fetch_migrates_unhinted_cache_extension(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

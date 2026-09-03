@@ -245,7 +245,7 @@ python3 "$PREP" assemble oi-fetched.jsonl oi-classifications.jsonl "$CACHE" \
     oi-reviewed-candidates.jsonl --reviews oi-reviews.jsonl --jobs 4
 
 python3 "$PREP" fetch commons-candidates.jsonl "$CACHE" commons-fetched.jsonl \
-    --retry 2 --jobs 4 --report commons-fetch-report.json
+    --retry 2 --jobs 1 --request-delay 1 --report commons-fetch-report.json
 python3 "$PREP" fetch smithsonian-candidates.jsonl "$CACHE" smithsonian-fetched.jsonl \
     --retry 2 --jobs 4 --report smithsonian-fetch-report.json
 "$TOOL" corpus classify commons-fetched.jsonl "$CACHE" commons-classifications.jsonl \
@@ -369,15 +369,19 @@ annotation-rich Open Images queue and uses the same no-obvious-minors or
 sensitive-content policy.
 
 `fetch --jobs N` downloads distinct candidates concurrently but preserves input
-order in its canonical output. Every worker writes a unique `.part` file,
-authenticates the catalog checksum when available, and publishes atomically.
+order in its canonical output. `--request-delay SECONDS` enforces a single
+process-wide minimum interval between request starts, including across workers.
+Every worker writes a unique `.part` file, authenticates the catalog checksum
+when available, and publishes atomically.
 Completed cache files therefore act as per-image restart checkpoints even when
 the final fetch JSONL has not yet been written. Cache filenames contain only
 portable filename characters plus a truncated identity digest. A rerun adopts
 and renames authenticated files written by the earlier colon-containing cache
 scheme instead of downloading them again. HTTP 429 and transient server errors
-honor `Retry-After` (up to 15 minutes) before retrying; use low concurrency for
-public mirrors that advertise a bulk-download throttle.
+honor `Retry-After` (up to 15 minutes) before retrying and pause all workers.
+The Commons recipe uses one worker and a one-second request interval, following
+Wikimedia's serial-request guidance; keep that conservative policy for the
+canonical acquisition run.
 
 `prepare-duplicate-review` independently repeats the frozen five-image author
 cap and identifies the narrow band just outside automatic rejection: dHash

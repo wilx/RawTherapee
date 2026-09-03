@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import threading
 import time
 from typing import Callable, Iterable, Iterator
 import urllib.request
@@ -1411,6 +1412,8 @@ def _advertised_matches(path: Path, advertised: object) -> bool:
 def fetch(arguments: argparse.Namespace) -> int:
     if arguments.jobs <= 0:
         raise CorpusPreparationError("fetch --jobs must be positive")
+    if arguments.request_delay < 0:
+        raise CorpusPreparationError("fetch --request-delay must be non-negative")
     records = list(_jsonl(arguments.candidates))
     chosen = records[arguments.start:]
     if arguments.limit is not None:
@@ -1419,6 +1422,23 @@ def fetch(arguments: argparse.Namespace) -> int:
     filenames = [candidate_cache_filename(record) for record in chosen]
     if len(filenames) != len(set(filenames)):
         raise CorpusPreparationError("fetch input maps multiple records to one cache file")
+
+    request_lock = threading.Lock()
+    next_request_time = [0.0]
+
+    def wait_for_request_slot() -> None:
+        # A single process-wide schedule keeps concurrent workers from turning
+        # a configured delay into one burst per thread.  Holding the lock while
+        # waiting also lets a server-directed Retry-After pause every worker.
+        with request_lock:
+            delay = next_request_time[0] - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            next_request_time[0] = time.monotonic() + arguments.request_delay
+
+    def defer_all_requests(delay: float) -> None:
+        with request_lock:
+            next_request_time[0] = max(next_request_time[0], time.monotonic() + delay)
 
     def fetch_one(record: dict[str, object]) -> tuple[dict[str, object] | None, dict[str, object]]:
         if record.get("format") != CANDIDATE_FORMAT:
@@ -1445,9 +1465,15 @@ def fetch(arguments: argparse.Namespace) -> int:
             part = destination.with_name(destination.name + ".part")
             for attempt in range(arguments.retry + 1):
                 try:
+                    wait_for_request_slot()
                     request = urllib.request.Request(
                         str(record["original_url"]),
-                        headers={"User-Agent": "RawTherapee-TGMR-candidate-fetcher/1"},
+                        headers={
+                            "User-Agent": (
+                                "RawTherapee-TGMR-corpus-bot/1 "
+                                "(https://github.com/RawTherapee/RawTherapee)"
+                            )
+                        },
                     )
                     with urllib.request.urlopen(request, timeout=120) as response, part.open("wb") as stream:
                         while block := response.read(CHUNK):
@@ -1477,7 +1503,8 @@ def fetch(arguments: argparse.Namespace) -> int:
                         # ten minutes when its upload frontend is saturated.
                         # Honor such server-directed pacing instead of turning
                         # a retry loop into a burst of guaranteed failures.
-                        time.sleep(max(1.0, min(delay, 900.0)))
+                        delay = max(1.0, min(delay, 900.0))
+                        defer_all_requests(delay)
                         continue
                     break
                 except (OSError, urllib.error.URLError):
@@ -1523,7 +1550,8 @@ def fetch(arguments: argparse.Namespace) -> int:
     write_jsonl(arguments.output, output, arguments.force)
     report = {
         "failures": failures, "format": "rawtherapee-tgmr-candidate-fetch-report-v1",
-        "fetched": len(output), "requested": len(chosen), "results": results,
+        "fetched": len(output), "request_delay_seconds": arguments.request_delay,
+        "requested": len(chosen), "results": results,
     }
     if arguments.report:
         atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
@@ -2736,6 +2764,7 @@ def parser() -> argparse.ArgumentParser:
     fetch_parser.add_argument("--limit", type=int)
     fetch_parser.add_argument("--retry", type=int, default=2)
     fetch_parser.add_argument("--jobs", type=int, default=1)
+    fetch_parser.add_argument("--request-delay", type=float, default=0.0)
     fetch_parser.add_argument("--report", type=Path)
     fetch_parser.add_argument("--force", action="store_true")
     fetch_parser.set_defaults(function=fetch)

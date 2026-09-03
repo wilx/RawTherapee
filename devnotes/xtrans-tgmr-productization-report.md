@@ -412,11 +412,28 @@ authors; after applying the final five-image cap, its projected capacities are
 1,814 train, 247 validation, and 180 test candidates, comfortably above the
 480/60/60 quota. The snapshot SHA-256 is
 `c03fb6265aae1462b0e37c06627caca4ddc6e25079fa3dd7ff4363d1a71af0b6`;
-the normalized candidate JSONL SHA-256 is
-`886e3d196e30258a65bfd1b59bd3649b6c15c95e4037c6011e274eb6c8482221`.
+the normalized candidate JSONL SHA-256 is now
+`81e98f99aa4b071023a12369c6671822eef90f167c49bc2ec8aadbcf37d2a470`
+after binding the reviewed content-tag rules.
 All 3,000 rows have complete whitelisted catalog rights evidence. The tracked
 recipe SHA-256 is
 `46ada0da3f88323e1497e704950530ddec95f453518890e1317f57090f7f8e99`.
+
+The final metadata adds an `astronomy-star-field` guardrail distinct from
+ordinary low-light content. Category provenance plus a conservative stellar
+title rule identifies 19 sources, projected as 17 train, one validation, and
+one test under the frozen author split. The selector requires 12/1/1 sources;
+losing either held-out source to decoding, quality, author-cap, or duplicate
+checks therefore triggers Commons expansion rather than silently dropping the
+sparse-star safety class.
+
+The Commons originals total about 12.95 GiB according to catalog byte sizes.
+An initial four-worker acquisition reached Wikimedia's HTTP 429 bulk-client
+limit after 54 authenticated cache entries. The canonical fetch command now
+uses one worker, a one-second global request interval, a descriptive bot user
+agent, and process-wide `Retry-After` handling. The external cache is the
+restart checkpoint and currently contains 57 authenticated originals; no
+incomplete fetch manifest is treated as canonical.
 
 Smithsonian collection used anonymous Open Data on AWS metadata shards. A
 first pass exposed 200 otherwise usable records without a stable landing page;
@@ -465,17 +482,24 @@ The large pair count is concentrated in visually repetitive museum/artwork
 families, which is precisely why cluster-level review is required rather than
 1,174 independent pair decisions.
 
+Human review is complete for both prepared catalogs. Open Images has 905
+approved and 33 rejected people decisions; 4,777 additional people-tagged
+sources remain deliberately pending and ineligible. Reapplying the completed
+decisions reproduced the exact 20-cluster duplicate queue, and the final
+11,998-record Open Images reviewed-candidate manifest has SHA-256
+`cc5c5924c00e38589d8094cfd7ba9993a719fd4164a6681c63862cc9dd745446`.
+All 147 Smithsonian people records were accepted after review, and all 25
+borderline clusters were resolved as visually similar but distinct; its final
+2,000-record manifest has SHA-256
+`f021baa8a197d3149179f910fb8612fbe1cfb2df9db21eaf3569a06afe65acd6`.
+
 ## Incomplete plan items
 
 The following remain deliberately open rather than being represented as done:
 
-- Completing the 938-image Open Images people review and the 20-cluster
-  ambiguous-duplicate review.
 - Completing download, classification, assembly, people review, and duplicate
-  review of the frozen 3,000 Commons candidates. Smithsonian download,
-  classification, assembly, and review-queue preparation are complete; its 25
-  duplicate clusters remain a manual decision only if those candidates are
-  needed for final selection.
+  review of the frozen 3,000 Commons candidates. Open Images and Smithsonian
+  acquisition/classification/review work is complete.
 - Freezing and publishing `corpus-v1.jsonl`, TGPC, deterministic gzip, fetch
   list, and attribution notice.
 - Source-count convergence and augmentation/noise selection.
