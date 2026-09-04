@@ -3,10 +3,13 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <sstream>
@@ -14,6 +17,12 @@
 #include <system_error>
 
 #include <zlib.h>
+
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace tgmr
 {
@@ -301,6 +310,150 @@ void publish(const std::string &temporary, const std::string &destination, bool 
     }
 }
 
+void syncFile(std::FILE *file, const char *description)
+{
+    if (std::fflush(file) != 0) {
+        throw std::runtime_error(std::string("cannot flush ") + description);
+    }
+#if defined(_WIN32)
+    if (_commit(_fileno(file)) != 0) {
+#else
+    if (fsync(fileno(file)) != 0) {
+#endif
+        throw std::runtime_error(std::string("cannot synchronize ") + description);
+    }
+}
+
+void durableText(const std::filesystem::path &path, const std::string &contents)
+{
+    const auto temporary = std::filesystem::path(path.string() + ".tmp");
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    std::FILE *file = std::fopen(temporary.string().c_str(), "wb");
+    if (!file) throw std::runtime_error("cannot create corpus checkpoint state");
+    bool okay = contents.empty()
+        || std::fwrite(contents.data(), 1, contents.size(), file) == contents.size();
+    try {
+        if (okay) syncFile(file, "corpus checkpoint state");
+    } catch (...) {
+        std::fclose(file);
+        std::filesystem::remove(temporary, ignored);
+        throw;
+    }
+    okay = okay && std::fclose(file) == 0;
+    if (!okay) {
+        std::filesystem::remove(temporary, ignored);
+        throw std::runtime_error("cannot write corpus checkpoint state");
+    }
+#if defined(_WIN32)
+    std::filesystem::remove(path, ignored);
+#endif
+    std::filesystem::rename(temporary, path);
+}
+
+std::string resumeBinding(
+    const std::array<std::uint8_t, 32> &manifest,
+    const std::array<std::uint8_t, 32> &configuration,
+    std::uint64_t expectedRecords)
+{
+    std::ostringstream output;
+    output << "rawtherapee-tgmr-corpus-pack-work-v1\n"
+           << "manifest " << hex(manifest) << '\n'
+           << "configuration " << hex(configuration) << '\n'
+           << "records " << expectedRecords << '\n';
+    return output.str();
+}
+
+struct CorpusResumeState final {
+    std::uint64_t records = 0;
+    std::uint64_t bytes = TGPC_HEADER_BYTES;
+    std::array<std::uint64_t, 3> splits{};
+    std::string payloadSha256;
+};
+
+std::string checkpointText(const CorpusResumeState &state)
+{
+    std::ostringstream output;
+    output << "rawtherapee-tgmr-corpus-pack-checkpoint-v1\n"
+           << "records " << state.records << '\n'
+           << "bytes " << state.bytes << '\n'
+           << "payload " << state.payloadSha256 << '\n'
+           << "splits " << state.splits[0] << ' ' << state.splits[1] << ' '
+           << state.splits[2] << '\n';
+    return output.str();
+}
+
+CorpusResumeState readCheckpoint(const std::filesystem::path &path)
+{
+    std::ifstream input(path, std::ios::binary);
+    std::string magic;
+    std::string recordsLabel;
+    std::string bytesLabel;
+    std::string payloadLabel;
+    std::string splitsLabel;
+    CorpusResumeState state;
+    if (!(input >> magic >> recordsLabel >> state.records >> bytesLabel >> state.bytes
+          >> payloadLabel >> state.payloadSha256 >> splitsLabel
+          >> state.splits[0] >> state.splits[1] >> state.splits[2])
+        || magic != "rawtherapee-tgmr-corpus-pack-checkpoint-v1"
+        || recordsLabel != "records" || bytesLabel != "bytes"
+        || payloadLabel != "payload" || splitsLabel != "splits"
+        || state.payloadSha256.size() != 64) {
+        throw std::runtime_error("corpus pack checkpoint is malformed");
+    }
+    std::string trailing;
+    if (input >> trailing) throw std::runtime_error("corpus pack checkpoint has trailing data");
+    (void)parseSha256(state.payloadSha256);
+    return state;
+}
+
+struct RebuiltPayload final {
+    Sha256 digest;
+    std::array<std::uint64_t, 3> splits{};
+};
+
+RebuiltPayload rebuildPartialPayload(
+    const std::string &partPath,
+    const CorpusResumeState &checkpoint)
+{
+    if (checkpoint.records > MAX_RECORDS
+        || checkpoint.bytes != TGPC_HEADER_BYTES
+            + checkpoint.records * TGPC_RECORD_BYTES) {
+        throw std::runtime_error("corpus pack checkpoint range is invalid");
+    }
+    std::error_code error;
+    const std::uint64_t actual = std::filesystem::file_size(partPath, error);
+    if (error || actual < checkpoint.bytes) {
+        throw std::runtime_error("corpus pack partial file is missing or truncated");
+    }
+    if (actual != checkpoint.bytes) {
+        std::filesystem::resize_file(partPath, checkpoint.bytes);
+    }
+    std::ifstream input(partPath, std::ios::binary);
+    std::array<std::uint8_t, TGPC_HEADER_BYTES> header{};
+    input.read(reinterpret_cast<char *>(header.data()), header.size());
+    if (!input) throw std::runtime_error("corpus pack partial header is truncated");
+    // The header is derived from authenticated checkpoint state at completion.
+    // Discard any zero, partial, or already-complete header left by an
+    // interruption and rebuild it only after the payload has been revalidated.
+    RebuiltPayload output;
+    for (std::uint64_t index = 0; index < checkpoint.records; ++index) {
+        std::array<std::uint8_t, TGPC_RECORD_BYTES> encoded{};
+        input.read(reinterpret_cast<char *>(encoded.data()), encoded.size());
+        if (!input) throw std::runtime_error("corpus pack partial payload is truncated");
+        const PatchRecord record = decodeRecord(encoded);
+        const unsigned split = static_cast<unsigned>(record.split);
+        ++output.splits[split - 1];
+        output.digest.update(encoded.data(), encoded.size());
+    }
+    Sha256 snapshot = output.digest;
+    if (output.splits != checkpoint.splits
+        || hex(snapshot.finish()) != checkpoint.payloadSha256) {
+        throw std::runtime_error("corpus pack partial payload authentication failed");
+    }
+    return output;
+}
+
 } // namespace
 
 void writeCorpus(
@@ -377,6 +530,183 @@ void writeCorpusStream(
         throw std::runtime_error("cannot write complete TGPC output");
     }
     publish(temporary, path, force);
+}
+
+void writeCorpusStreamResumable(
+    const std::string &path,
+    const std::array<std::uint8_t, 32> &manifestSha256,
+    const std::array<std::uint8_t, 32> &configurationSha256,
+    std::uint64_t expectedRecords,
+    const ResumableCorpusRecordProducer &producer,
+    const CorpusWriteOptions &options,
+    bool force)
+{
+    if (!producer) throw std::runtime_error("TGPC resumable record producer is empty");
+    if (expectedRecords == 0 || expectedRecords > MAX_RECORDS
+        || options.checkpointRecords == 0 || options.progressSeconds == 0) {
+        throw std::runtime_error("invalid resumable TGPC write limits");
+    }
+    const std::filesystem::path workDirectory = options.workDirectory.empty()
+        ? std::filesystem::path(path + ".work")
+        : std::filesystem::path(options.workDirectory);
+    const std::filesystem::path bindingPath = workDirectory / "binding.txt";
+    const std::filesystem::path checkpointPath = workDirectory / "checkpoint.txt";
+    const std::filesystem::path progressPath = workDirectory / "progress.json";
+    const std::string partPath = temporaryName(path);
+    std::filesystem::create_directories(workDirectory);
+
+    if (std::filesystem::exists(path) && !force) {
+        throw std::runtime_error("refusing to replace existing output: " + path);
+    }
+    if (force) {
+        std::error_code ignored;
+        std::filesystem::remove(path, ignored);
+        std::filesystem::remove(partPath, ignored);
+        std::filesystem::remove(checkpointPath, ignored);
+        std::filesystem::remove(progressPath, ignored);
+        std::filesystem::remove(bindingPath, ignored);
+    }
+    const std::string binding = resumeBinding(
+        manifestSha256, configurationSha256, expectedRecords);
+    if (std::filesystem::exists(bindingPath)) {
+        std::ifstream input(bindingPath, std::ios::binary);
+        const std::string existing{
+            std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        if (input.bad() || existing != binding) {
+            throw std::runtime_error("corpus pack work directory belongs to another input");
+        }
+    } else {
+        durableText(bindingPath, binding);
+    }
+
+    CorpusResumeState state;
+    Sha256 payload;
+    if (std::filesystem::exists(checkpointPath)) {
+        state = readCheckpoint(checkpointPath);
+        if (state.records > expectedRecords) {
+            throw std::runtime_error("corpus pack checkpoint exceeds expected records");
+        }
+        RebuiltPayload rebuilt = rebuildPartialPayload(partPath, state);
+        payload = rebuilt.digest;
+    } else {
+        std::error_code ignored;
+        std::filesystem::remove(partPath, ignored);
+        std::FILE *initial = std::fopen(partPath.c_str(), "wb");
+        if (!initial) throw std::runtime_error("cannot create resumable TGPC output");
+        std::array<std::uint8_t, TGPC_HEADER_BYTES> placeholder{};
+        const bool wrote = std::fwrite(
+            placeholder.data(), 1, placeholder.size(), initial) == placeholder.size();
+        try {
+            if (wrote) syncFile(initial, "resumable TGPC header");
+        } catch (...) {
+            std::fclose(initial);
+            throw;
+        }
+        const bool closed = std::fclose(initial) == 0;
+        if (!wrote || !closed) throw std::runtime_error("cannot initialize resumable TGPC output");
+    }
+
+    std::FILE *file = std::fopen(partPath.c_str(), "r+b");
+    if (!file || std::fseek(file, 0, SEEK_END) != 0) {
+        if (file) std::fclose(file);
+        throw std::runtime_error("cannot reopen resumable TGPC output");
+    }
+    const auto started = std::chrono::steady_clock::now();
+    const std::uint64_t resumedRecords = state.records;
+    auto lastCheckpoint = started;
+    auto lastProgress = started;
+    std::uint64_t lastCheckpointRecords = state.records;
+
+    auto publishProgress = [&](const char *status) {
+        std::ostringstream output;
+        output << "{\n  \"completed_records\": " << state.records << ",\n"
+               << "  \"expected_records\": " << expectedRecords << ",\n"
+               << "  \"format\": \"rawtherapee-tgmr-corpus-pack-progress-v1\",\n"
+               << "  \"status\": \"" << status << "\"\n}\n";
+        durableText(progressPath, output.str());
+    };
+    auto checkpoint = [&]() {
+        syncFile(file, "resumable TGPC payload");
+        Sha256 snapshot = payload;
+        state.bytes = TGPC_HEADER_BYTES + state.records * TGPC_RECORD_BYTES;
+        state.payloadSha256 = hex(snapshot.finish());
+        durableText(checkpointPath, checkpointText(state));
+        lastCheckpointRecords = state.records;
+        lastCheckpoint = std::chrono::steady_clock::now();
+    };
+    try {
+        producer(state.records, [&](const PatchRecord &record) {
+            if (state.records >= expectedRecords) {
+                throw std::runtime_error("TGPC producer emitted too many records");
+            }
+            const unsigned split = static_cast<unsigned>(record.split);
+            if (split < 1 || split > 3) {
+                throw std::runtime_error("invalid TGPC split while writing");
+            }
+            const auto encoded = encodeRecord(record);
+            if (std::fwrite(encoded.data(), 1, encoded.size(), file) != encoded.size()) {
+                throw std::runtime_error("resumable TGPC record write failed");
+            }
+            payload.update(encoded.data(), encoded.size());
+            ++state.splits[split - 1];
+            ++state.records;
+            const auto now = std::chrono::steady_clock::now();
+            if (state.records - lastCheckpointRecords >= options.checkpointRecords
+                || now - lastCheckpoint >= std::chrono::seconds(options.progressSeconds)) {
+                checkpoint();
+            }
+            if (now - lastProgress >= std::chrono::seconds(options.progressSeconds)) {
+                const double seconds = std::max(1e-9,
+                    std::chrono::duration<double>(now - started).count());
+                const double rate = (state.records - resumedRecords) / seconds;
+                std::cerr << "TGMR pack: " << state.records << '/' << expectedRecords
+                          << " records written";
+                if (rate > 0.0 && state.records < expectedRecords) {
+                    std::cerr << ", ETA " << ((expectedRecords - state.records) / rate) << " s";
+                }
+                std::cerr << '\n';
+                publishProgress("running");
+                lastProgress = now;
+            }
+        });
+        if (state.records != expectedRecords) {
+            throw std::runtime_error("TGPC producer emitted the wrong record count");
+        }
+        checkpoint();
+        CorpusHeader header;
+        header.recordCount = state.records;
+        header.splitCounts = state.splits;
+        header.manifestSha256 = manifestSha256;
+        header.configurationSha256 = configurationSha256;
+        header.payloadSha256 = parseSha256(state.payloadSha256);
+        const auto encodedHeader = encodeHeader(header);
+        if (std::fseek(file, 0, SEEK_SET) != 0
+            || std::fwrite(encodedHeader.data(), 1, encodedHeader.size(), file)
+                != encodedHeader.size()) {
+            throw std::runtime_error("cannot publish resumable TGPC header");
+        }
+        syncFile(file, "complete TGPC output");
+        if (std::fclose(file) != 0) {
+            file = nullptr;
+            throw std::runtime_error("cannot close complete TGPC output");
+        }
+        file = nullptr;
+        if (std::rename(partPath.c_str(), path.c_str()) != 0) {
+            throw std::runtime_error("cannot publish completed TGPC output: "
+                                     + std::string(std::strerror(errno)));
+        }
+        std::error_code ignored;
+        std::filesystem::remove(checkpointPath, ignored);
+        publishProgress("complete");
+    } catch (...) {
+        try {
+            if (file && state.records != lastCheckpointRecords) checkpoint();
+            publishProgress("interrupted");
+        } catch (...) {
+        }
+        if (file) std::fclose(file);
+        throw;
+    }
 }
 
 CorpusInspection inspectCorpus(

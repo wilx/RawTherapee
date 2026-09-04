@@ -305,10 +305,16 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
 
 # Finalization creates 256 train or 128 validation/test fixed coordinates per
 # source, with 75% spatial and 25% coverage samples and frozen augmentations.
-"$TOOL" corpus finalize selected-sources.jsonl "$CACHE" corpus-v1.jsonl
+"$TOOL" corpus finalize selected-sources.jsonl "$CACHE" corpus-v1.jsonl \
+    --work-dir /var/tmp/tgmr-finalize-work --progress-seconds 15
 "$TOOL" corpus validate-manifest corpus-v1.jsonl
 "$TOOL" corpus verify-sources corpus-v1.jsonl "$CACHE"
-"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" tgmr-corpus-v1.tgpc
+"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" tgmr-corpus-v1.tgpc \
+    --work-dir /var/tmp/tgmr-pack-work --checkpoint-records 8192 \
+    --progress-seconds 15
+"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
+    tgmr-corpus-v1-identity-training.tgpc \
+    --training-augmentation identity-only
 "$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
     tgmr-corpus-v1-sensor-noise.tgpc --noise sensor-v1
 "$TOOL" corpus gzip tgmr-corpus-v1.tgpc tgmr-corpus-v1.tgpc.gz
@@ -317,6 +323,8 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
 "$TOOL" corpus report tgmr-corpus-v1.tgpc.gz \
     --json corpus-statistics.json --csv corpus-statistics.csv \
     --html corpus-statistics.html
+"$TOOL" corpus release-files corpus-v1.jsonl CORPUS-NOTICE.txt \
+    rights-report.json corpus-v1-reconstruction.tsv
 
 python3 "$PREP" release-manifest corpus-v1.jsonl tgmr-corpus-v1.tgpc \
     tgmr-corpus-v1.tgpc.gz CORPUS-NOTICE.txt corpus-statistics.json \
@@ -448,14 +456,38 @@ gzip made through RawTherapee's existing required zlib dependency, with zero
 timestamp, no filename/comment, fixed compression level, and a canonical OS
 byte. Compressed input is streamed directly by the trainer.
 
-`corpus pack` defaults to the frozen `none` recipe: transformed values are
-bounded and quantized, but no synthetic noise is added. `--noise sensor-v1`
-adds deterministic bounded integer-domain read and signal-dependent noise to
-the 75% augmented patches while leaving identity patches unchanged. Its
-nominal standard deviations are approximately 8 uint16 codes for read noise
-and 64 codes at saturation for the signal term. The TGPC configuration digest
-and per-record augmentation kind distinguish the recipes. This is a validation
-candidate, not a claim about a particular camera's calibrated noise model.
+`corpus pack` defaults to production-v1 training augmentation and the frozen
+`none` noise recipe: transformed values are bounded and quantized, but no
+synthetic noise is added. `--training-augmentation identity-only` removes
+exposure, white-balance, and camera-matrix augmentation from training records
+only. `--noise sensor-v1` adds deterministic bounded integer-domain read and
+signal-dependent noise to augmented training records only. Its nominal
+standard deviations are approximately 8 uint16 codes for read noise and 64
+codes at saturation for the signal term. The TGPC configuration digest and
+per-record augmentation kind distinguish the recipes. Validation and test
+records are byte-identical across all three candidates, so model comparisons
+use exactly the same held-out inputs. Identity-only plus sensor noise is
+rejected as a contradictory request. These are validation candidates, not a
+claim about a particular camera's calibrated noise model.
+
+`corpus finalize` and `corpus pack` are restartable. Finalization writes one
+authenticated immutable record file per completed source under its work
+directory. Packing keeps an authenticated partial TGPC beside the destination
+and a small durable checkpoint in its work directory; a restart re-hashes and
+decodes every checkpointed record before appending. Completed source-sized
+ranges are skipped without reopening their images. Work state is bound to the
+exact input manifest, configuration, and expected record count, so it cannot
+be reused for a different corpus or augmentation recipe. Both commands update
+canonical `progress.json` files and print an ETA at the selected interval.
+`--force` starts either operation from scratch; without it, rerunning the same command
+resumes safely and still produces the same bytes as an uninterrupted run.
+
+`corpus release-files` derives three deterministic reviewed-source artifacts
+from the finalized production manifest: the human-readable attribution notice,
+the canonical JSON rights/evidence report, and a TSV containing every original,
+fallback, and archive-member reconstruction route with its required digest.
+The command validates the complete 5,000-source production contract first and
+refuses to replace any output unless `--force` is explicit.
 
 `corpus classify-file` remains a useful intake/debugging form for one image.
 `corpus classify --candidates` is the canonical batch path: it authenticates

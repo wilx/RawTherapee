@@ -445,6 +445,98 @@ void testCorpus()
     std::remove(corruptPath.c_str());
 }
 
+void testResumableCorpusWriter()
+{
+    const std::string resumed = temporary("-resumed.tgpc");
+    const std::string reference = temporary("-reference.tgpc");
+    const std::string work = temporary("-pack-work");
+    std::vector<tgmr::PatchRecord> records(7);
+    for (std::size_t index = 0; index < records.size(); ++index) {
+        auto &record = records[index];
+        record.sourceOrdinal = static_cast<std::uint32_t>(index / 2);
+        record.x = static_cast<std::uint32_t>(index);
+        record.y = static_cast<std::uint32_t>(index + 1);
+        record.split = index < 4 ? tgmr::CorpusSplit::TRAIN
+            : index < 6 ? tgmr::CorpusSplit::VALIDATION : tgmr::CorpusSplit::TEST;
+        record.rgb.fill(static_cast<std::uint16_t>(1000 + index));
+    }
+    const auto manifest = tgmr::sha256("resume-manifest", 15);
+    const auto configuration = tgmr::sha256("resume-configuration", 20);
+    tgmr::CorpusWriteOptions options;
+    options.workDirectory = work;
+    options.checkpointRecords = 2;
+    options.progressSeconds = 3600;
+    bool interrupted = false;
+    try {
+        tgmr::writeCorpusStreamResumable(
+            resumed, manifest, configuration, records.size(),
+            [&](std::uint64_t skip, const tgmr::CorpusRecordSink &sink) {
+                require(skip == 0, "new resumable writer did not start at zero");
+                for (std::size_t index = 0; index < 3; ++index) sink(records[index]);
+                throw std::runtime_error("injected interruption");
+            }, options);
+    } catch (const std::runtime_error &) {
+        interrupted = true;
+    }
+    require(interrupted && std::filesystem::is_regular_file(resumed + ".tmp")
+        && std::filesystem::is_regular_file(
+            std::filesystem::path(work) / "checkpoint.txt"),
+        "resumable writer did not retain authenticated interruption state");
+    std::uint64_t observedSkip = 0;
+    tgmr::writeCorpusStreamResumable(
+        resumed, manifest, configuration, records.size(),
+        [&](std::uint64_t skip, const tgmr::CorpusRecordSink &sink) {
+            observedSkip = skip;
+            for (std::size_t index = static_cast<std::size_t>(skip);
+                 index < records.size(); ++index) {
+                sink(records[index]);
+            }
+        }, options);
+    require(observedSkip == 3,
+        "resumable writer did not restart at the durable record boundary");
+    tgmr::writeCorpus(reference, manifest, configuration, records);
+    require(read(resumed) == read(reference)
+        && !std::filesystem::exists(
+            std::filesystem::path(work) / "checkpoint.txt"),
+        "resumed TGPC differs from uninterrupted canonical output");
+
+    const std::string corrupt = temporary("-corrupt-resume.tgpc");
+    const std::string corruptWork = temporary("-corrupt-pack-work");
+    options.workDirectory = corruptWork;
+    try {
+        tgmr::writeCorpusStreamResumable(
+            corrupt, manifest, configuration, records.size(),
+            [&](std::uint64_t, const tgmr::CorpusRecordSink &sink) {
+                sink(records[0]);
+                throw std::runtime_error("injected interruption");
+            }, options);
+    } catch (const std::runtime_error &) {
+    }
+    {
+        std::fstream partial(corrupt + ".tmp", std::ios::in | std::ios::out | std::ios::binary);
+        require(static_cast<bool>(partial), "cannot mutate resumable test payload");
+        partial.seekp(tgmr::TGPC_HEADER_BYTES + 70);
+        const char value = '\x7f';
+        partial.write(&value, 1);
+    }
+    bool rejectedCorruption = false;
+    try {
+        tgmr::writeCorpusStreamResumable(
+            corrupt, manifest, configuration, records.size(),
+            [&](std::uint64_t, const tgmr::CorpusRecordSink &) {}, options);
+    } catch (const std::runtime_error &) {
+        rejectedCorruption = true;
+    }
+    require(rejectedCorruption,
+        "resumable writer accepted a payload that changed after its checkpoint");
+
+    std::remove(resumed.c_str());
+    std::remove(reference.c_str());
+    std::remove((corrupt + ".tmp").c_str());
+    std::filesystem::remove_all(work);
+    std::filesystem::remove_all(corruptWork);
+}
+
 void testSourceLimitedTrainingMatrix()
 {
     std::vector<tgmr::PatchRecord> records(3);
@@ -487,8 +579,13 @@ void testImageManifestAndPack()
     const std::string manifestPath = temporary(".jsonl");
     const std::string classificationPath = temporary("-classification.jsonl");
     const std::string corpusPath = temporary(".tgpc");
+    const std::string legacyWriterCorpus = temporary("-legacy-writer.tgpc");
     const std::string noisyCorpusA = temporary("-noise-a.tgpc");
     const std::string noisyCorpusB = temporary("-noise-b.tgpc");
+    const std::string identityCorpus = temporary("-identity.tgpc");
+    const std::string multiPlainCorpus = temporary("-multi-plain.tgpc");
+    const std::string multiNoiseCorpus = temporary("-multi-noise.tgpc");
+    const std::string multiIdentityCorpus = temporary("-multi-identity.tgpc");
     writePngFixture(imagePath, 10, 10);
     const auto image = tgmr::loadLinearImage(imagePath);
     const auto classification = tgmr::classifyImage(image);
@@ -592,6 +689,14 @@ void testImageManifestAndPack()
         noisyCorpusA, [&](const tgmr::PatchRecord &value, std::uint64_t) {
             noisyRecords.push_back(value);
         });
+    static const char productionConfiguration[] =
+        "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-none";
+    tgmr::writeCorpusStream(
+        legacyWriterCorpus, tgmr::sha256File(manifestPath),
+        tgmr::sha256(productionConfiguration, std::strlen(productionConfiguration)),
+        [&](const tgmr::CorpusRecordSink &sink) {
+            for (const auto &record : plainRecords) sink(record);
+        });
     require(plainRecords.size() == 2 && noisyRecords.size() == 2
         && plainRecords[0].rgb == noisyRecords[0].rgb
         && noisyRecords[0].augmentationKind == 0
@@ -600,13 +705,115 @@ void testImageManifestAndPack()
         && noisyRecords[1].augmentationKind == 2
         && packed.header.configurationSha256 != noisyInspection.header.configurationSha256,
         "noise recipe did not preserve identity, perturb augmentation, or bind configuration");
+    require(read(corpusPath) == read(legacyWriterCorpus),
+        "restartable production-v1 pack changed canonical TGPC bytes");
+
+    tgmr::PackOptions identityOptions;
+    identityOptions.trainingAugmentation =
+        tgmr::TrainingAugmentationRecipe::IDENTITY_ONLY;
+    tgmr::packSourcesWithOptions(
+        records, manifestPath, cache.string(), identityCorpus, identityOptions);
+    std::vector<tgmr::PatchRecord> identityRecords;
+    tgmr::inspectCorpus(identityCorpus,
+        [&](const tgmr::PatchRecord &value, std::uint64_t) {
+            identityRecords.push_back(value);
+        });
+    require(identityRecords.size() == 2
+        && identityRecords[0].rgb == plainRecords[0].rgb
+        && identityRecords[1].rgb != plainRecords[1].rgb
+        && identityRecords[1].augmentationKind == 0
+        && identityRecords[1].matrixId == 0
+        && identityRecords[1].exposureStopsQ8 == 0
+        && identityRecords[1].whiteBalanceQ12
+            == std::array<std::uint16_t, 3>{{4096,4096,4096}},
+        "identity-only training did not remove every train-time augmentation");
+    tgmr::PackOptions contradictory = identityOptions;
+    contradictory.noise = tgmr::PackNoiseRecipe::SENSOR_V1;
+    bool rejectedContradictoryRecipe = false;
+    try {
+        tgmr::packSourcesWithOptions(records, manifestPath, cache.string(),
+                                     temporary("-contradictory.tgpc"), contradictory);
+    } catch (const std::runtime_error &) {
+        rejectedContradictoryRecipe = true;
+    }
+    require(rejectedContradictoryRecipe,
+        "packer accepted identity-only training combined with sensor noise");
+
+    std::vector<tgmr::SourceRecord> multiSplitRecords = records;
+    tgmr::SourceRecord validation = records.front();
+    validation.sourceId = "fixture-png-validation";
+    validation.split = tgmr::CorpusSplit::VALIDATION;
+    validation.patches[1].matrixId = 101;
+    multiSplitRecords.push_back(validation);
+    tgmr::SourceRecord test = validation;
+    test.sourceId = "fixture-png-test";
+    test.split = tgmr::CorpusSplit::TEST;
+    test.patches[1].matrixId = 102;
+    multiSplitRecords.push_back(test);
+    tgmr::PackOptions productionOptions;
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 multiPlainCorpus, productionOptions);
+    tgmr::PackOptions noiseOptions;
+    noiseOptions.noise = tgmr::PackNoiseRecipe::SENSOR_V1;
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 multiNoiseCorpus, noiseOptions);
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 multiIdentityCorpus, identityOptions);
+    auto loadRecords = [](const std::string &path) {
+        std::vector<tgmr::PatchRecord> output;
+        tgmr::inspectCorpus(path,
+            [&](const tgmr::PatchRecord &value, std::uint64_t) {
+                output.push_back(value);
+            });
+        return output;
+    };
+    const auto multiPlain = loadRecords(multiPlainCorpus);
+    const auto multiNoise = loadRecords(multiNoiseCorpus);
+    const auto multiIdentity = loadRecords(multiIdentityCorpus);
+    require(multiPlain.size() == 6 && multiNoise.size() == 6
+        && multiIdentity.size() == 6,
+        "multi-split augmentation fixture changed record count");
+    for (std::size_t index = 2; index < 6; ++index) {
+        require(multiPlain[index].rgb == multiNoise[index].rgb
+            && multiPlain[index].rgb == multiIdentity[index].rgb
+            && multiPlain[index].augmentationKind == multiNoise[index].augmentationKind
+            && multiPlain[index].augmentationKind == multiIdentity[index].augmentationKind
+            && multiPlain[index].matrixId == multiNoise[index].matrixId
+            && multiPlain[index].matrixId == multiIdentity[index].matrixId,
+            "validation/test corpus changed across training augmentation recipes");
+    }
+    const auto multiPlainBytes = read(multiPlainCorpus);
+    const auto multiNoiseBytes = read(multiNoiseCorpus);
+    const auto multiIdentityBytes = read(multiIdentityCorpus);
+    const std::size_t evaluationOffset = tgmr::TGPC_HEADER_BYTES
+        + 2 * tgmr::TGPC_RECORD_BYTES;
+    require(std::equal(multiPlainBytes.begin() + evaluationOffset,
+                       multiPlainBytes.end(), multiNoiseBytes.begin() + evaluationOffset)
+        && std::equal(multiPlainBytes.begin() + evaluationOffset,
+                      multiPlainBytes.end(), multiIdentityBytes.begin() + evaluationOffset),
+        "validation/test TGPC record bytes differ across training recipes");
+    require(multiPlain[1].rgb != multiNoise[1].rgb
+        && multiPlain[1].rgb != multiIdentity[1].rgb,
+        "training variants did not produce distinct train patches");
     std::remove(imagePath.c_str());
     std::remove(manifestPath.c_str());
     std::remove(classificationPath.c_str());
     std::filesystem::remove_all(classificationPath + ".work");
     std::remove(corpusPath.c_str());
+    std::remove(legacyWriterCorpus.c_str());
     std::remove(noisyCorpusA.c_str());
     std::remove(noisyCorpusB.c_str());
+    std::remove(identityCorpus.c_str());
+    std::remove(multiPlainCorpus.c_str());
+    std::remove(multiNoiseCorpus.c_str());
+    std::remove(multiIdentityCorpus.c_str());
+    std::filesystem::remove_all(corpusPath + ".work");
+    std::filesystem::remove_all(noisyCorpusA + ".work");
+    std::filesystem::remove_all(noisyCorpusB + ".work");
+    std::filesystem::remove_all(identityCorpus + ".work");
+    std::filesystem::remove_all(multiPlainCorpus + ".work");
+    std::filesystem::remove_all(multiNoiseCorpus + ".work");
+    std::filesystem::remove_all(multiIdentityCorpus + ".work");
 }
 
 void testTiff16Orientation()
@@ -621,6 +828,114 @@ void testTiff16Orientation()
     require(std::isfinite(image.rgb.front()) && std::isfinite(image.rgb.back()),
             "TIFF RGB16 conversion produced non-finite values");
     std::remove(path.c_str());
+}
+
+void testResumableSourceFinalization()
+{
+    const std::string cachePath = temporary("-finalize-cache");
+    const std::filesystem::path cache(cachePath);
+    std::filesystem::create_directories(cache);
+    const auto firstImage = cache / "first.png";
+    const auto secondImage = cache / "second.png";
+    const std::string stagedSecondImage = temporary("-finalize-second.png");
+    writePngFixture(firstImage.string(), 30, 30);
+    writePngFixture(stagedSecondImage, 31, 30);
+    auto source = [&](const char *id, const char *filename, tgmr::CorpusSplit split,
+                      std::uint64_t seed, const std::string &imagePath) {
+        const auto image = tgmr::loadLinearImage(imagePath);
+        const auto classification = tgmr::classifyImage(image);
+        tgmr::SourceRecord record;
+        record.manifestV2 = true;
+        record.sourceId = id;
+        record.split = split;
+        record.splitAssigned = true;
+        record.selected = true;
+        record.selectionStatus = "accepted-corpus-v1";
+        record.cacheFilename = filename;
+        record.originalUrl = std::string("https://example.invalid/") + filename;
+        record.landingPage = std::string("https://example.invalid/source/") + id;
+        record.sha256 = tgmr::hex(tgmr::sha256File(imagePath));
+        record.decodedPixelSha256 = classification.decodedPixelSha256;
+        record.author = "Finalization fixture author";
+        record.authorId = std::string("fixture-author:") + id;
+        record.authorUrl = "https://example.invalid/author";
+        record.title = "Finalization fixture";
+        record.license = "CC0-1.0";
+        record.licenseUrl = "https://creativecommons.org/publicdomain/zero/1.0/";
+        record.fileType = image.fileType;
+        record.width = image.width;
+        record.height = image.height;
+        record.orientation = image.orientation;
+        record.iccIdentity = image.iccIdentity;
+        record.perceptualHash = classification.perceptualHash;
+        record.pHash = classification.pHash;
+        record.classification = classification;
+        if (split == tgmr::CorpusSplit::TRAIN) {
+            record.perceptualHash = record.classification.perceptualHash =
+                "0000000000000000";
+            record.pHash = record.classification.pHash = "0000000000000000";
+        } else {
+            record.perceptualHash = record.classification.perceptualHash =
+                "ffffffffffffffff";
+            record.pHash = record.classification.pHash = "ffffffffffffffff";
+        }
+        record.catalogName = "smithsonian-open-access";
+        record.catalogRevision = "fixture-v1";
+        record.catalogSnapshotSha256 = std::string(64, '1');
+        record.upstreamSourceId = id;
+        record.rightsEvidenceUrl = record.landingPage;
+        record.rightsEvidenceRevision = "fixture-v1";
+        record.rightsEvidenceSha256 = std::string(64, '2');
+        record.rightsReviewStatus = "approved";
+        record.peopleReviewStatus = "not-applicable";
+        record.contentTags = {"macro-specimen"};
+        record.patchSamplingSeed = seed;
+        return record;
+    };
+    const std::vector<tgmr::SourceRecord> records{
+        source("finalize-first", "first.png", tgmr::CorpusSplit::TRAIN, 1,
+               firstImage.string()),
+        source("finalize-second", "second.png", tgmr::CorpusSplit::VALIDATION, 2,
+               stagedSecondImage),
+    };
+    const std::string input = temporary("-finalize-input.jsonl");
+    const std::string resumed = temporary("-finalize-resumed.jsonl");
+    const std::string clean = temporary("-finalize-clean.jsonl");
+    const std::string resumeWork = temporary("-finalize-resume-work");
+    const std::string cleanWork = temporary("-finalize-clean-work");
+    tgmr::writeSourceManifestV2(records, input);
+    tgmr::FinalizationOptions options;
+    options.workDirectory = resumeWork;
+    options.progressSeconds = 3600;
+    bool interrupted = false;
+    try {
+        tgmr::finalizeSources(records, input, cache.string(), resumed, options);
+    } catch (const std::runtime_error &) {
+        interrupted = true;
+    }
+    require(interrupted
+        && std::filesystem::is_regular_file(
+            std::filesystem::path(resumeWork) / "progress.json"),
+        "source finalization did not retain interruption progress");
+    std::filesystem::copy_file(stagedSecondImage, secondImage);
+    tgmr::finalizeSources(records, input, cache.string(), resumed, options);
+    tgmr::FinalizationOptions cleanOptions;
+    cleanOptions.workDirectory = cleanWork;
+    cleanOptions.progressSeconds = 3600;
+    tgmr::finalizeSources(records, input, cache.string(), clean, cleanOptions);
+    const auto finalized = tgmr::readSourceManifest(resumed);
+    require(read(resumed) == read(clean) && finalized.size() == 2
+        && finalized[0].patches.size() == 256
+        && finalized[1].patches.size() == 128,
+        "resumed source finalization differs from a clean deterministic run");
+
+    std::filesystem::remove_all(cache);
+    std::filesystem::remove_all(resumeWork);
+    std::filesystem::remove_all(cleanWork);
+    std::remove(stagedSecondImage.c_str());
+    std::remove(input.c_str());
+    std::remove(resumed.c_str());
+    std::remove(clean.c_str());
 }
 
 void testGrayJpegIccProfile()
@@ -1043,6 +1358,46 @@ void testProductionSourceSelection()
         && tgmr::sourceReportCsv(selected).find("catalog_snapshot") != std::string::npos
         && tgmr::sourceReportHtml(selected).find("<!doctype html>") == 0,
         "source-corpus report formats changed");
+
+    std::vector<tgmr::SourceRecord> finalized = selected;
+    for (auto &record : finalized) {
+        const std::size_t count = record.split == tgmr::CorpusSplit::TRAIN ? 256 : 128;
+        record.patches.resize(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            auto &patch = record.patches[index];
+            patch.x = static_cast<std::uint32_t>(index);
+            patch.y = 0;
+            patch.coverage = index >= 3 * count / 4;
+            patch.coverageClass = patch.coverage ? 1 : 0;
+            patch.sequence = static_cast<std::uint16_t>(index);
+            if (index % 4 != 0) {
+                patch.augmentationKind = 1;
+                patch.matrixId = record.split == tgmr::CorpusSplit::TRAIN ? 1 : 101;
+            }
+        }
+    }
+    tgmr::validateProductionManifest(finalized);
+    const std::string attribution = tgmr::canonicalAttributionNotice(finalized);
+    const std::string rightsReport = tgmr::canonicalRightsReportJson(finalized);
+    const std::string reconstruction = tgmr::reconstructionListTsv(finalized);
+    require(attribution.find("RawTherapee TGMR Corpus v1 attribution notice") == 0
+        && attribution.find("Fixture Author") != std::string::npos,
+        "canonical attribution notice omitted source attribution");
+    require(rightsReport.find("rawtherapee-tgmr-rights-report-v1")
+            != std::string::npos
+        && rightsReport.find("\"total_sources\": 5000") != std::string::npos,
+        "canonical rights report omitted its identity or complete source count");
+    require(reconstruction.find(
+            "source_id\tsource_sha256\tcache_filename\tkind\turl\ttransport_sha256"
+            "\tarchive_member\tmember_sha256\n")
+            == 0
+        && reconstruction.find("\toriginal\thttps://example.invalid/")
+            != std::string::npos,
+        "canonical reconstruction list omitted its contract or source URL");
+    require(attribution == tgmr::canonicalAttributionNotice(finalized)
+        && rightsReport == tgmr::canonicalRightsReportJson(finalized)
+        && reconstruction == tgmr::reconstructionListTsv(finalized),
+        "corpus release-file generators are not deterministic");
     std::remove(recipe.c_str());
     std::remove(output.c_str());
     std::remove(outputSecond.c_str());
@@ -1345,8 +1700,10 @@ int main()
         testSha256();
         testCameraMatrices();
         testCorpus();
+        testResumableCorpusWriter();
         testSourceLimitedTrainingMatrix();
         testImageManifestAndPack();
+        testResumableSourceFinalization();
         testTiff16Orientation();
         testGrayJpegIccProfile();
         testCmykJpegIccProfile();

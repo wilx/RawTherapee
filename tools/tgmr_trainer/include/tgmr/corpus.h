@@ -65,6 +65,14 @@ void writeCorpus(
 
 using CorpusRecordSink = std::function<void(const PatchRecord &)>;
 using CorpusRecordProducer = std::function<void(const CorpusRecordSink &)>;
+using ResumableCorpusRecordProducer =
+    std::function<void(std::uint64_t, const CorpusRecordSink &)>;
+
+struct CorpusWriteOptions final {
+    std::uint64_t checkpointRecords = 8192;
+    std::uint32_t progressSeconds = 15;
+    std::string workDirectory;
+};
 
 // Streaming variant used by the production packer.  The producer is invoked
 // once and must emit records in canonical order.  Only the current encoded
@@ -74,6 +82,20 @@ void writeCorpusStream(
     const std::array<std::uint8_t, 32> &manifestSha256,
     const std::array<std::uint8_t, 32> &configurationSha256,
     const CorpusRecordProducer &producer,
+    bool force = false);
+
+// Restartable variant for long production packing runs. The partial TGPC is
+// retained beside the destination, while small authenticated checkpoint and
+// progress records live in workDirectory. On resume the producer is told how
+// many canonical records have already been authenticated and must skip them
+// without reopening their source images.
+void writeCorpusStreamResumable(
+    const std::string &path,
+    const std::array<std::uint8_t, 32> &manifestSha256,
+    const std::array<std::uint8_t, 32> &configurationSha256,
+    std::uint64_t expectedRecords,
+    const ResumableCorpusRecordProducer &producer,
+    const CorpusWriteOptions &options = CorpusWriteOptions{},
     bool force = false);
 
 // Parse and authenticate a TGPC or TGPC.GZ stream.  The visitor is called in

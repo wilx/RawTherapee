@@ -1,6 +1,7 @@
 #include "tgmr/manifest.h"
 
 #include "tgmr/camera_matrices.h"
+#include "tgmr/patch_selection.h"
 #include "tgmr/sha256.h"
 
 #include "cJSON.h"
@@ -20,6 +21,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <numeric>
 #include <queue>
 #include <regex>
 #include <set>
@@ -342,6 +344,66 @@ void durableWrite(const std::filesystem::path &path, const std::string &contents
         std::filesystem::remove(temporary, ignored);
         throw std::runtime_error("cannot publish durable classifier state");
     }
+}
+
+std::string finalizationBinding(
+    const std::string &inputManifest,
+    std::size_t records)
+{
+    std::ostringstream output;
+    output << "rawtherapee-tgmr-corpus-finalization-work-v1\n"
+           << "input " << hex(sha256File(inputManifest)) << '\n'
+           << "records " << records << '\n'
+           << "recipe production-augmentation-v1\n";
+    return output.str();
+}
+
+SourceRecord finalizeSourceRecord(SourceRecord record, const std::string &cacheDirectory)
+{
+    static const double exposures[] = {-2.0,-1.5,-1.0,-0.5,0.5,1.0,1.5,2.0};
+    static const std::array<std::array<double, 3>, 6> whiteBalances{{
+        {{2.0,1.0,0.5}}, {{0.5,1.0,2.0}},
+        {{1.5,0.75,0.888888888889}}, {{0.666666666667,1.333333333333,1.125}},
+        {{1.25,0.8,1.0}}, {{0.8,1.25,1.0}},
+    }};
+    if (!record.selected) return record;
+    const auto path = sourcePath(cacheDirectory, record);
+    if (hex(sha256File(path.string())) != record.sha256) {
+        throw std::runtime_error("source changed before patch finalization: "
+                                 + record.sourceId);
+    }
+    const auto image = loadLinearImage(path.string());
+    const std::size_t count = record.split == CorpusSplit::TRAIN ? 256 : 128;
+    const auto proposals = proposePatches(image, record.patchSamplingSeed, count);
+    record.patches.clear();
+    record.patches.reserve(proposals.size());
+    const auto selector = sha256(record.sourceId.data(), record.sourceId.size());
+    for (std::size_t index = 0; index < proposals.size(); ++index) {
+        const auto &proposal = proposals[index];
+        const bool identity = index % 4 == 0;
+        const unsigned choice = (selector[index % selector.size()] + index) & 255U;
+        PatchSelection patch;
+        patch.x = proposal.x;
+        patch.y = proposal.y;
+        patch.coverage = proposal.coverage;
+        patch.coverageClass = proposal.coverageClass;
+        patch.augmentationKind = identity ? 0 : 1;
+        patch.exposureStopsQ8 = static_cast<std::int16_t>(std::llround(
+            (identity ? 0.0 : exposures[choice % 8]) * 256.0));
+        const auto whiteBalance = identity
+            ? std::array<double, 3>{{1.0,1.0,1.0}}
+            : whiteBalances[(choice / 8) % whiteBalances.size()];
+        for (unsigned channel = 0; channel < 3; ++channel) {
+            patch.whiteBalanceQ12[channel] = static_cast<std::uint16_t>(
+                std::llround(whiteBalance[channel] * 4096.0));
+        }
+        patch.matrixId = identity ? 0
+            : record.split == CorpusSplit::TRAIN ? 1 + choice % 4
+            : 101 + choice % 2;
+        patch.sequence = static_cast<std::uint16_t>(index);
+        record.patches.push_back(patch);
+    }
+    return record;
 }
 
 std::string classificationInputDigest(
@@ -1398,6 +1460,148 @@ SourceVerification verifySources(
     return result;
 }
 
+void finalizeSources(
+    const std::vector<SourceRecord> &inputRecords,
+    const std::string &inputManifest,
+    const std::string &cacheDirectory,
+    const std::string &outputManifest,
+    const FinalizationOptions &options,
+    bool force)
+{
+    if (options.progressSeconds == 0) {
+        throw std::runtime_error("finalization progress interval must be positive");
+    }
+    if (std::filesystem::exists(outputManifest) && !force) {
+        throw std::runtime_error("refusing to replace source manifest");
+    }
+    std::vector<SourceRecord> records = inputRecords;
+    const auto manifestRecords = readSourceManifest(inputManifest);
+    if (manifestRecords.size() != records.size()) {
+        throw std::runtime_error("finalization records do not match the input manifest");
+    }
+    for (std::size_t index = 0; index < records.size(); ++index) {
+        if (canonicalSourceRecordV2(manifestRecords[index])
+            != canonicalSourceRecordV2(records[index])) {
+            throw std::runtime_error("finalization records do not match the input manifest");
+        }
+    }
+    for (const SourceRecord &record : records) {
+        if (!record.manifestV2 || !record.selected || !record.splitAssigned) {
+            throw std::runtime_error("corpus finalization requires selected assigned v2 records");
+        }
+    }
+    const std::filesystem::path workDirectory = options.workDirectory.empty()
+        ? std::filesystem::path(outputManifest + ".work")
+        : std::filesystem::path(options.workDirectory);
+    std::filesystem::create_directories(workDirectory);
+    const auto bindingPath = workDirectory / "binding.txt";
+    const auto progressPath = workDirectory / "progress.json";
+    if (force) {
+        std::error_code ignored;
+        std::filesystem::remove(bindingPath, ignored);
+        std::filesystem::remove(progressPath, ignored);
+        for (const auto &entry : std::filesystem::directory_iterator(workDirectory)) {
+            if (entry.is_regular_file()
+                && entry.path().filename().string().rfind("record-", 0) == 0) {
+                std::filesystem::remove(entry.path(), ignored);
+            }
+        }
+    }
+    const std::string binding = finalizationBinding(inputManifest, records.size());
+    if (std::filesystem::exists(bindingPath)) {
+        std::ifstream input(bindingPath, std::ios::binary);
+        const std::string existing{
+            std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        if (input.bad() || existing != binding) {
+            throw std::runtime_error("finalization work directory belongs to another input");
+        }
+    } else {
+        durableWrite(bindingPath, binding);
+    }
+
+    std::vector<bool> completed(records.size(), false);
+    const std::regex pattern("record-([0-9]{8})-([0-9a-f]{64})\\.jsonl");
+    for (const auto &entry : std::filesystem::directory_iterator(workDirectory)) {
+        if (!entry.is_regular_file()) continue;
+        const std::string name = entry.path().filename().string();
+        if (name.size() >= 4 && name.substr(name.size() - 4) == ".tmp") continue;
+        std::smatch match;
+        if (!std::regex_match(name, match, pattern)) {
+            if (name.rfind("record-", 0) == 0) {
+                throw std::runtime_error("finalization work directory contains a malformed record");
+            }
+            continue;
+        }
+        const std::size_t ordinal = static_cast<std::size_t>(std::stoull(match[1].str()));
+        if (ordinal >= records.size() || completed[ordinal]
+            || hex(sha256File(entry.path().string())) != match[2].str()) {
+            throw std::runtime_error("finalization checkpoint record authentication failed");
+        }
+        const auto loaded = readSourceManifest(entry.path().string());
+        if (loaded.size() != 1 || loaded[0].sourceId != records[ordinal].sourceId) {
+            throw std::runtime_error("finalization checkpoint source identity changed");
+        }
+        SourceRecord expectedBase = records[ordinal];
+        SourceRecord actualBase = loaded[0];
+        expectedBase.patches.clear();
+        actualBase.patches.clear();
+        if (canonicalSourceRecordV2(expectedBase) != canonicalSourceRecordV2(actualBase)) {
+            throw std::runtime_error("finalization checkpoint source metadata changed");
+        }
+        records[ordinal] = loaded[0];
+        completed[ordinal] = true;
+    }
+
+    std::size_t finished = static_cast<std::size_t>(std::count(
+        completed.begin(), completed.end(), true));
+    const std::size_t resumedSources = finished;
+    const auto started = std::chrono::steady_clock::now();
+    auto lastProgress = started;
+    auto progress = [&](const char *status, const std::string &error = std::string()) {
+        std::ostringstream output;
+        output << "{\n  \"completed_sources\": " << finished << ",\n";
+        if (!error.empty()) output << "  \"error\": \"" << jsonEscape(error) << "\",\n";
+        output << "  \"format\": \"rawtherapee-tgmr-corpus-finalization-progress-v1\",\n"
+               << "  \"status\": \"" << status << "\",\n"
+               << "  \"total_sources\": " << records.size() << "\n}\n";
+        durableWrite(progressPath, output.str());
+    };
+
+    for (std::size_t ordinal = 0; ordinal < records.size(); ++ordinal) {
+        if (completed[ordinal]) continue;
+        try {
+            records[ordinal] = finalizeSourceRecord(records[ordinal], cacheDirectory);
+            const std::string contents = canonicalSourceRecordV2(records[ordinal]);
+            const std::string digest = hex(sha256(contents.data(), contents.size()));
+            std::ostringstream name;
+            name << "record-" << std::setfill('0') << std::setw(8) << ordinal
+                 << '-' << digest << ".jsonl";
+            durableWrite(workDirectory / name.str(), contents);
+            completed[ordinal] = true;
+            ++finished;
+        } catch (const std::exception &exception) {
+            progress("interrupted", exception.what());
+            throw;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        if (now - lastProgress >= std::chrono::seconds(options.progressSeconds)) {
+            const double seconds = std::max(1e-9,
+                std::chrono::duration<double>(now - started).count());
+            const double rate = (finished - resumedSources) / seconds;
+            std::cerr << "TGMR finalize: " << finished << '/' << records.size()
+                      << " sources checkpointed";
+            if (rate > 0.0 && finished < records.size()) {
+                std::cerr << ", ETA " << ((records.size() - finished) / rate) << " s";
+            }
+            std::cerr << '\n';
+            progress("running");
+            lastProgress = now;
+        }
+    }
+    writeSourceManifestV2(records, outputManifest, force);
+    progress("complete");
+}
+
 void classifySources(
     const std::vector<SourceRecord> &records,
     const std::string &cacheDirectory,
@@ -1515,16 +1719,56 @@ void packSources(
     PackNoiseRecipe noiseRecipe,
     bool force)
 {
+    PackOptions options;
+    options.noise = noiseRecipe;
+    packSourcesWithOptions(
+        records, manifestPath, cacheDirectory, outputTgpc, options, force);
+}
+
+void packSourcesWithOptions(
+    const std::vector<SourceRecord> &records,
+    const std::string &manifestPath,
+    const std::string &cacheDirectory,
+    const std::string &outputTgpc,
+    const PackOptions &options,
+    bool force)
+{
+    if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY
+        && options.noise != PackNoiseRecipe::NONE) {
+        throw std::runtime_error(
+            "identity-only training cannot be combined with sensor noise");
+    }
     const auto manifestDigest = sha256File(manifestPath);
-    const char *configuration = noiseRecipe == PackNoiseRecipe::NONE
-        ? "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-none"
-        : "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-sensor-v1-read8-shot64";
-    writeCorpusStream(outputTgpc, manifestDigest,
+    const char *configuration = nullptr;
+    if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY) {
+        configuration =
+            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:train-identity:eval-augmentation-v1:noise-none";
+    } else if (options.noise == PackNoiseRecipe::SENSOR_V1) {
+        configuration =
+            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-sensor-v1-train-only-read8-shot64";
+    } else {
+        // Preserve the original production-v1/no-noise identity byte for byte.
+        configuration =
+            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-none";
+    }
+    const std::uint64_t expectedRecords = std::accumulate(
+        records.begin(), records.end(), std::uint64_t{0},
+        [](std::uint64_t count, const SourceRecord &record) {
+            return count + (record.selected ? record.patches.size() : 0U);
+        });
+    writeCorpusStreamResumable(outputTgpc, manifestDigest,
         sha256(configuration, std::strlen(configuration)),
-        [&](const CorpusRecordSink &sink) {
+        expectedRecords,
+        [&](std::uint64_t skipRecords, const CorpusRecordSink &sink) {
             std::uint32_t sourceOrdinal = 0;
+            std::uint64_t recordOrdinal = 0;
             for (const SourceRecord &record : records) {
                 if (!record.selected) continue;
+                if (recordOrdinal + record.patches.size() <= skipRecords) {
+                    recordOrdinal += record.patches.size();
+                    ++sourceOrdinal;
+                    continue;
+                }
                 const auto path = sourcePath(cacheDirectory, record);
                 if (hex(sha256File(path.string())) != record.sha256) {
                     throw std::runtime_error("source changed before packing: " + record.sourceId);
@@ -1533,12 +1777,24 @@ void packSources(
                 const ImageClassification classification = classifyImage(image);
                 verifyDecodedMetadata(record, image, classification, true);
                 for (const PatchSelection &selection : record.patches) {
+                    if (recordOrdinal++ < skipRecords) continue;
                     if (selection.x + 7 > image.width || selection.y + 7 > image.height) {
                         throw std::runtime_error(
                             "manifest patch is outside decoded image: " + record.sourceId);
                     }
-                    const CameraMatrix &matrix = cameraMatrix(selection.matrixId);
-                    if (selection.matrixId != 0
+                    const bool identityTraining = record.split == CorpusSplit::TRAIN
+                        && options.trainingAugmentation
+                            == TrainingAugmentationRecipe::IDENTITY_ONLY;
+                    const std::uint16_t matrixId = identityTraining ? 0 : selection.matrixId;
+                    const std::int16_t exposureStopsQ8 = identityTraining
+                        ? 0 : selection.exposureStopsQ8;
+                    const std::array<std::uint16_t, 3> whiteBalanceQ12 = identityTraining
+                        ? std::array<std::uint16_t, 3>{{4096,4096,4096}}
+                        : selection.whiteBalanceQ12;
+                    const std::uint8_t augmentationKind = identityTraining
+                        ? 0 : selection.augmentationKind;
+                    const CameraMatrix &matrix = cameraMatrix(matrixId);
+                    if (matrixId != 0
                         && matrix.heldOut == (record.split == CorpusSplit::TRAIN)) {
                         throw std::runtime_error(
                             "camera-matrix augmentation crosses the train/evaluation boundary");
@@ -1549,15 +1805,16 @@ void packSources(
                     patch.x = selection.x;
                     patch.y = selection.y;
                     patch.split = record.split;
-                    patch.augmentationKind = selection.augmentationKind == 0 ? 0
-                        : noiseRecipe == PackNoiseRecipe::SENSOR_V1 ? 2 : 1;
+                    patch.augmentationKind = augmentationKind == 0 ? 0
+                        : options.noise == PackNoiseRecipe::SENSOR_V1
+                            && record.split == CorpusSplit::TRAIN ? 2 : 1;
                     patch.orientation = static_cast<std::uint8_t>(image.orientation);
-                    patch.exposureStopsQ8 = selection.exposureStopsQ8;
-                    patch.whiteBalanceQ12 = selection.whiteBalanceQ12;
-                    patch.matrixId = selection.matrixId;
+                    patch.exposureStopsQ8 = exposureStopsQ8;
+                    patch.whiteBalanceQ12 = whiteBalanceQ12;
+                    patch.matrixId = matrixId;
                     patch.augmentationSequence = selection.sequence;
                     patch.patchSeed = record.patchSamplingSeed;
-                    const double exposure = std::exp2(selection.exposureStopsQ8 / 256.0);
+                    const double exposure = std::exp2(exposureStopsQ8 / 256.0);
                     for (unsigned y = 0; y < 7; ++y) {
                         for (unsigned x = 0; x < 7; ++x) {
                             const std::size_t input = ((selection.y + y) * image.width
@@ -1570,12 +1827,13 @@ void packSources(
                                 }
                                 const double value = std::max(0.0, std::min(1.0,
                                     transformed * exposure
-                                    * gainFromQ12(selection.whiteBalanceQ12[channel])));
+                                    * gainFromQ12(whiteBalanceQ12[channel])));
                                 const std::size_t sampleIndex = channel * 49 + y * 7 + x;
                                 std::uint16_t quantized = static_cast<std::uint16_t>(
                                     std::llround(value * 65535.0));
-                                if (noiseRecipe == PackNoiseRecipe::SENSOR_V1
-                                    && selection.augmentationKind != 0) {
+                                if (options.noise == PackNoiseRecipe::SENSOR_V1
+                                    && record.split == CorpusSplit::TRAIN
+                                    && augmentationKind != 0) {
                                     quantized = addSensorNoise(
                                         quantized, patch.sourceIdSha256, selection, sampleIndex);
                                 }
@@ -1587,7 +1845,7 @@ void packSources(
                 }
                 ++sourceOrdinal;
             }
-        }, force);
+        }, options.work, force);
 }
 
 } // namespace tgmr

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -357,6 +358,134 @@ void writeSourceManifestV2(
         std::filesystem::remove(temporary);
         throw;
     }
+}
+
+std::string canonicalSourceRecordV2(const SourceRecord &record)
+{
+    if (!record.manifestV2 || !record.selected || !record.splitAssigned) {
+        throw std::runtime_error(
+            "v2 canonical writer accepts only selected assigned v2 records");
+    }
+    return canonicalRecord(record);
+}
+
+std::string canonicalAttributionNotice(const std::vector<SourceRecord> &records)
+{
+    validateProductionManifest(records);
+    auto lineField = [](std::string value) {
+        for (char &byte : value) {
+            if (static_cast<unsigned char>(byte) < 0x20U) byte = ' ';
+        }
+        return value;
+    };
+    std::ostringstream output;
+    output << "RawTherapee TGMR Corpus v1 attribution notice\n"
+           << "=============================================\n\n"
+           << "This corpus contains derived 7x7 linear-RGB training patches. "
+              "The original photographs are not redistributed.\n"
+           << "Each source remains subject to the license identified below.\n\n";
+    for (const SourceRecord &record : records) {
+        if (!record.selected) continue;
+        output << "Source-ID: " << lineField(record.sourceId) << '\n'
+               << "Title: " << lineField(record.title) << '\n'
+               << "Author: " << lineField(record.author) << '\n'
+               << "Source: " << lineField(record.landingPage) << '\n'
+               << "License: " << lineField(record.license) << " ("
+               << lineField(record.licenseUrl) << ")\n\n";
+    }
+    return output.str();
+}
+
+std::string canonicalRightsReportJson(const std::vector<SourceRecord> &records)
+{
+    validateProductionManifest(records);
+    std::map<std::string, std::uint64_t> catalogs;
+    std::map<std::string, std::uint64_t> licenses;
+    std::uint64_t people = 0;
+    for (const SourceRecord &record : records) {
+        if (!record.selected) continue;
+        ++catalogs[record.catalogName];
+        ++licenses[record.license];
+        if (std::find(record.contentTags.begin(), record.contentTags.end(), "people")
+            != record.contentTags.end()) {
+            ++people;
+        }
+    }
+    std::ostringstream output;
+    output << "{\n  \"catalogs\": {";
+    bool first = true;
+    for (const auto &entry : catalogs) {
+        if (!first) output << ',';
+        output << "\n    " << jsonString(entry.first) << ": " << entry.second;
+        first = false;
+    }
+    output << "\n  },\n  \"format\": \"rawtherapee-tgmr-rights-report-v1\",\n"
+           << "  \"licenses\": {";
+    first = true;
+    for (const auto &entry : licenses) {
+        if (!first) output << ',';
+        output << "\n    " << jsonString(entry.first) << ": " << entry.second;
+        first = false;
+    }
+    output << "\n  },\n  \"people_sources\": " << people
+           << ",\n  \"sources\": [\n";
+    bool firstSource = true;
+    for (const SourceRecord &record : records) {
+        if (!record.selected) continue;
+        if (!firstSource) output << ",\n";
+        firstSource = false;
+        output << "    {\"author\":" << jsonString(record.author)
+               << ",\"author_id\":" << jsonString(record.authorId)
+               << ",\"catalog\":" << jsonString(record.catalogName)
+               << ",\"evidence_revision\":" << jsonString(record.rightsEvidenceRevision)
+               << ",\"evidence_sha256\":" << jsonString(record.rightsEvidenceSha256)
+               << ",\"evidence_url\":" << jsonString(record.rightsEvidenceUrl)
+               << ",\"landing_page\":" << jsonString(record.landingPage)
+               << ",\"license\":" << jsonString(record.license)
+               << ",\"license_url\":" << jsonString(record.licenseUrl)
+               << ",\"people_review_status\":" << jsonString(record.peopleReviewStatus)
+               << ",\"rights_review_status\":" << jsonString(record.rightsReviewStatus)
+               << ",\"source_id\":" << jsonString(record.sourceId) << '}';
+    }
+    output << "\n  ],\n  \"total_sources\": "
+           << std::accumulate(catalogs.begin(), catalogs.end(), std::uint64_t{0},
+                [](std::uint64_t sum, const auto &entry) { return sum + entry.second; })
+           << "\n}\n";
+    return output.str();
+}
+
+std::string reconstructionListTsv(const std::vector<SourceRecord> &records)
+{
+    validateProductionManifest(records);
+    auto safe = [](const std::string &value) {
+        if (value.find_first_of("\t\r\n") != std::string::npos) {
+            throw std::runtime_error("reconstruction list field contains control whitespace");
+        }
+        return value;
+    };
+    std::ostringstream output;
+    output << "source_id\tsource_sha256\tcache_filename\tkind\turl\ttransport_sha256"
+              "\tarchive_member\tmember_sha256\n";
+    for (const SourceRecord &record : records) {
+        if (!record.selected) continue;
+        auto line = [&](const char *kind, const std::string &url,
+                        const std::string &transportSha256,
+                        const std::string &member, const std::string &memberSha256) {
+            output << safe(record.sourceId) << '\t' << safe(record.sha256) << '\t'
+                   << safe(record.cacheFilename) << '\t' << kind << '\t' << safe(url)
+                   << '\t' << safe(transportSha256) << '\t' << safe(member) << '\t'
+                   << safe(memberSha256) << '\n';
+        };
+        line("original", record.originalUrl, record.sha256, "", "");
+        for (const std::string &url : record.fallbackUrls) {
+            line("fallback", url, record.sha256, "", "");
+        }
+        for (const ArchiveFallback &archive : record.archiveFallbacks) {
+            line("archive", archive.url, archive.sha256,
+                 archive.member, archive.memberSha256);
+        }
+    }
+    return output.str();
 }
 
 std::string canonicalSourceReportJson(const std::vector<SourceRecord> &records)

@@ -113,13 +113,24 @@ The automatic loader additionally requires the compiled official digest.
   use deterministic -2..+2 stop exposure, product-normalized 0.5x..2x white
   balance, and frozen Fujifilm camera-matrix transforms. Training and held-out
   matrix IDs are disjoint and enforced while packing.
+- Patch finalization is restartable at source granularity. Each completed
+  source is serialized as an authenticated immutable checkpoint bound to the
+  exact selected-source manifest. Packing is restartable at a configurable
+  record boundary: it revalidates all durable partial records and split counts
+  before appending, skips completed source ranges without reopening them, and
+  produces byte-identical output to an uninterrupted run.
 - The packer exposes two reproducible validation candidates: clipping-only
   (`--noise none`, the default) and bounded integer-domain `sensor-v1` noise on
-  non-identity patches. The latter approximates 8 uint16-code read noise and a
+  augmented training patches. The latter approximates 8 uint16-code read noise and a
   signal-dependent term reaching approximately 64 codes at saturation. It is
   bound into the TGPC configuration digest and augmentation identity; the
   simpler recipe remains preferred unless the frozen validation/tail study
   establishes a material advantage.
+- A third `identity-only` training candidate removes all exposure,
+  white-balance, and camera-matrix transforms from training records. Validation
+  and test records remain byte-identical across identity-only, production-v1,
+  and production-v1 plus sensor-noise corpora, preventing evaluation changes
+  from being mistaken for model improvements.
 - TGPC v1 is an authenticated little-endian record stream containing planar
   7x7 RGB uint16 values and provenance. The packer does not materialize the
   corpus. The deterministic `.tgpc.gz` form uses existing required zlib,
@@ -128,6 +139,9 @@ The automatic loader additionally requires the compiled official digest.
   complete structure and payload.
 - Corpus inspection, brightness/chroma/texture balance, and canonical JSON,
   CSV, and self-contained HTML statistics are implemented in `rt-tgmr-train`.
+- Canonical attribution, per-source rights/evidence JSON, and reconstruction
+  URL/checksum TSV generation are implemented in the same executable and
+  require the complete production manifest contract.
 
 ### Native fitting and artifact generation
 
@@ -554,9 +568,11 @@ the 14,000-position recipe has SHA-256
 
 The following remain deliberately open rather than being represented as done:
 
-- Finalizing deterministic patch coordinates and augmentations from the frozen
-  5,000-source selection, then publishing `corpus-v1.jsonl`, TGPC,
-  deterministic gzip, fetch list, and attribution notice.
+- Running the implemented restartable patch finalization and three fair
+  augmentation pack recipes on the frozen 5,000-source selection, then
+  publishing `corpus-v1.jsonl`, TGPC, deterministic gzip, reconstruction list,
+  rights report, and attribution notice. The generators are implemented; the
+  production artifacts have not yet been created or frozen.
 - Source-count convergence and augmentation/noise selection.
 - Canonical two-clean-run production training and the official ~6 MiB model.
 - Production quality evaluation on the untouched licensed test set, every
@@ -610,7 +626,9 @@ experimental history on this branch.
   detail, not a new trainer or corpus-format requirement.
 - Direct AArch64 compilation of the NEON translation path.
 - Canonical TGPC/gzip round trips, corrupted-container rejection,
-  deterministic packing, deterministic checkpoint/resume, one-step
+  deterministic packing, authenticated interruption/resume for source
+  finalization and TGPC packing, train-only augmentation/noise with invariant
+  validation/test records, deterministic release metadata, one-step
   Student-t reference arithmetic, phase contracts, model loading, PP3 round
   trip, custom-model override, and complete fallback coverage.
 

@@ -49,9 +49,14 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train corpus select CANDIDATES.jsonl RECIPE.json OUTPUT.jsonl"
            " [--force]\n"
         << "  rt-tgmr-train corpus propose-patches MANIFEST CACHE OUTPUT.jsonl [--force]\n"
-        << "  rt-tgmr-train corpus finalize MANIFEST CACHE OUTPUT.jsonl [--force]\n"
+        << "  rt-tgmr-train corpus finalize MANIFEST CACHE OUTPUT.jsonl"
+           " [--work-dir DIR] [--progress-seconds N] [--force]\n"
         << "  rt-tgmr-train corpus pack MANIFEST CACHE OUTPUT.tgpc"
-           " [--noise none|sensor-v1] [--force]\n"
+           " [--training-augmentation production-v1|identity-only]"
+           " [--noise none|sensor-v1] [--work-dir DIR]"
+           " [--checkpoint-records N] [--progress-seconds N] [--force]\n"
+        << "  rt-tgmr-train corpus release-files MANIFEST ATTRIBUTION.txt"
+           " RIGHTS.json RECONSTRUCTION.tsv [--force]\n"
         << "  rt-tgmr-train corpus inspect FILE\n"
         << "  rt-tgmr-train corpus balance FILE [--training-min N] [--eval-min N]"
            " [--fixed-v1-thresholds]\n"
@@ -70,8 +75,8 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train export --checkpoints DIR OUTPUT [identity options]"
            " [--validation-report FILE]\n"
         << "  rt-tgmr-train --version\n\n"
-        << "The production commands corpus verify-sources, classify, balance, pack,\n"
-        << "report, train, resume, export, verify, and benchmark are versioned as\n"
+        << "The production commands corpus verify-sources, classify, finalize, pack,\n"
+        << "balance, report, release-files, train, resume, export, verify, and benchmark are\n"
         << "part of the same standalone executable.\n";
 }
 
@@ -689,60 +694,6 @@ int exportCommand(int argc, char **argv)
     return 0;
 }
 
-std::vector<tgmr::SourceRecord> finalizedSources(
-    std::vector<tgmr::SourceRecord> records,
-    const std::string &cacheDirectory)
-{
-    static const double exposures[] = {-2.0,-1.5,-1.0,-0.5,0.5,1.0,1.5,2.0};
-    static const std::array<std::array<double, 3>, 6> whiteBalances{{
-        {{2.0,1.0,0.5}}, {{0.5,1.0,2.0}},
-        {{1.5,0.75,0.888888888889}}, {{0.666666666667,1.333333333333,1.125}},
-        {{1.25,0.8,1.0}}, {{0.8,1.25,1.0}},
-    }};
-    for (auto &record : records) {
-        if (!record.selected) continue;
-        const std::filesystem::path path = std::filesystem::path(cacheDirectory)
-            / record.cacheFilename;
-        if (tgmr::hex(tgmr::sha256File(path.string())) != record.sha256) {
-            throw std::runtime_error("source changed before patch finalization: "
-                                     + record.sourceId);
-        }
-        const auto image = tgmr::loadLinearImage(path.string());
-        const std::size_t count = record.split == tgmr::CorpusSplit::TRAIN ? 256 : 128;
-        const auto proposals = tgmr::proposePatches(
-            image, record.patchSamplingSeed, count);
-        record.patches.clear();
-        record.patches.reserve(proposals.size());
-        const auto selector = tgmr::sha256(record.sourceId.data(), record.sourceId.size());
-        for (std::size_t index = 0; index < proposals.size(); ++index) {
-            const auto &proposal = proposals[index];
-            const bool identity = index % 4 == 0;
-            const unsigned choice = (selector[index % selector.size()] + index) & 255U;
-            tgmr::PatchSelection patch;
-            patch.x = proposal.x;
-            patch.y = proposal.y;
-            patch.coverage = proposal.coverage;
-            patch.coverageClass = proposal.coverageClass;
-            patch.augmentationKind = identity ? 0 : 1;
-            patch.exposureStopsQ8 = static_cast<std::int16_t>(std::llround(
-                (identity ? 0.0 : exposures[choice % 8]) * 256.0));
-            const auto whiteBalance = identity
-                ? std::array<double, 3>{{1.0,1.0,1.0}}
-                : whiteBalances[(choice / 8) % whiteBalances.size()];
-            for (unsigned channel = 0; channel < 3; ++channel) {
-                patch.whiteBalanceQ12[channel] = static_cast<std::uint16_t>(
-                    std::llround(whiteBalance[channel] * 4096.0));
-            }
-            patch.matrixId = identity ? 0
-                : record.split == tgmr::CorpusSplit::TRAIN ? 1 + choice % 4
-                : 101 + choice % 2;
-            patch.sequence = static_cast<std::uint16_t>(index);
-            record.patches.push_back(patch);
-        }
-    }
-    return records;
-}
-
 int corpusCommand(int argc, char **argv)
 {
     if (argc < 3) {
@@ -942,14 +893,34 @@ int corpusCommand(int argc, char **argv)
         return 0;
     }
     if (command == "finalize") {
-        if (argc < 6 || argc > 7) {
+        if (argc < 6) {
             throw std::runtime_error(
-                "corpus finalize requires MANIFEST CACHE OUTPUT [--force]");
+                "corpus finalize requires MANIFEST CACHE OUTPUT"
+                " [--work-dir DIR] [--progress-seconds N] [--force]");
         }
-        const bool force = argc == 7 && std::string(argv[6]) == "--force";
-        if (argc == 7 && !force) throw std::runtime_error("unknown corpus finalize option");
-        auto records = finalizedSources(tgmr::readSourceManifest(argv[3]), argv[4]);
-        tgmr::writeSourceManifestV2(records, argv[5], force);
+        bool force = false;
+        tgmr::FinalizationOptions options;
+        for (int index = 6; index < argc; ++index) {
+            const std::string option = argv[index];
+            if (option == "--force") {
+                force = true;
+            } else if (option == "--work-dir" && index + 1 < argc) {
+                options.workDirectory = argv[++index];
+            } else if (option == "--progress-seconds" && index + 1 < argc) {
+                const std::string value = argv[++index];
+                std::size_t consumed = 0;
+                const std::uint64_t parsed = std::stoull(value, &consumed);
+                if (consumed != value.size() || parsed == 0
+                    || parsed > std::numeric_limits<std::uint32_t>::max()) {
+                    throw std::runtime_error("--progress-seconds is out of range");
+                }
+                options.progressSeconds = static_cast<std::uint32_t>(parsed);
+            } else {
+                throw std::runtime_error("unknown corpus finalize option: " + option);
+            }
+        }
+        const auto records = tgmr::readSourceManifest(argv[3]);
+        tgmr::finalizeSources(records, argv[3], argv[4], argv[5], options, force);
         // Re-read the emitted bytes before applying the complete production
         // contract, so serialization omissions cannot escape the gate.
         tgmr::validateProductionManifest(tgmr::readSourceManifest(argv[5]));
@@ -962,19 +933,50 @@ int corpusCommand(int argc, char **argv)
                 "corpus pack requires MANIFEST CACHE OUTPUT [--noise RECIPE] [--force]");
         }
         bool force = false;
-        tgmr::PackNoiseRecipe noiseRecipe = tgmr::PackNoiseRecipe::NONE;
+        tgmr::PackOptions options;
         for (int index = 6; index < argc; ++index) {
             const std::string option = argv[index];
             if (option == "--force") {
                 force = true;
             } else if (option == "--noise" && index + 1 < argc) {
                 const std::string value = argv[++index];
-                if (value == "none") noiseRecipe = tgmr::PackNoiseRecipe::NONE;
+                if (value == "none") options.noise = tgmr::PackNoiseRecipe::NONE;
                 else if (value == "sensor-v1") {
-                    noiseRecipe = tgmr::PackNoiseRecipe::SENSOR_V1;
+                    options.noise = tgmr::PackNoiseRecipe::SENSOR_V1;
                 } else {
                     throw std::runtime_error(
                         "corpus pack --noise must be none or sensor-v1");
+                }
+            } else if (option == "--training-augmentation" && index + 1 < argc) {
+                const std::string value = argv[++index];
+                if (value == "production-v1") {
+                    options.trainingAugmentation =
+                        tgmr::TrainingAugmentationRecipe::PRODUCTION_V1;
+                } else if (value == "identity-only") {
+                    options.trainingAugmentation =
+                        tgmr::TrainingAugmentationRecipe::IDENTITY_ONLY;
+                } else {
+                    throw std::runtime_error(
+                        "--training-augmentation must be production-v1 or identity-only");
+                }
+            } else if (option == "--work-dir" && index + 1 < argc) {
+                options.work.workDirectory = argv[++index];
+            } else if ((option == "--checkpoint-records"
+                        || option == "--progress-seconds")
+                       && index + 1 < argc) {
+                const std::string value = argv[++index];
+                std::size_t consumed = 0;
+                const std::uint64_t parsed = std::stoull(value, &consumed);
+                if (consumed != value.size() || parsed == 0) {
+                    throw std::runtime_error(option + " is out of range");
+                }
+                if (option == "--checkpoint-records") {
+                    options.work.checkpointRecords = parsed;
+                } else {
+                    if (parsed > std::numeric_limits<std::uint32_t>::max()) {
+                        throw std::runtime_error(option + " is out of range");
+                    }
+                    options.work.progressSeconds = static_cast<std::uint32_t>(parsed);
                 }
             } else {
                 throw std::runtime_error("unknown corpus pack option: " + option);
@@ -982,8 +984,34 @@ int corpusCommand(int argc, char **argv)
         }
         const auto records = tgmr::readSourceManifest(argv[3]);
         tgmr::validateProductionManifest(records);
-        tgmr::packSources(records, argv[3], argv[4], argv[5], noiseRecipe, force);
+        tgmr::packSourcesWithOptions(records, argv[3], argv[4], argv[5], options, force);
         std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[5]));
+        return 0;
+    }
+    if (command == "release-files") {
+        if (argc < 7 || argc > 8) {
+            throw std::runtime_error(
+                "corpus release-files requires MANIFEST ATTRIBUTION RIGHTS RECONSTRUCTION"
+                " [--force]");
+        }
+        const bool force = argc == 8 && std::string(argv[7]) == "--force";
+        if (argc == 8 && !force) {
+            throw std::runtime_error("unknown corpus release-files option");
+        }
+        const auto records = tgmr::readSourceManifest(argv[3]);
+        tgmr::validateProductionManifest(records);
+        // Prepare and validate every byte string before publishing any output.
+        const std::string attribution = tgmr::canonicalAttributionNotice(records);
+        const std::string rights = tgmr::canonicalRightsReportJson(records);
+        const std::string reconstruction = tgmr::reconstructionListTsv(records);
+        if (!force && (std::filesystem::exists(argv[4])
+            || std::filesystem::exists(argv[5]) || std::filesystem::exists(argv[6]))) {
+            throw std::runtime_error("refusing to replace a corpus release file");
+        }
+        writeTextAtomic(argv[4], attribution, force);
+        writeTextAtomic(argv[5], rights, force);
+        writeTextAtomic(argv[6], reconstruction, force);
+        std::cout << "generated corpus release files\n";
         return 0;
     }
     if (command == "inspect") {

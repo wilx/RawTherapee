@@ -96,6 +96,11 @@ struct ClassificationOptions final {
     bool allowFailures = false;
 };
 
+struct FinalizationOptions final {
+    std::uint32_t progressSeconds = 15;
+    std::string workDirectory;
+};
+
 // Corpus-v1 deliberately freezes augmentation recipes by name.  NONE is the
 // simpler clipping-only candidate.  SENSOR_V1 adds deterministic bounded read
 // and signal-dependent perturbations to non-identity patches; its use must be
@@ -103,6 +108,18 @@ struct ClassificationOptions final {
 enum class PackNoiseRecipe : std::uint8_t {
     NONE = 0,
     SENSOR_V1 = 1,
+};
+
+enum class TrainingAugmentationRecipe : std::uint8_t {
+    PRODUCTION_V1 = 0,
+    IDENTITY_ONLY = 1,
+};
+
+struct PackOptions final {
+    PackNoiseRecipe noise = PackNoiseRecipe::NONE;
+    TrainingAugmentationRecipe trainingAugmentation =
+        TrainingAugmentationRecipe::PRODUCTION_V1;
+    CorpusWriteOptions work;
 };
 
 SourceVerification verifySources(
@@ -141,6 +158,16 @@ void writeSourceManifestV2(
     const std::string &outputManifest,
     bool force = false);
 
+std::string canonicalSourceRecordV2(const SourceRecord &record);
+
+void finalizeSources(
+    const std::vector<SourceRecord> &records,
+    const std::string &inputManifest,
+    const std::string &cacheDirectory,
+    const std::string &outputManifest,
+    const FinalizationOptions &options = FinalizationOptions{},
+    bool force = false);
+
 std::string canonicalSourceReportJson(const std::vector<SourceRecord> &records);
 std::string sourceReportCsv(const std::vector<SourceRecord> &records);
 std::string sourceReportHtml(const std::vector<SourceRecord> &records);
@@ -152,5 +179,17 @@ void packSources(
     const std::string &outputTgpc,
     PackNoiseRecipe noiseRecipe = PackNoiseRecipe::NONE,
     bool force = false);
+
+void packSourcesWithOptions(
+    const std::vector<SourceRecord> &records,
+    const std::string &manifestPath,
+    const std::string &cacheDirectory,
+    const std::string &outputTgpc,
+    const PackOptions &options,
+    bool force = false);
+
+std::string canonicalAttributionNotice(const std::vector<SourceRecord> &records);
+std::string canonicalRightsReportJson(const std::vector<SourceRecord> &records);
+std::string reconstructionListTsv(const std::vector<SourceRecord> &records);
 
 } // namespace tgmr
