@@ -93,7 +93,7 @@ The frozen production mix is:
 
 | Catalog | Candidate pool | Train | Validation | Test |
 | --- | ---: | ---: | ---: | ---: |
-| CVDF Open Images V4/V5 boxable subset | 12,000 | 3,200 | 400 | 400 |
+| CVDF Open Images V4/V5 boxable subset | 14,000 | 3,200 | 400 | 400 |
 | PASS | 0 | 0 | 0 | 0 |
 | Wikimedia Commons | 3,000 | 480 | 60 | 60 |
 | Smithsonian Open Access | 2,000 | 320 | 40 | 40 |
@@ -192,6 +192,13 @@ python3 "$PREP" collect-commons-categories \
     tools/tgmr_trainer/commons-category-recipe-v1.json commons-api.jsonl \
     --report commons-api-report.json
 
+# The collector already records actual file-page categories. For an older
+# frozen snapshot created before that field existed, enrich it once and bind
+# every later step to the enriched snapshot instead.
+python3 "$PREP" enrich-commons-categories commons-api.jsonl \
+    commons-api-with-file-categories.jsonl \
+    --report commons-category-enrichment-report.json
+
 # Smithsonian is collected from explicitly selected units and hexadecimal
 # metadata shards in its public AWS bucket. Both commands freeze their live
 # inputs; normalization is offline.
@@ -206,8 +213,9 @@ python3 "$PREP" normalize openimages oi.csv oi-candidates.jsonl \
     --revision cvdf-open-images-v5-boxable-05f3d68dbbb0 \
     --snapshot-sha256 \
     05f3d68dbbb03728d1a37e51479f4f35c062b871e1a6cae8c4cefbe0e0c80ed0 \
-    --eligible-only --limit 12000
-python3 "$PREP" normalize commons commons-api.jsonl commons-candidates.jsonl \
+    --eligible-only --limit 14000
+python3 "$PREP" normalize commons commons-api-with-file-categories.jsonl \
+    commons-candidates.jsonl \
     --revision COMMONS_SNAPSHOT_REVISION --snapshot-sha256 SHA256 \
     --tag-rules tools/tgmr_trainer/catalog-content-tags-v1.json --limit 3000
 python3 "$PREP" normalize smithsonian smithsonian-aws.jsonl \
@@ -237,7 +245,7 @@ python3 "$PREP" prepare-openimages-review oi-assembled-pending-review.jsonl \
     oi-auto-reviews.jsonl oi-people-queue.jsonl oi-review-report.json \
     --class-descriptions-sha256 SHA256 --human-labels-sha256 SHA256 \
     --boxes-sha256 SHA256 --rules-sha256 SHA256 \
-    --candidate-pool-size 12000 --html oi-people-review.html
+    --candidate-pool-size 14000 --html oi-people-review.html
 python3 "$PREP" apply-openimages-people-decisions oi-auto-reviews.jsonl \
     oi-people-queue.jsonl oi-people-decisions.jsonl oi-reviews.jsonl \
     --require-complete
@@ -274,7 +282,10 @@ python3 "$PREP" assemble smithsonian-fetched.jsonl smithsonian-classifications.j
     --reviews supplemental-reviews.jsonl --jobs 4
 
 python3 "$PREP" merge reviewed-preduplicate.jsonl oi-reviewed-candidates.jsonl \
-    commons-reviewed-candidates.jsonl smithsonian-reviewed-candidates.jsonl
+    commons-reviewed-candidates.jsonl smithsonian-reviewed-candidates.jsonl \
+    --cache-prefix openimages-cvdf-v5-boxable=open-images-cvdf-v5 \
+    --cache-prefix wikimedia-commons=tgmr-corpus-v1/commons \
+    --cache-prefix smithsonian-open-access=tgmr-corpus-v1/smithsonian
 python3 "$PREP" prepare-duplicate-review reviewed-preduplicate.jsonl "$CACHE" \
     reviewed-pending-duplicates.jsonl duplicate-review-queue.jsonl \
     --html duplicate-review.html --report duplicate-review-report.json
@@ -366,7 +377,16 @@ is recorded. After assembly, `prepare-catalog-people-review` creates a local
 contact sheet and canonical queue; `apply-catalog-people-decisions
 --require-complete` applies the exported decisions. This is separate from the
 annotation-rich Open Images queue and uses the same no-obvious-minors or
-sensitive-content policy.
+sensitive-content policy. Commons tagging uses the authenticated categories of
+each file page, not merely the discovery category, plus conservative whole-word
+title terms. These signals only create a review obligation; they never approve
+or reject an image automatically.
+
+The generic people-review page is reject-only. Inspect every image, mark only
+the rejected cards, then affirm the page-level completion checkbox. Export then
+writes an explicit approved or rejected decision for every queued source. The
+page mirrors selections into HTML attributes so saving the complete page after
+review also preserves the decisions as a recovery copy.
 
 `fetch --jobs N` downloads distinct candidates concurrently but preserves input
 order in its canonical output. `--request-delay SECONDS` enforces a single
@@ -388,12 +408,20 @@ cap and identifies the narrow band just outside automatic rejection: dHash
 distance 6-7 or DCT pHash distance 9-10. It groups connected pairs into a
 side-by-side cluster contact sheet and marks every involved candidate
 `candidate-pending-duplicate-review`. Reviewers affirm each complete cluster
-and mark any redundant sources for rejection. `apply-duplicate-decisions
---require-complete` is the only path back to
-`candidate-reviewed`; rejected and unresolved candidates cannot enter final
-selection. Exact identities, shared Flickr IDs, dHash distance at most 5, and
-DCT pHash distance at most 8 remain automatic hard exclusions rechecked by the
-C++ selector.
+and mark any redundant sources for rejection. Normal reviews use
+`apply-duplicate-decisions --require-complete`; rejected and unresolved
+candidates cannot enter final selection. A deliberately conservative partial
+review can instead use `--reject-unreviewed-clusters`, which rejects every
+member of every cluster omitted from the decisions file while retaining the
+recorded decisions for reviewed clusters. The report separates explicit
+rejections from this conservative policy. Exact identities, shared Flickr IDs,
+dHash distance at most 5, and DCT pHash distance at most 8 remain automatic
+hard exclusions rechecked by the C++ selector.
+
+When catalog caches live under different directories, `merge --cache-prefix`
+rebases their safe relative `cache_filename` fields beneath one common cache
+root. It changes no source identity or digest and refuses unmatched catalog
+names, absolute paths, and parent traversal.
 
 The stdout from each `snapshot`, `collect-*`, `normalize`, `fetch`, `select`,
 `balance`, and `release-manifest` command is canonical JSON and should be saved

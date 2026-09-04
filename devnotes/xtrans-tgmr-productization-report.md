@@ -36,8 +36,8 @@ The automatic loader additionally requires the compiled official digest.
   ND, SA, unknown, and ambiguous terms are rejected. Smithsonian records are
   accepted only with explicit CC0. People sources require a separate approved
   no-obvious-minors/non-sensitive-content review.
-- Catalog acquisition is frozen for a deterministic 17,000-candidate
-  pool: 12,000 candidates from the CVDF Open Images V4/V5 boxable subset,
+- Catalog acquisition is frozen for a deterministic 19,000-position candidate
+  pool: 14,000 positions from the CVDF Open Images V4/V5 boxable subset,
   3,000 Wikimedia Commons, and 2,000 Smithsonian Open Access. PASS remains a
   supported research/tooling input but contributes no corpus-v1 sources after
   its distributed images failed the frozen resolution gate. The exact selected
@@ -345,7 +345,7 @@ The content/review preparation authenticates and joins these snapshots:
 | V7 boxable class descriptions | 12,064 | `1839e0e7e84130ae281f7f67413768601b031581c0c42e7fc17527b8e2a99aa9` |
 | V5 positive human image labels | 376,764,810 | `f9bec2d40b4e12d67c9f726292b5db88285713267fc3dc6496ae72839b2fd9de` |
 | V6 object boxes | 2,258,447,590 | `dfc9637907a6b105f87e435bac91a5ee9b29af3ff8391168f86c1d63879786b6` |
-| tracked content-tag rules | 2,405 | `22ebe02edf465ebe5878cbd86429c5b2471f25751d803c7ae6da4bda3bef2ad5` |
+| tracked content-tag rules | 2,345 | `bbe9513cef61e5d40f8cafff63263c74236c62ac6c97a04d509ea66c4aa1c04f` |
 
 The exact annotation join found 46,462 positive human-label rows and 101,355
 box rows for the expanded candidates. It tagged 10,714 sources and approved the
@@ -427,13 +427,34 @@ losing either held-out source to decoding, quality, author-cap, or duplicate
 checks therefore triggers Commons expansion rather than silently dropping the
 sparse-star safety class.
 
-The Commons originals total about 12.95 GiB according to catalog byte sizes.
-An initial four-worker acquisition reached Wikimedia's HTTP 429 bulk-client
-limit after 54 authenticated cache entries. The canonical fetch command now
-uses one worker, a one-second global request interval, a descriptive bot user
-agent, and process-wide `Retry-After` handling. The external cache is the
-restart checkpoint and currently contains 57 authenticated originals; no
-incomplete fetch manifest is treated as canonical.
+The Commons originals total about 12.95 GiB. The completed conservative
+acquisition authenticated all 3,000 files with zero failures: 589 were adopted
+from the restart cache and 2,411 were downloaded. Classification and assembly
+also completed for all 3,000 records with zero failures. The service log
+reported approximately 1.58 classified images/s and 6.97 MiB/s from the CIFS
+store. The canonical fetch command uses one worker, a one-second global request
+interval, a descriptive bot user agent, and process-wide `Retry-After`
+handling.
+
+The first assembled snapshot produced an empty people queue because the frozen
+metadata contained only discovery/root categories. That was not accepted as
+evidence that the corpus contained no people. A deterministic enrichment pass
+now freezes each file page's actual non-hidden Commons categories before
+normalization. It added 7,561 category memberships to the 3,000 records. The
+original snapshot SHA-256 is
+`c03fb6265aae1462b0e37c06627caca4ddc6e25079fa3dd7ff4363d1a71af0b6` and
+the enriched snapshot SHA-256 is
+`e2ff868e16589046810104e7104a37f0a171929f6b83cc742b18691f8be9970a`.
+Category evidence plus conservative whole-word title terms now identify 231
+people candidates: 184 projected train, 29 validation, and 18 test. The
+canonical review-queue SHA-256 is
+`acb641cd50a6b175c3ed4fdfbeb9be6a5f29fe46c2fdf25494e7e783192d9b65`.
+These tags only require human review; they do not reject content automatically.
+The completed review approved 220 candidates and rejected 11. The decision-file
+SHA-256 is
+`e65a32e2383daf479ceb0b9d6f9959de5ddc67d715bd92fccd082e78cc4b2823`;
+the resulting 3,000-record reviewed Commons manifest has SHA-256
+`d3651a9a043445803d0f436f7b4e23abf1375dc165540685735ee5b97db803bf`.
 
 Smithsonian collection used anonymous Open Data on AWS metadata shards. A
 first pass exposed 200 otherwise usable records without a stable landing page;
@@ -482,26 +503,60 @@ The large pair count is concentrated in visually repetitive museum/artwork
 families, which is precisely why cluster-level review is required rather than
 1,174 independent pair decisions.
 
-Human review is complete for both prepared catalogs. Open Images has 905
-approved and 33 rejected people decisions; 4,777 additional people-tagged
-sources remain deliberately pending and ineligible. Reapplying the completed
-decisions reproduced the exact 20-cluster duplicate queue, and the final
-11,998-record Open Images reviewed-candidate manifest has SHA-256
-`cc5c5924c00e38589d8094cfd7ba9993a719fd4164a6681c63862cc9dd745446`.
-All 147 Smithsonian people records were accepted after review, and all 25
-borderline clusters were resolved as visually similar but distinct; its final
-2,000-record manifest has SHA-256
-`f021baa8a197d3149179f910fb8612fbe1cfb2df9db21eaf3569a06afe65acd6`.
+Human review is complete for the people records needed by the frozen quotas.
+Open Images has 905 approved and 33 rejected people decisions; additional
+people-tagged sources remain deliberately pending and ineligible. Commons has
+220 approved and 11 rejected people decisions. All 147 Smithsonian people
+records were accepted after review. The untouched pending records are not
+implicitly approved.
+
+The initial 12,000-position Open Images pool did not retain sufficient train
+and validation capacity after the author cap and conservative global duplicate
+review. The next deterministic 2,000-position tranche was therefore processed
+from the already mirrored CVDF archive. It yielded 1,999 classified records;
+one unprofiled CMYK JPEG was rejected. The tranche candidate, classification,
+and reviewed-candidate SHA-256 values are respectively
+`4f86c66de71fc95115b14205596701e80597a493818789f5eea5de21e440b266`,
+`e1a2e117d447a42f48ffd656d66593a5fd22e7c106c396b05e62083871911ec8`,
+and `cd24d3380c438a9f198d15ff1302045c11781de09ad176cadb28aa899789df82`.
+The combined 13,997-record Open Images reviewed-candidate manifest has
+SHA-256
+`f85f09c03b1ee807848eed53c86217ee1edbeb17936a2d52353e9fae1f5cc412`.
+
+The three reviewed catalogs now form an 18,997-record candidate manifest with
+SHA-256
+`b8d4a7b264e808504a0335847b75beb84e9e7b649c388f0844da7518723a759b`.
+The merge rebases each catalog's cache filename under one common external root;
+it does not copy images or change image identities. The global five-image
+author cap leaves 8,540 candidates for perceptual duplicate analysis. The
+fresh borderline review contains 66 clusters, 1,354 candidate pairs, and 425
+distinct images. Its queue SHA-256 is
+`8f2afa4c9593c0cd98444b2e2b43e057a39e1c499c99ae1bdb9e939a8e7aaa84`.
+
+Fifty previously reviewed cluster identities remained byte-for-byte stable
+and were carried forward. The other 16 clusters were treated as unreviewed;
+under the selected fail-closed policy all 206 of their member images were
+rejected, even when they were merely very similar rather than exact
+duplicates. This deliberately trades source capacity for lower recurrence
+bias in the patch population. The resulting 18,997-record reviewed manifest
+has SHA-256
+`7863a3342a43fedd066af7196b0b45276856c7abcb32c4f8da3ad47c683b855d`.
+
+The frozen selector then chose exactly 5,000 sources with all catalog/split
+quotas satisfied. It selected 714/133/75 approved people sources and the
+required 12/1/1 astronomy sources for train/validation/test. The canonical
+selected-source JSONL has SHA-256
+`469b1c9639ef42aecd97c040e7c3712e9b958e444acd09aeb7cb82c469444bcc`;
+the 14,000-position recipe has SHA-256
+`b13250f271c07ed638ed15060a51cc3f3d3d8e916519561f1d73683edbc20ff1`.
 
 ## Incomplete plan items
 
 The following remain deliberately open rather than being represented as done:
 
-- Completing download, classification, assembly, people review, and duplicate
-  review of the frozen 3,000 Commons candidates. Open Images and Smithsonian
-  acquisition/classification/review work is complete.
-- Freezing and publishing `corpus-v1.jsonl`, TGPC, deterministic gzip, fetch
-  list, and attribution notice.
+- Finalizing deterministic patch coordinates and augmentations from the frozen
+  5,000-source selection, then publishing `corpus-v1.jsonl`, TGPC,
+  deterministic gzip, fetch list, and attribution notice.
 - Source-count convergence and augmentation/noise selection.
 - Canonical two-clean-run production training and the official ~6 MiB model.
 - Production quality evaluation on the untouched licensed test set, every

@@ -326,9 +326,9 @@ def _content_tag_rules(path: Path | None) -> tuple[list[dict[str, object]], str 
     if not isinstance(rules, list):
         raise CorpusPreparationError("content-tag rules must be a list")
     for rule in rules:
-        if not isinstance(rule, dict) or set(rule) not in (
-            {"patterns", "tags"}, {"patterns", "tags", "title_patterns"},
-        ):
+        if not isinstance(rule, dict) or not set(rule).issubset({
+            "patterns", "tags", "title_patterns", "title_terms",
+        }) or not {"patterns", "tags"}.issubset(rule):
             raise CorpusPreparationError("malformed content-tag rule")
         patterns = rule.get("patterns")
         tags = rule.get("tags")
@@ -348,7 +348,26 @@ def _content_tag_rules(path: Path | None) -> tuple[list[dict[str, object]], str 
             raise CorpusPreparationError(
                 "content-tag title_patterns must be nonempty strings"
             )
+        title_terms = rule.get("title_terms")
+        if title_terms is not None and (
+            not isinstance(title_terms, list) or not title_terms or any(
+                not isinstance(term, str) or not term.strip() for term in title_terms
+            )
+        ):
+            raise CorpusPreparationError(
+                "content-tag title_terms must be nonempty strings"
+            )
     return rules, digest
+
+
+def _title_term_matches(term: object, title: str) -> bool:
+    """Match a complete word sequence, avoiding e.g. ``man`` in ``human``."""
+    term_words = re.findall(r"[^\W_]+", str(term).casefold(), flags=re.UNICODE)
+    title_words = re.findall(r"[^\W_]+", title.casefold(), flags=re.UNICODE)
+    return bool(term_words) and any(
+        title_words[index:index + len(term_words)] == term_words
+        for index in range(len(title_words) - len(term_words) + 1)
+    )
 
 
 def _tags_for_categories(
@@ -365,7 +384,11 @@ def _tags_for_categories(
         title_match = title_patterns is None or any(
             str(pattern).casefold() in title_haystack for pattern in title_patterns
         )
-        if category_match and title_match:
+        title_term_match = any(
+            _title_term_matches(term, title_haystack)
+            for term in rule.get("title_terms", [])
+        )
+        if (category_match and title_match) or title_term_match:
             tags.update(map(str, rule["tags"]))
     return sorted(tags)
 
@@ -490,9 +513,14 @@ def normalize_commons(
         author = re.sub(r"<[^>]+>", "", meta("Artist")) or clean_text(info.get("user"), "unknown")
         commons_user = clean_text(info.get("userid") or info.get("user"), author)
         categories = value.get("catalog_categories", [])
+        file_categories = value.get("file_categories", [])
         tags = value.get("content_tags", [])
-        if not isinstance(categories, list) or not isinstance(tags, list):
+        if not isinstance(categories, list) or not isinstance(file_categories, list) \
+                or not isinstance(tags, list):
             raise CorpusPreparationError("Commons categories and content_tags must be lists")
+        all_categories = sorted(set(map(str, categories)).union(
+            map(str, file_categories)
+        ))
         yield candidate(
             catalog="wikimedia-commons", revision=revision, snapshot_sha256=digest,
             upstream_id=page_id, original_url=require_url(info.get("url"), "Commons original URL"),
@@ -505,9 +533,9 @@ def normalize_commons(
                 if info.get("sha1") else None
             ),
             rights_evidence_url=str(info.get("descriptionurl")),
-            catalog_categories=sorted(set(map(str, categories))),
+            catalog_categories=all_categories,
             content_tags=sorted(set(map(str, tags)).union(
-                _tags_for_categories(categories, tag_rules or [], title)
+                _tags_for_categories(all_categories, tag_rules or [], title)
             )),
             approve_complete_rights=True,
             content_tag_rules_sha256=tag_rules_sha256,
@@ -711,6 +739,89 @@ def _commons_api_json(parameters: dict[str, object]) -> dict[str, object]:
                 time.sleep(min(2 ** attempt, 8))
                 continue
     raise CorpusPreparationError(f"Commons API request failed: {last_error}")
+
+
+def _commons_file_category_map(
+    records: list[dict[str, object]],
+) -> dict[str, list[str]]:
+    """Retrieve file-page categories for exact frozen Commons page IDs."""
+    page_ids = [clean_text(record.get("pageid"), "") for record in records]
+    if any(not page_id for page_id in page_ids) or len(set(page_ids)) != len(page_ids):
+        raise CorpusPreparationError("Commons snapshot has invalid or duplicate page IDs")
+    result: dict[str, set[str]] = {page_id: set() for page_id in page_ids}
+    seen: set[str] = set()
+    for offset in range(0, len(page_ids), 50):
+        batch = page_ids[offset:offset + 50]
+        parameters: dict[str, object] = {
+            "action": "query", "cllimit": "max", "clshow": "!hidden",
+            "pageids": "|".join(batch), "prop": "categories",
+        }
+        while True:
+            payload = _commons_api_json(parameters)
+            query = payload.get("query")
+            pages = query.get("pages") if isinstance(query, dict) else None
+            if not isinstance(pages, list):
+                raise CorpusPreparationError("Commons category response lacks pages")
+            for page in pages:
+                if not isinstance(page, dict):
+                    raise CorpusPreparationError("Commons category page is malformed")
+                page_id = clean_text(page.get("pageid"), "")
+                if page_id not in result or page.get("missing"):
+                    raise CorpusPreparationError(
+                        "Commons category response changed a frozen page"
+                    )
+                seen.add(page_id)
+                categories = page.get("categories", [])
+                if not isinstance(categories, list):
+                    raise CorpusPreparationError("Commons page categories are malformed")
+                for category in categories:
+                    if not isinstance(category, dict):
+                        raise CorpusPreparationError("Commons page category is malformed")
+                    title = clean_text(category.get("title"), "")
+                    if not title.startswith("Category:"):
+                        raise CorpusPreparationError("Commons returned an invalid category title")
+                    result[page_id].add(title)
+            continuation = payload.get("continue")
+            if continuation is None:
+                break
+            if not isinstance(continuation, dict) or not continuation:
+                raise CorpusPreparationError("Commons category continuation is malformed")
+            parameters.update(continuation)
+    if seen != set(page_ids):
+        raise CorpusPreparationError("Commons category response omitted a frozen page")
+    return {page_id: sorted(categories) for page_id, categories in result.items()}
+
+
+def enrich_commons_categories(arguments: argparse.Namespace) -> int:
+    """Add current file-page categories to an exact frozen Commons snapshot."""
+    records = list(_jsonl(arguments.input))
+    if not records:
+        raise CorpusPreparationError("Commons snapshot is empty")
+    category_map = _commons_file_category_map(records)
+    output = []
+    category_count = 0
+    for record in records:
+        if not isinstance(record.get("imageinfo"), dict) or not clean_text(
+            record.get("title"), ""
+        ):
+            raise CorpusPreparationError("Commons snapshot row is malformed")
+        updated = dict(record)
+        categories = category_map[str(record["pageid"])]
+        updated["file_categories"] = categories
+        category_count += len(categories)
+        output.append(updated)
+    write_jsonl(arguments.output, output, arguments.force)
+    report = {
+        "categories": category_count,
+        "format": "rawtherapee-tgmr-commons-category-enrichment-report-v1",
+        "input_sha256": sha256_file(arguments.input)[0],
+        "output_sha256": sha256_file(arguments.output)[0],
+        "records": len(output),
+    }
+    if arguments.report is not None:
+        atomic_bytes(arguments.report, canonical_pretty(report), arguments.force)
+    sys.stdout.buffer.write(canonical_pretty(report))
+    return 0
 
 
 def _commons_category_members(
@@ -921,6 +1032,9 @@ def collect_commons_categories(arguments: argparse.Namespace) -> int:
         )
     )
     records = records[:target]
+    category_map = _commons_file_category_map(records)
+    for record in records:
+        record["file_categories"] = category_map[str(record["pageid"])]
     records.sort(key=lambda value: str(value.get("title")).casefold())
     payload = "".join(canonical_json(record) + "\n" for record in records).encode()
     complete = len(records) == target
@@ -2215,23 +2329,20 @@ def _catalog_people_review_html(
             + html.escape(str(entry["title"])) + '</p><p>Tags: '
             + html.escape(", ".join(map(str, entry["content_tags"])))
             + '</p><p><a href="' + html.escape(str(entry["landing_page"]), quote=True)
-            + '">source and rights</a></p><label><input type="radio" name="'
-            + html.escape(source_id, quote=True)
-            + '" value="approved-no-minors-or-sensitive-content"> approve</label> '
-            + '<label><input type="radio" name="' + html.escape(source_id, quote=True)
-            + '" value="rejected"> reject</label></article>'
+            + '">source and rights</a></p><label><input class="reject" '
+            + 'type="checkbox"> reject</label></article>'
         )
     document = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>TGMR people review</title>
 <style>body{font-family:sans-serif;margin:1rem}header{position:sticky;top:0;background:#fff;padding:.5rem;z-index:2}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}.card{border:1px solid #999;padding:.6rem}.card.approved{border:3px solid #176b2c;background:#efe}.card.rejected{border:3px solid #a00;background:#fee}.card img{width:100%;height:240px;object-fit:contain;background:#222}.card h2{font-size:.85rem;overflow-wrap:anywhere}.card p{font-size:.8rem}</style></head>
-<body><header><button id="export">Export decided JSONL</button> <span id="count"></span><span id="exportStatus"></span>
+<body><header><label><input id="complete" type="checkbox"> I reviewed every image</label> <button id="export">Export all decisions</button> <span id="count"></span><span id="exportStatus"></span>
 <textarea id="exportText" hidden aria-label="Exported review decisions"></textarea>
 </header><main class="grid">""" + "".join(cards) + """</main>
 <script>'use strict';
-function update(){for(const input of document.querySelectorAll('input[type=radio]')){input.toggleAttribute('checked',input.checked);}for(const card of document.querySelectorAll('.card')){const chosen=card.querySelector('input:checked');card.classList.toggle('approved',chosen!==null&&chosen.value==='approved-no-minors-or-sensitive-content');card.classList.toggle('rejected',chosen!==null&&chosen.value==='rejected');}document.getElementById('count').textContent=document.querySelectorAll('input:checked').length+' of '+document.querySelectorAll('.card').length+' decisions';}
+function update(){for(const input of document.querySelectorAll('input')){input.toggleAttribute('checked',input.checked);}const complete=document.getElementById('complete').checked;for(const card of document.querySelectorAll('.card')){const rejected=card.querySelector('.reject').checked;card.classList.toggle('approved',complete&&!rejected);card.classList.toggle('rejected',rejected);}document.getElementById('count').textContent=document.querySelectorAll('.reject:checked').length+' rejected of '+document.querySelectorAll('.card').length+' images';}
 document.addEventListener('change',update);update();
-function decisions(){const lines=[];for(const card of document.querySelectorAll('.card')){const chosen=card.querySelector('input:checked');if(!chosen)continue;lines.push(JSON.stringify({format:'rawtherapee-tgmr-people-review-decision-v1',people_review_status:chosen.value,source_id:card.dataset.sourceId}));}return lines.join('\\n')+(lines.length?'\\n':'');}
-document.getElementById('export').addEventListener('click',async()=>{update();const text=decisions();const area=document.getElementById('exportText');const status=document.getElementById('exportStatus');area.hidden=false;area.value=text;area.focus();area.select();let copied=false;try{await navigator.clipboard.writeText(text);copied=true;}catch(error){}const blob=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tgmr-people-decisions.jsonl';a.hidden=true;document.body.appendChild(a);a.click();status.textContent=' Prepared '+document.querySelectorAll('input:checked').length+' decisions; '+(copied?'copied to clipboard and ':'')+'download requested. If no file appears, the JSONL is selected below: press Ctrl+C and save it.';setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},30000);});
+function decisions(){const lines=[];for(const card of document.querySelectorAll('.card')){lines.push(JSON.stringify({format:'rawtherapee-tgmr-people-review-decision-v1',people_review_status:card.querySelector('.reject').checked?'rejected':'approved-no-minors-or-sensitive-content',source_id:card.dataset.sourceId}));}return lines.join('\\n')+'\\n';}
+document.getElementById('export').addEventListener('click',async()=>{update();const status=document.getElementById('exportStatus');if(!document.getElementById('complete').checked){status.textContent=' Confirm that every image was reviewed before exporting.';return;}const text=decisions();const area=document.getElementById('exportText');area.hidden=false;area.value=text;area.focus();area.select();let copied=false;try{await navigator.clipboard.writeText(text);copied=true;}catch(error){}const blob=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tgmr-people-decisions.jsonl';a.hidden=true;document.body.appendChild(a);a.click();status.textContent=' Prepared '+document.querySelectorAll('.card').length+' decisions with '+document.querySelectorAll('.reject:checked').length+' rejections; '+(copied?'copied to clipboard and ':'')+'download requested. If no file appears, the JSONL is selected below: press Ctrl+C and save it.';setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},30000);});
 </script></body></html>
 """
     return document.encode("utf-8")
@@ -2391,10 +2502,14 @@ document.getElementById('export').addEventListener('click',async()=>{update();co
 
 def _source_review_candidate(record: dict[str, object]) -> bool:
     rights = record.get("rights")
+    people_status = record.get("people_review_status")
     return (
         record.get("format") == SOURCE_FORMAT
         and isinstance(rights, dict)
         and rights.get("review_status") == "approved"
+        and people_status in (
+            "not-applicable", "approved-no-minors-or-sensitive-content",
+        )
         and record.get("license") in ACCEPTED_LICENSES
         and min(int(record.get("width", 0)), int(record.get("height", 0))) >= 512
         and int(record.get("width", 0)) * int(record.get("height", 0)) >= 750000
@@ -2585,7 +2700,13 @@ def apply_duplicate_decisions(arguments: argparse.Namespace) -> int:
     if arguments.require_complete and decisions.keys() != clusters.keys():
         raise CorpusPreparationError("duplicate review decisions are incomplete")
 
-    rejected = set().union(*decisions.values()) if decisions else set()
+    unreviewed_clusters = clusters.keys() - decisions.keys()
+    explicit_rejected = set().union(*decisions.values()) if decisions else set()
+    rejected_unreviewed = (
+        set().union(*(clusters[cluster_id] for cluster_id in unreviewed_clusters))
+        if arguments.reject_unreviewed_clusters and unreviewed_clusters else set()
+    )
+    rejected = explicit_rejected | rejected_unreviewed
     output = []
     for record in records:
         if record.get("format") != SOURCE_FORMAT:
@@ -2605,9 +2726,13 @@ def apply_duplicate_decisions(arguments: argparse.Namespace) -> int:
     report = {
         "decisions": len(decisions),
         "distinct_clusters": sum(not value for value in decisions.values()),
+        "explicitly_rejected_sources": len(explicit_rejected),
         "format": "rawtherapee-tgmr-duplicate-review-application-v1",
         "output_sha256": sha256_file(arguments.output)[0],
+        "rejected_unreviewed_sources": len(rejected_unreviewed),
         "rejected_sources": len(rejected),
+        "reviewed_clusters": len(decisions),
+        "unreviewed_clusters": len(unreviewed_clusters),
     }
     sys.stdout.buffer.write(canonical_pretty(report))
     return 0
@@ -2640,6 +2765,20 @@ def release_manifest(arguments: argparse.Namespace) -> int:
 
 
 def merge_jsonl(arguments: argparse.Namespace) -> int:
+    cache_prefixes: dict[str, Path] = {}
+    for specification in arguments.cache_prefix:
+        catalog, separator, prefix = specification.partition("=")
+        prefix_path = Path(prefix)
+        if (
+            not separator or not catalog or not prefix
+            or catalog in cache_prefixes or prefix_path.is_absolute()
+            or any(part in ("", ".", "..") for part in prefix_path.parts)
+        ):
+            raise CorpusPreparationError(
+                "merge --cache-prefix must be a unique CATALOG=safe/relative/path"
+            )
+        cache_prefixes[catalog] = prefix_path
+    used_prefixes: set[str] = set()
     records = []
     identities = set()
     expected_format = None
@@ -2661,7 +2800,33 @@ def merge_jsonl(arguments: argparse.Namespace) -> int:
             if identity in identities:
                 raise CorpusPreparationError(f"duplicate merged identity: {identity}")
             identities.add(identity)
-            records.append(value)
+            merged = value
+            catalog = value.get("catalog")
+            catalog_name = (
+                clean_text(catalog.get("name"), "")
+                if isinstance(catalog, dict) else clean_text(catalog, "")
+            )
+            if catalog_name in cache_prefixes:
+                cache_filename = clean_text(value.get("cache_filename"), "")
+                cache_path = Path(cache_filename)
+                if (
+                    not cache_filename or cache_path.is_absolute()
+                    or any(part in ("", ".", "..") for part in cache_path.parts)
+                ):
+                    raise CorpusPreparationError(
+                        "cannot prefix a missing or unsafe cache filename"
+                    )
+                merged = dict(value)
+                merged["cache_filename"] = (
+                    cache_prefixes[catalog_name] / cache_path
+                ).as_posix()
+                used_prefixes.add(catalog_name)
+            records.append(merged)
+    unused_prefixes = sorted(cache_prefixes.keys() - used_prefixes)
+    if unused_prefixes:
+        raise CorpusPreparationError(
+            "merge cache prefix did not match a catalog: " + ", ".join(unused_prefixes)
+        )
     catalog_order = {
         "openimages-cvdf-v5-boxable": 0, "pass-v3": 1,
         "wikimedia-commons": 2, "smithsonian-open-access": 3,
@@ -2710,6 +2875,16 @@ def parser() -> argparse.ArgumentParser:
     commons_categories_parser.add_argument("--limit", type=int)
     commons_categories_parser.add_argument("--force", action="store_true")
     commons_categories_parser.set_defaults(function=collect_commons_categories)
+
+    commons_enrich_parser = commands.add_parser(
+        "enrich-commons-categories",
+        help="freeze file-page categories for an exact Commons snapshot",
+    )
+    commons_enrich_parser.add_argument("input", type=Path)
+    commons_enrich_parser.add_argument("output", type=Path)
+    commons_enrich_parser.add_argument("--report", type=Path)
+    commons_enrich_parser.add_argument("--force", action="store_true")
+    commons_enrich_parser.set_defaults(function=enrich_commons_categories)
 
     smithsonian_parser = commands.add_parser(
         "collect-smithsonian",
@@ -2844,7 +3019,12 @@ def parser() -> argparse.ArgumentParser:
     apply_duplicate_parser.add_argument("duplicate_queue", type=Path)
     apply_duplicate_parser.add_argument("decisions", type=Path)
     apply_duplicate_parser.add_argument("output", type=Path)
-    apply_duplicate_parser.add_argument("--require-complete", action="store_true")
+    duplicate_completion = apply_duplicate_parser.add_mutually_exclusive_group()
+    duplicate_completion.add_argument("--require-complete", action="store_true")
+    duplicate_completion.add_argument(
+        "--reject-unreviewed-clusters", action="store_true",
+        help="reject every member of each cluster absent from the decisions file",
+    )
     apply_duplicate_parser.add_argument("--force", action="store_true")
     apply_duplicate_parser.set_defaults(function=apply_duplicate_decisions)
 
@@ -2864,6 +3044,10 @@ def parser() -> argparse.ArgumentParser:
     merge_parser = commands.add_parser("merge")
     merge_parser.add_argument("output", type=Path)
     merge_parser.add_argument("inputs", nargs="+", type=Path)
+    merge_parser.add_argument(
+        "--cache-prefix", action="append", default=[], metavar="CATALOG=PATH",
+        help="prepend a safe relative path to one catalog's cache filenames",
+    )
     merge_parser.add_argument("--force", action="store_true")
     merge_parser.set_defaults(function=merge_jsonl)
     return result

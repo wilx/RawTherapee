@@ -2,7 +2,8 @@
   "format": "rawtherapee-tgmr-catalog-content-tag-rules-v1",
   "rules": [
     {
-      "patterns": ["people", "person", "portrait", "figure female", "figure male", "children", "human"],
+      "patterns": ["people", "person", "portrait", "figure female", "figure male", "children", "human", "category:boys", "category:brides", "category:children", "category:crowds", "category:faces", "category:families", "category:girls", "category:grooms", "category:men", "category:weddings", "category:women"],
+      "title_terms": ["boy", "boys", "bride", "child", "children", "crowd", "crowds", "family", "families", "girl", "girls", "groom", "human", "man", "men", "people", "person", "portrait", "self portrait", "wedding", "woman", "women"],
       "tags": ["people", "skin-hair-clothing"]
     },
     {

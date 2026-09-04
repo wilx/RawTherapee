@@ -1,8 +1,8 @@
 {
   "catalogs": {
     "openimages-cvdf-v5-boxable": {
-      "candidate_count": 12000,
-      "candidate_expansion": {"batch_size": 2000, "batches_used": 1, "initial_count": 10000},
+      "candidate_count": 14000,
+      "candidate_expansion": {"batch_size": 2000, "batches_used": 2, "initial_count": 10000},
       "catalog_revision": "cvdf-open-images-v5-boxable-05f3d68dbbb0",
       "image_information_records": 1743042,
       "image_information_snapshot_bytes": 638407721,
@@ -52,19 +52,19 @@
     },
     "wikimedia-commons": {
       "candidate_count": 3000,
-      "candidate_sha256": "886e3d196e30258a65bfd1b59bd3649b6c15c95e4037c6011e274eb6c8482221",
-      "catalog_revision": "commons-quality-and-permissive-2026-09-03",
+      "candidate_sha256": "9bdb98fbf09f19dd0321e18def91998b70e1e682037758ba17150c6311fedb28",
+      "catalog_revision": "commons-quality-and-permissive-2026-09-03-file-categories-2026-09-04",
       "category_recipe": "commons-category-recipe-v1.json",
       "category_recipe_sha256": "46ada0da3f88323e1497e704950530ddec95f453518890e1317f57090f7f8e99",
       "landing_page": "https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia",
       "notes": "Collect a bounded, rights-filtered snapshot from the tracked Quality Images and accepted-license category recipe; verify every resulting file page and revision.",
-      "snapshot_sha256": "c03fb6265aae1462b0e37c06627caca4ddc6e25079fa3dd7ff4363d1a71af0b6",
+      "snapshot_sha256": "e2ff868e16589046810104e7104a37f0a171929f6b83cc742b18691f8be9970a",
       "selected_count": 600
     }
   },
-  "content_tag_rules_sha256": "2a11cf9d7f49e13439e3a4623da0b544130e6a8d80ce686572cf395d41dbac38",
+  "content_tag_rules_sha256": "bbe9513cef61e5d40f8cafff63263c74236c62ac6c97a04d509ea66c4aa1c04f",
   "format": "rawtherapee-tgmr-catalog-acquisition-v1",
   "release": "tgmr-corpus-v1",
-  "total_candidates": 17000,
+  "total_candidates": 19000,
   "total_selected": 5000
 }

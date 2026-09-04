@@ -1,7 +1,7 @@
 {
   "author_image_cap": 5,
   "candidate_pool": {
-    "openimages-cvdf-v5-boxable": 12000,
+    "openimages-cvdf-v5-boxable": 14000,
     "pass-v3": 0,
     "smithsonian-open-access": 2000,
     "wikimedia-commons": 3000

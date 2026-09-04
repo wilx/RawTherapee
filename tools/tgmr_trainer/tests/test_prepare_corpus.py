@@ -80,21 +80,28 @@ class PreparationTests(unittest.TestCase):
             second = root / "second.jsonl"
             first.write_text(json.dumps({
                 "catalog": "pass-v3", "format": prepare_corpus.CANDIDATE_FORMAT,
-                "source_id": "pass-v3:b",
+                "cache_filename": "b.jpg", "source_id": "pass-v3:b",
             }, sort_keys=True) + "\n", encoding="utf-8")
             second.write_text(json.dumps({
                 "catalog": "openimages-cvdf-v5-boxable",
                 "format": prepare_corpus.CANDIDATE_FORMAT,
+                "cache_filename": "train/a.jpg",
                 "source_id": "openimages-cvdf-v5-boxable:a",
             }, sort_keys=True) + "\n", encoding="utf-8")
             merged = root / "merged.jsonl"
             self.assertEqual(prepare_corpus.main([
                 "merge", str(merged), str(first), str(second),
+                "--cache-prefix", "openimages-cvdf-v5-boxable=open-images",
+                "--cache-prefix", "pass-v3=pass",
             ]), 0)
             merged_values = [json.loads(line) for line in merged.read_text().splitlines()]
             self.assertEqual([value["source_id"] for value in merged_values], [
                 "openimages-cvdf-v5-boxable:a", "pass-v3:b",
             ])
+            self.assertEqual(
+                [value["cache_filename"] for value in merged_values],
+                ["open-images/train/a.jpg", "pass/b.jpg"],
+            )
 
             artifacts = []
             for index, name in enumerate((
@@ -506,8 +513,12 @@ class PreparationTests(unittest.TestCase):
                 updated = dict(value)
                 updated["rights"] = dict(value["rights"])
                 updated["rights"]["review_status"] = "approved"
+                updated["people_review_status"] = (
+                    "approved-no-minors-or-sensitive-content"
+                )
                 updated["selection_status"] = "candidate-reviewed"
                 duplicate_records.append(updated)
+            duplicate_records[0]["people_review_status"] = "rejected"
             prepare_corpus.write_jsonl(duplicate_input, duplicate_records, False)
             duplicate_pending = root / "duplicate-pending.jsonl"
             duplicate_queue = root / "duplicate-queue.jsonl"
@@ -529,6 +540,10 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(target_pair["dhash_distance"], 6)
             self.assertEqual(
                 json.loads(duplicate_report.read_text())["borderline_dhash_hamming_max"], 7
+            )
+            self.assertEqual(
+                json.loads(duplicate_report.read_text())["candidates_after_author_cap"],
+                len(duplicate_records) - 1,
             )
             duplicate_page = duplicate_html.read_text(encoding="utf-8")
             self.assertTrue(duplicate_page.startswith("<!doctype html>"))
@@ -553,6 +568,25 @@ class PreparationTests(unittest.TestCase):
                     str(duplicate_queue), str(empty_decisions),
                     str(root / "incomplete.jsonl"), "--require-complete",
                 ])
+            conservative_output = root / "conservative-reviewed.jsonl"
+            self.assertEqual(prepare_corpus.main([
+                "apply-duplicate-decisions", str(duplicate_pending),
+                str(duplicate_queue), str(empty_decisions),
+                str(conservative_output), "--reject-unreviewed-clusters",
+            ]), 0)
+            conservative_by_id = {
+                value["source_id"]: value
+                for value in prepare_corpus._jsonl(conservative_output)
+            }
+            involved_ids = {
+                member["source_id"]
+                for cluster in duplicate_values for member in cluster["members"]
+            }
+            self.assertTrue(all(
+                conservative_by_id[source_id]["selection_status"]
+                == "candidate-rejected-duplicate"
+                for source_id in involved_ids
+            ))
             decisions_values = []
             for value in duplicate_values:
                 rejected = []
@@ -698,6 +732,63 @@ class PreparationTests(unittest.TestCase):
                 ["Category:Quality night photography"], rules,
                 "File:View of the Milky Way.jpg",
             ), [])
+
+    def test_catalog_content_tag_title_terms_use_word_boundaries(self) -> None:
+        rules = [{
+            "patterns": ["category:people"],
+            "tags": ["people", "skin-hair-clothing"],
+            "title_terms": ["man", "self portrait"],
+        }]
+        self.assertEqual(prepare_corpus._tags_for_categories(
+            [], rules, "File:Portrait of a man.jpg"
+        ), ["people", "skin-hair-clothing"])
+        self.assertEqual(prepare_corpus._tags_for_categories(
+            [], rules, "File:Painted self-portrait.jpg"
+        ), ["people", "skin-hair-clothing"])
+        self.assertEqual(prepare_corpus._tags_for_categories(
+            [], rules, "File:Humanity monument.jpg"
+        ), [])
+
+    def test_commons_category_enrichment_handles_continuation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot = root / "snapshot.jsonl"
+            snapshot.write_text("".join(json.dumps({
+                "catalog_categories": ["Category:Root"], "content_tags": [],
+                "imageinfo": {}, "pageid": page_id, "title": f"File:{page_id}.jpg",
+            }, sort_keys=True) + "\n" for page_id in (7, 8)), encoding="utf-8")
+            calls = []
+            old_api = prepare_corpus._commons_api_json
+            try:
+                def api(parameters):
+                    calls.append(dict(parameters))
+                    if len(calls) == 1:
+                        return {
+                            "continue": {"clcontinue": "7|next", "continue": "||"},
+                            "query": {"pages": [
+                                {"categories": [{"title": "Category:Portraits"}], "pageid": 7},
+                                {"categories": [{"title": "Category:Trees"}], "pageid": 8},
+                            ]},
+                        }
+                    return {"query": {"pages": [{
+                        "categories": [{"title": "Category:Men"}], "pageid": 7,
+                    }]}}
+                prepare_corpus._commons_api_json = api
+                output = root / "enriched.jsonl"
+                report = root / "report.json"
+                self.assertEqual(prepare_corpus.main([
+                    "enrich-commons-categories", str(snapshot), str(output),
+                    "--report", str(report),
+                ]), 0)
+            finally:
+                prepare_corpus._commons_api_json = old_api
+            records = [json.loads(line) for line in output.read_text().splitlines()]
+            self.assertEqual(records[0]["file_categories"], [
+                "Category:Men", "Category:Portraits",
+            ])
+            self.assertEqual(records[1]["file_categories"], ["Category:Trees"])
+            self.assertEqual(json.loads(report.read_text())["categories"], 3)
+            self.assertEqual(calls[0]["clshow"], "!hidden")
 
     def test_commons_category_snapshot_is_filtered_and_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -955,7 +1046,7 @@ class PreparationTests(unittest.TestCase):
         }
         self.assertIsNone(prepare_corpus._smithsonian_record(record))
 
-    def test_generic_people_review_requires_explicit_decisions(self) -> None:
+    def test_generic_people_review_exports_batch_approval_after_attestation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             manifest = root / "sources.jsonl"
@@ -1000,8 +1091,10 @@ class PreparationTests(unittest.TestCase):
             self.assertIn("toggleAttribute('checked',input.checked)", page_text)
             self.assertIn("classList.toggle('approved'", page_text)
             self.assertIn("classList.toggle('rejected'", page_text)
-            self.assertIn("return lines.join('\\n')+(lines.length?'\\n':'');", page_text)
-            self.assertNotIn("return lines.join('\n')+(lines.length?'\n':'');", page_text)
+            self.assertIn("I reviewed every image", page_text)
+            self.assertIn("return lines.join('\\n')+'\\n';", page_text)
+            self.assertIn("card.querySelector('.reject').checked?'rejected'", page_text)
+            self.assertNotIn("type=\"radio\"", page_text)
             decisions = root / "decisions.jsonl"
             decisions.write_text(json.dumps({
                 "format": prepare_corpus.PEOPLE_DECISION_FORMAT,
