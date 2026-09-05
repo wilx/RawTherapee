@@ -346,3 +346,14 @@ for direct visual comparison.  The production-v1 earring remains coherent and
 substantially less segmented than Markesteijn, with a few isolated colored
 pixels still visible on the hoop.  Later hard-case retraining candidates must
 preserve or improve this result.
+
+The subsequent controlled 1,000-source hard-case screen tested all six frozen
+synthetic ratios with both direct and sensor-physical natural-patch rendering.
+No candidate passed its validation gates: the best direct model reduced
+synthetic-control MSE by 15.83% rather than the required 50%, while every
+sensor-physical model lost more than 0.1 dB on ordinary validation. Therefore
+no retrained candidate was admitted to the 4,000-source stage or substituted
+into RawTherapee. The runtime continues to use the preserved production-v1
+model when that external artifact is selected, and the DSCF0771 images above
+remain its authoritative comparison. Detailed results are in
+[the hard-case retraining report](xtrans-tgmr-hard-case-retraining-report.md).

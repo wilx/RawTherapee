@@ -859,9 +859,21 @@ separately from the older research TGMR assets.  See
 [the hard-case retraining report](xtrans-tgmr-hard-case-retraining-report.md)
 for artifact identities, progress, and the complete decision protocol.
 
-The first implementation stage is complete. The default-off C++ corpus packer
-now provides the sensor-physical natural renderer, exact 0--5-percent balanced
-synthetic replacement schedules, independently seeded synthetic controls, and
-an explicit external-control validation path. Frozen corpus-v1 defaults and
-ordinary held-out bytes remain unchanged. These facilities enable the
-1,000-source ratio screen; no quality conclusion has yet been drawn from them.
+The default-off C++ corpus packer now provides the sensor-physical natural
+renderer, exact 0--5-percent balanced synthetic replacement schedules,
+independently seeded synthetic controls, and an explicit external-control
+validation path. A complete legacy-default repack remained byte-identical to
+the frozen production TGPC, confirming that these facilities do not alter the
+existing corpus path.
+
+The complete 1,000-source ratio screen has since finished. No candidate passed
+the predeclared gate. The best direct candidate, with 5% synthetic
+replacements, preserved ordinary validation but reduced held-out synthetic MSE
+by only 15.83% rather than the required 50%. Sensor-physical candidates gained
+up to 0.166 dB on matched physical controls, but lost 0.177--0.312 dB on
+ordinary validation and achieved at most 8.85% synthetic-MSE reduction against
+their matched no-synthetic baseline. The 4,000-source factorial and subsequent
+qualification were therefore stopped. The permanent production-v1 model and
+all existing training outputs remain retained; see
+[the hard-case retraining report](xtrans-tgmr-hard-case-retraining-report.md)
+for the full table and artifact identities.
