@@ -98,13 +98,10 @@ def save_assets(source: Path, output_dir: Path, icc: bytes) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     with Image.open(source) as image:
         rgb = image.convert("RGB")
-        full = rgb.resize((2584, 1726), Image.Resampling.LANCZOS)
         earring = rgb.crop((3510, 1930, 3650, 2090)).resize((700, 800), Image.Resampling.NEAREST)
     paths = {
-        "full_third": output_dir / "DSCF0771-packedxtransnet-full-third.png",
         "earring_500": output_dir / "DSCF0771-packedxtransnet-earring-500.png",
     }
-    full.save(paths["full_third"], format="PNG", compress_level=9, icc_profile=icc)
     earring.save(paths["earring_500"], format="PNG", compress_level=9, icc_profile=icc)
     return {name: {"bytes": path.stat().st_size, "filename": path.name, "sha256": file_sha256(path)}
             for name, path in paths.items()}

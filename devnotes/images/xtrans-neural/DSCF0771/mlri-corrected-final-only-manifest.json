@@ -2,18 +2,6 @@
   "aligned_block_count": 9628,
   "assets": [
     {
-      "bytes": 5657874,
-      "filename": "DSCF0771-mlri-corrected-final-only-full-third.png",
-      "method": "mlri-xtrans-2pass-corrected-final-only",
-      "role": "full-frame-third",
-      "sha256": "c91ddb15de4f299fbccb4ced5bb92f34118a338918fdbfbbc023c03505789371",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 50372,
       "filename": "DSCF0771-mlri-corrected-final-only-earring-500.png",
       "method": "mlri-xtrans-2pass-corrected-final-only",
@@ -220,20 +208,6 @@
         "x": 3510,
         "y": 1930
       }
-    },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_depth_bits": 8,
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ],
-      "source_shape": [
-        5178,
-        7752,
-        3
-      ]
     },
     "png": {
       "compression_level": 9,
@@ -623,6 +597,11 @@
         ]
       }
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiffs": [
     {

@@ -1,5 +1,10 @@
 # Experimental X-Trans MLRI report
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Status
 
 The developer-only `mlri-xtrans-2pass` method is implemented as a readable,

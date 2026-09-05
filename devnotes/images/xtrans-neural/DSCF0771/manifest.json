@@ -1,54 +1,6 @@
 {
   "assets": [
     {
-      "bytes": 6177584,
-      "filename": "DSCF0771-gharbi-linear-full-third.png",
-      "method": "demosaicnet-xtrans-linear",
-      "role": "full-frame-third",
-      "sha256": "cb05a0e26b64d213aa105bd09963b1f2c296d7574ed35bb568222240f979bad8",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
-      "bytes": 6103465,
-      "filename": "DSCF0771-gharbi-gamma22-full-third.png",
-      "method": "demosaicnet-xtrans-gamma22",
-      "role": "full-frame-third",
-      "sha256": "df1e79ccb03eebe908c42c238053cbf44c97cab0f33751a8430b87441ea91d8b",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
-      "bytes": 6376296,
-      "filename": "DSCF0771-markesteijn-full-third.png",
-      "method": "3-pass (Markesteijn)",
-      "role": "full-frame-third",
-      "sha256": "4d74f5ad747b7cd2830f55708a776d80d501c49453104fd2123389d92b77a8ec",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
-      "bytes": 6089567,
-      "filename": "DSCF0771-xveon-full-third.png",
-      "method": "xveon-xtrans-onnx",
-      "role": "full-frame-third",
-      "sha256": "351c7eb968748c6c64a326fc947df3cca28af4ee59e68e01325680ddad14ac27",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 67569,
       "filename": "DSCF0771-gharbi-linear-earring-500.png",
       "method": "demosaicnet-xtrans-linear",
@@ -115,20 +67,6 @@
         "y": 1930
       }
     },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_depth_bits": 8,
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ],
-      "source_shape": [
-        5178,
-        7752,
-        3
-      ]
-    },
     "png": {
       "compression_level": 9,
       "lossless_at_output_depth": true
@@ -144,6 +82,11 @@
     "xveon-xtrans-onnx",
     "3-pass (Markesteijn)"
   ],
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
+  },
   "raw": {
     "filename": "DSCF0771.RAF",
     "sha256": "26106d7da2ba9a87caebffd4bd5e5fb0371cc8a2b6139ec724b59ef4112842c0"

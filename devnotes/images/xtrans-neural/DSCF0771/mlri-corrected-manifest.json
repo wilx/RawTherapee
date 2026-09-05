@@ -2,18 +2,6 @@
   "aligned_block_count": 9628,
   "assets": [
     {
-      "bytes": 5657085,
-      "filename": "DSCF0771-mlri-corrected-full-third.png",
-      "method": "mlri-xtrans-2pass-corrected",
-      "role": "full-frame-third",
-      "sha256": "a3ff375b896c95be21318057df70ffc1b7474da6bb453d1bed2a60b5bc171ff9",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 49938,
       "filename": "DSCF0771-mlri-corrected-earring-500.png",
       "method": "mlri-xtrans-2pass-corrected",
@@ -85,7 +73,6 @@
         384
       ],
       "elapsed_seconds": 4602.98,
-      "engine_elapsed_us": null,
       "halo": 228,
       "max_rss_kb": 1888272,
       "tiles": 294,
@@ -114,20 +101,6 @@
         "x": 3510,
         "y": 1930
       }
-    },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_depth_bits": 8,
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ],
-      "source_shape": [
-        5178,
-        7752,
-        3
-      ]
     },
     "png": {
       "compression_level": 9,
@@ -527,6 +500,11 @@
         ]
       }
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiffs": [
     {

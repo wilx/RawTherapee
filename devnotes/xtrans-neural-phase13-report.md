@@ -1,5 +1,10 @@
 # Phase 13 Apache TVM Vulkan report
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Decision
 
 The portable Vulkan mechanism works.  The same weight-bearing Linux x86-64

@@ -179,10 +179,6 @@ def save_assets(
     with Image.open(source) as image:
         rgb = image.convert("RGB")
         images = {
-            "full-frame-third": (
-                rgb.resize((2584, 1726), Image.Resampling.LANCZOS),
-                output_dir / f"DSCF0771-{filename_token}-full-third.png",
-            ),
             "earring-500-percent": (
                 rgb.crop((3510, 1930, 3650, 2090)).resize(
                     (700, 800), Image.Resampling.NEAREST

@@ -15,7 +15,8 @@ def test_tracked_comparison_assets_match_manifest():
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest_path.read_bytes().endswith(b"\n")
     assert manifest["format"] == "rawtherapee-xtrans-comparison-assets-v1"
-    assert len(manifest["assets"]) >= 6
+    assert len(manifest["assets"]) == 4
+    assert all("earring" in entry["filename"] for entry in manifest["assets"])
     for entry in manifest["assets"]:
         path = ROOT / entry["filename"]
         assert path.stat().st_size == entry["bytes"]
@@ -35,7 +36,8 @@ def test_triangulation_comparison_assets_match_manifest():
         "xtrans-triangulated-chroma",
         "3-pass (Markesteijn)",
     ]
-    assert len(manifest["assets"]) == 8
+    assert len(manifest["assets"]) == 4
+    assert all("earring" in entry["filename"] for entry in manifest["assets"])
     for entry in manifest["assets"]:
         path = ROOT / entry["filename"]
         assert path.stat().st_size == entry["bytes"]
@@ -59,7 +61,8 @@ def test_global_comparison_assets_match_manifest():
         "xtrans-global-spectral-edge",
         "3-pass (Markesteijn)",
     ]
-    assert len(manifest["assets"]) == 10
+    assert len(manifest["assets"]) == 5
+    assert all("earring" in entry["filename"] for entry in manifest["assets"])
     for entry in manifest["assets"]:
         path = ROOT / entry["filename"]
         assert path.stat().st_size == entry["bytes"]

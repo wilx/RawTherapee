@@ -1,5 +1,10 @@
 # X-Trans MLRI demosaicer design
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Purpose and provenance
 
 This experiment evaluates a non-neural X-Trans demosaicer based on residual

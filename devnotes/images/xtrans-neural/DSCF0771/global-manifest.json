@@ -14,18 +14,6 @@
   "aligned_block_count": 9628,
   "assets": [
     {
-      "bytes": 6257664,
-      "filename": "DSCF0771-global-a-full-third.png",
-      "method": "xtrans-global-spectral-rgb",
-      "role": "full-third",
-      "sha256": "9b2d868dcd40318fbe5b51119a62970e5d8874ed3ead9399131d23482b5883f0",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 55820,
       "filename": "DSCF0771-global-a-earring-500.png",
       "method": "xtrans-global-spectral-rgb",
@@ -34,18 +22,6 @@
       "shape": [
         800,
         700,
-        3
-      ]
-    },
-    {
-      "bytes": 5673651,
-      "filename": "DSCF0771-global-b-full-third.png",
-      "method": "xtrans-global-spectral-diff",
-      "role": "full-third",
-      "sha256": "06f5ac5c78e1dcbcf288e78a5ff4a2df5655f0359aa1bbbfe8467061f265f5b0",
-      "shape": [
-        1726,
-        2584,
         3
       ]
     },
@@ -62,18 +38,6 @@
       ]
     },
     {
-      "bytes": 5641021,
-      "filename": "DSCF0771-global-c-full-third.png",
-      "method": "xtrans-global-spectral-edge",
-      "role": "full-third",
-      "sha256": "d5183fa39e1cd398826dc6350997d3807a9732aee8d802b733f186e039ce425c",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 49527,
       "filename": "DSCF0771-global-c-earring-500.png",
       "method": "xtrans-global-spectral-edge",
@@ -86,18 +50,6 @@
       ]
     },
     {
-      "bytes": 6438883,
-      "filename": "DSCF0771-global-markesteijn-full-third.png",
-      "method": "3-pass (Markesteijn)",
-      "role": "full-third",
-      "sha256": "f803dae39903db8cbfe90e05837b688214322fa37a40698d9919123abe780a2e",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 53349,
       "filename": "DSCF0771-global-markesteijn-earring-500.png",
       "method": "3-pass (Markesteijn)",
@@ -106,18 +58,6 @@
       "shape": [
         800,
         700,
-        3
-      ]
-    },
-    {
-      "bytes": 23750253,
-      "filename": "DSCF0771-global-comparison-full-third.png",
-      "method": "A | B | C | Markesteijn",
-      "role": "comparison-full-third",
-      "sha256": "3ced954355c768954aa6f5df929acdd320d0657b3dd14cae87b8570e50f151e6",
-      "shape": [
-        1726,
-        10336,
         3
       ]
     },
@@ -230,14 +170,6 @@
         "x": 3510,
         "y": 1930
       }
-    },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ]
     },
     "output_depth_bits": 8,
     "png_compression_level": 9
@@ -568,6 +500,11 @@
         ]
       }
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "solver_defaults": {
     "boundary": "mirror-neumann",

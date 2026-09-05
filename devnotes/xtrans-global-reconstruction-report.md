@@ -1,5 +1,10 @@
 # Three-phase global X-Trans reconstruction experiment
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Result
 
 The experiment answers its primary question negatively for this formulation.
@@ -221,7 +226,7 @@ real high-frequency green/luminance structure.
 
 The tracked comparison order is `A | B | C | Markesteijn`:
 
-- [one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-global-comparison-full-third.png)
+- Full-frame image withheld for privacy (private benchmark only)
 - [500-percent earring](images/xtrans-neural/DSCF0771/DSCF0771-global-comparison-earring-500.png)
 
 The canonical metrics and asset identities are in

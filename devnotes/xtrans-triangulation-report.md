@@ -1,5 +1,10 @@
 # Experimental X-Trans triangulation demosaicers
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Purpose and scope
 
 This experiment isolates two deliberately non-adaptive geometric baselines:
