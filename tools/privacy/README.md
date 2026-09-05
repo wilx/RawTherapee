@@ -29,9 +29,15 @@ Re-encoded, newly named imagery needs human review before adding it to a release
 Unpack release containers into a disposable Git staging repository and audit the
 staged contents before upload; archives are not implicitly trusted.
 
-The historical PDF and self-contained HTML paper contain charts, not the
-DSCF0771 portrait. Keep their authenticated bytes unchanged. Changed opaque
-documents require another image-content review and an explicit policy update.
+The historical PDF/HTML paper revisions contain charts, not the DSCF0771
+portrait. Their existing allowlist identities remain available for history
+audits. The 5 September 2026 rewrite was separately reviewed: all 20 PDF pages
+and both embedded diagram/plot assets contain no portrait. Its PDF and HTML
+identities are also explicitly allowlisted. The subsequent display-equation
+layout fix was re-rendered and reviewed; its two embedded images remain
+byte-identical and its PDF/HTML hashes are explicitly allowlisted. Changed opaque documents still
+require another image-content review and policy update; no path-wide exemption
+is granted to future paper renders.
 
 Do not merge or push the pre-cleanup histories: that can restore the removed
 images. Rebase/cherry-pick narrowly reviewed changes onto sanitized history.

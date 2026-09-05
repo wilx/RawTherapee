@@ -248,6 +248,24 @@ agreed metadata policy; this is not independent legal certification or an
 approval of the separate model license. The test split stays diagnostic and
 the known model-quality failures remain documented.
 
+## Paper rewrite — 2026-09-05
+
+The [TGMR manuscript](../doc/papers/xtrans-tgmr/paper.md) now describes the
+production-v1 candidate and published corpus, with the BSDS work labeled as
+retrospective development evidence. It corrects the three-channel center-RGB
+PSNR definition, documents the actual coordinate-selection and augmentation
+recipe, gives the fixed-degree-of-freedom fitting equations, and distinguishes
+tempered shortlist inference from exact conditional MMSE. The original failed
+quality gates and unsuccessful hard-case retraining remain explicit.
+
+Fifteen evidence-binding tests now check the manuscript's generated tables,
+abstract, metric contracts and pinned model/evidence identities. The 20-page
+PDF and self-contained HTML were rebuilt with Pandoc 3.10.2; independent final
+renders have identical HTML bytes and PDF text/rasterized pages, but not PDF
+bytes. Only chart/diagram imagery is embedded. The new opaque render hashes
+were reviewed and added narrowly to the privacy policy. Prior paper revisions
+remain in Git. No training inputs, model bytes or earring crops changed.
+
 ## Remaining public-release work
 
 1. Finalize the separate attribution/model-redistribution review and intended
