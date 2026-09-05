@@ -2,18 +2,6 @@
   "aligned_block_count": 9628,
   "assets": [
     {
-      "bytes": 5894750,
-      "filename": "DSCF0771-mlri-paper-2014-full-third.png",
-      "method": "mlri-xtrans-paper-core-2014",
-      "role": "full-frame-third",
-      "sha256": "f0d2797938a8099cb61a4c88b27db37462cddc95c4a4620c486b62b79062e7bb",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 53953,
       "filename": "DSCF0771-mlri-paper-2014-earring-500.png",
       "method": "mlri-xtrans-paper-core-2014",
@@ -22,18 +10,6 @@
       "shape": [
         800,
         700,
-        3
-      ]
-    },
-    {
-      "bytes": 5888586,
-      "filename": "DSCF0771-mlri-paper-2016-full-third.png",
-      "method": "mlri-xtrans-paper-core-2016",
-      "role": "full-frame-third",
-      "sha256": "61cce9bb162836107c26877ab5749e05a229ecdae066601a40b8ef6336251fbe",
-      "shape": [
-        1726,
-        2584,
         3
       ]
     },
@@ -132,20 +108,6 @@
         "x": 3510,
         "y": 1930
       }
-    },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_depth_bits": 8,
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ],
-      "source_shape": [
-        5178,
-        7752,
-        3
-      ]
     },
     "png": {
       "compression_level": 9,
@@ -528,6 +490,11 @@
     ],
     "observed_sample_delta_rms": 0.0063779632331872945,
     "rgb_delta_range": 0.00017397900794560717
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiffs": [
     {

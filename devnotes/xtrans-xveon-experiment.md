@@ -1,5 +1,10 @@
 # Developer-only X-veon ONNX experiment
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Scope and licensing boundary
 
 This experiment independently integrates the public X-veon ONNX interface at

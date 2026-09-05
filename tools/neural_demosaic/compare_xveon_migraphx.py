@@ -126,7 +126,6 @@ def save_assets(gpu_path: Path, output_dir: Path) -> dict[str, Any]:
         icc = source.info.get("icc_profile")
         rgb = source.convert("RGB")
         images = {
-            "full_third": rgb.resize((2584, 1726), Image.Resampling.LANCZOS),
             "earring_500": rgb.crop((3510, 1930, 3650, 2090)).resize((700, 800), Image.Resampling.NEAREST),
         }
     result = {}

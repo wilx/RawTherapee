@@ -111,7 +111,6 @@ def save_assets(
         with Image.open(source) as image:
             rgb = image.convert("RGB")
             generated[name] = {
-                "full-third": rgb.resize((2584, 1726), Image.Resampling.LANCZOS),
                 "earring-500": rgb.crop((3510, 1930, 3650, 2090)).resize(
                     (700, 800), Image.Resampling.NEAREST
                 ),
@@ -129,7 +128,7 @@ def save_assets(
                 "shape": [asset.height, asset.width, 3],
             })
 
-    for role in ("full-third", "earring-500"):
+    for role in ("earring-500",):
         comparison = Image.new(
             "RGB",
             (sum(generated[name][role].width for name in METHODS),
@@ -220,7 +219,6 @@ def main() -> int:
                 "filter": "nearest-neighbour", "scale": 5,
                 "source_rectangle": {"x": 3510, "y": 1930, "width": 140, "height": 160},
             },
-            "full_frame": {"filter": "Lanczos", "output_shape": [1726, 2584, 3]},
             "output_depth_bits": 8,
             "png_compression_level": 9,
         },

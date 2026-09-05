@@ -2,18 +2,6 @@
   "aligned_block_count": 9628,
   "assets": [
     {
-      "bytes": 6482020,
-      "filename": "DSCF0771-triangulation-independent-full-third.png",
-      "method": "xtrans-triangulated-rgb",
-      "role": "full-third",
-      "sha256": "0fa2a0573c55c15944802ce894f5f8b7c472caaf988a20ba471d2f8938f07c98",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 54483,
       "filename": "DSCF0771-triangulation-independent-earring-500.png",
       "method": "xtrans-triangulated-rgb",
@@ -22,18 +10,6 @@
       "shape": [
         800,
         700,
-        3
-      ]
-    },
-    {
-      "bytes": 6613970,
-      "filename": "DSCF0771-triangulation-chroma-full-third.png",
-      "method": "xtrans-triangulated-chroma",
-      "role": "full-third",
-      "sha256": "9a0ec2d31d03d708f31668d460229e34006de505626f844813c5280dfa08f8a2",
-      "shape": [
-        1726,
-        2584,
         3
       ]
     },
@@ -50,18 +26,6 @@
       ]
     },
     {
-      "bytes": 6438883,
-      "filename": "DSCF0771-triangulation-markesteijn-full-third.png",
-      "method": "3-pass (Markesteijn)",
-      "role": "full-third",
-      "sha256": "f803dae39903db8cbfe90e05837b688214322fa37a40698d9919123abe780a2e",
-      "shape": [
-        1726,
-        2584,
-        3
-      ]
-    },
-    {
       "bytes": 53349,
       "filename": "DSCF0771-triangulation-markesteijn-earring-500.png",
       "method": "3-pass (Markesteijn)",
@@ -70,18 +34,6 @@
       "shape": [
         800,
         700,
-        3
-      ]
-    },
-    {
-      "bytes": 19518898,
-      "filename": "DSCF0771-triangulation-comparison-full-third.png",
-      "method": "independent | chroma | Markesteijn",
-      "role": "comparison-full-third",
-      "sha256": "41bee9e9638049d2f2dd14f7b1df76270442d555022008cc45bb2caf756a231d",
-      "shape": [
-        1726,
-        7752,
         3
       ]
     },
@@ -163,14 +115,6 @@
         "x": 3510,
         "y": 1930
       }
-    },
-    "full_frame": {
-      "filter": "Lanczos",
-      "output_shape": [
-        1726,
-        2584,
-        3
-      ]
     },
     "output_depth_bits": 8,
     "png_compression_level": 9
@@ -436,6 +380,11 @@
         ]
       }
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiffs": [
     {

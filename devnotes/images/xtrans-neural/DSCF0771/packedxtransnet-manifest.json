@@ -13,12 +13,12 @@
       "bytes": 51709,
       "filename": "DSCF0771-packedxtransnet-earring-500.png",
       "sha256": "d01cd49f27020465479cb7795e848a116edcd13398685d01663ca2a85a99bcf3"
-    },
-    "full_third": {
-      "bytes": 6254526,
-      "filename": "DSCF0771-packedxtransnet-full-third.png",
-      "sha256": "2cc9c09bef9311beefdfcd1300cbac934640e4df7eb902a70d2b1ea93e74a85b"
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiff_sha256": "a7cc80a5cd6fb938cb03dc4666299693a4956c68ce493c56a33eddf18caba097"
 }

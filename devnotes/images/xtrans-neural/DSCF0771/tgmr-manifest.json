@@ -13,12 +13,12 @@
       "bytes": 51805,
       "filename": "DSCF0771-tgmr-earring-500.png",
       "sha256": "42ca5ce84f69f08c885b4a42aeaabdef4bbfbde746ccc914121924a4ecfbbeee"
-    },
-    "full_third": {
-      "bytes": 6290019,
-      "filename": "DSCF0771-tgmr-full-third.png",
-      "sha256": "7ed9b44950757f9981ab12723988e9bedccc949ad7b7563ecf638dd36a108fec"
     }
+  },
+  "privacy": {
+    "distribution": "reviewed-earring-crops-only",
+    "full_frame_images": "private benchmark artifacts; not distributed",
+    "source_raw_and_tiffs": "private provenance only; not distributed"
   },
   "source_tiff_sha256": "188d6a8d809d8f7fe2fc3654a4c18e426eb5cedb51659eddd6edccc04c2671d6"
 }

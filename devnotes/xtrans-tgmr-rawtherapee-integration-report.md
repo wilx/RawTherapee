@@ -1,5 +1,10 @@
 # X-Trans Student-t GMR RawTherapee integration report
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Result
 
 Decision: **GO — visually useful experimental demosaicer.**
@@ -192,7 +197,7 @@ The full-resolution TIFFs remain external under `/tmp/xtrans-tgmr-rt/`.  The
 canonical DSCF0771 TGMR comparison assets are tracked alongside the earlier
 methods:
 
-- [one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-full-third.png);
+- Full-frame image withheld for privacy (private benchmark only);
 - [500-percent nearest-neighbour earring crop](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-earring-500.png).
 
 Their [separate manifest](images/xtrans-neural/DSCF0771/tgmr-manifest.json)
@@ -335,7 +340,7 @@ from 4,000 licensed training sources.  Its SHA-256 is
 It has now been run on DSCF0771 using the same neutral PP3 and derivative
 geometry as the research model:
 
-- [production-v1 one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-full-third.png);
+- Full-frame image withheld for privacy (private benchmark only);
 - [production-v1 500-percent earring crop](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-earring-500.png);
 - [production-v1 asset manifest](images/xtrans-neural/DSCF0771/tgmr-production-v1-manifest.json).
 

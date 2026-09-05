@@ -1,5 +1,10 @@
 # Developer-only X-Trans MLRI experiment
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 This directory contains the reproducibility tools for RawTherapee's hidden
 `mlri-xtrans-2pass` method. The implementation and its provenance are described
 in `devnotes/xtrans-mlri-design.md`; it is not a GUI method and is not claimed

@@ -1,5 +1,10 @@
 # X-Trans TGMR hard-case retraining report
 
+> Privacy update: DSCF0771 full-frame imagery is private and is not
+> distributed. Only the reviewed earring crops may be shared. Historical
+> full-frame asset references below describe private benchmark evidence,
+> not current publication instructions.
+
 ## Purpose and experiment boundary
 
 The production-v1 TGMR candidate improves the licensed 500-source diagnostic
@@ -69,7 +74,7 @@ Its RTv4_sRGB profile has SHA-256
 
 Tracked comparison assets are:
 
-- [one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-full-third.png);
+- Full-frame image withheld for privacy (private benchmark only);
 - [500-percent nearest-neighbour earring crop](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-earring-500.png);
 - [canonical asset manifest](images/xtrans-neural/DSCF0771/tgmr-production-v1-manifest.json).
 
