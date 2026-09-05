@@ -304,11 +304,12 @@ double psnr(double mse)
 
 } // namespace
 
-ValidationReport validateModelOnCorpus(
+ValidationReport validateModelOnCorpusImpl(
     const std::string &modelPath,
     const std::string &corpusPath,
     CorpusSplit selectedSplit,
-    std::uint64_t patchLimit)
+    std::uint64_t patchLimit,
+    bool requireCorpusIdentity)
 {
     const auto start = std::chrono::steady_clock::now();
     const auto modelBytes = readModel(modelPath);
@@ -361,7 +362,8 @@ ValidationReport validateModelOnCorpus(
                 stratumSquared[metric][levels[metric]] += patchSquared;
             }
         });
-    if (modelInspection.identity.corpusSha256 != corpus.header.payloadSha256) {
+    if (requireCorpusIdentity
+        && modelInspection.identity.corpusSha256 != corpus.header.payloadSha256) {
         throw std::runtime_error(
             "TGMR validation corpus payload differs from the model corpus identity");
     }
@@ -416,6 +418,26 @@ ValidationReport validateModelOnCorpus(
     report.elapsedSeconds = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - start).count();
     return report;
+}
+
+ValidationReport validateModelOnCorpus(
+    const std::string &modelPath,
+    const std::string &corpusPath,
+    CorpusSplit split,
+    std::uint64_t patchLimit)
+{
+    return validateModelOnCorpusImpl(
+        modelPath, corpusPath, split, patchLimit, true);
+}
+
+ValidationReport validateModelOnExternalCorpus(
+    const std::string &modelPath,
+    const std::string &corpusPath,
+    CorpusSplit split,
+    std::uint64_t patchLimit)
+{
+    return validateModelOnCorpusImpl(
+        modelPath, corpusPath, split, patchLimit, false);
 }
 
 bool canonicalMsePsnrConsistent(double mse, double psnrValue)

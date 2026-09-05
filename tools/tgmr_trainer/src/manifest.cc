@@ -1,6 +1,7 @@
 #include "tgmr/manifest.h"
 
 #include "tgmr/camera_matrices.h"
+#include "tgmr/hard_cases.h"
 #include "tgmr/patch_selection.h"
 #include "tgmr/sha256.h"
 
@@ -1743,39 +1744,219 @@ void packSourcesWithOptions(
     const PackOptions &options,
     bool force)
 {
+    const auto acceptedSyntheticRatio = [](std::uint16_t value) {
+        return value == 0 || value == 25 || value == 50 || value == 100
+            || value == 200 || value == 500;
+    };
+    const auto acceptedForwardModel = [](NaturalForwardModel value) {
+        return value == NaturalForwardModel::DIRECT_V1
+            || value == NaturalForwardModel::SENSOR_PHYSICAL_V1;
+    };
+    if (!acceptedForwardModel(options.trainingForwardModel)
+        || !acceptedForwardModel(options.evaluationForwardModel)) {
+        throw std::runtime_error("unknown hard-case forward model");
+    }
+    if (options.splitOnly
+        && options.outputSplit != CorpusSplit::TRAIN
+        && options.outputSplit != CorpusSplit::VALIDATION
+        && options.outputSplit != CorpusSplit::TEST) {
+        throw std::runtime_error("unknown output-only corpus split");
+    }
+    if (!acceptedSyntheticRatio(options.syntheticBasisPoints)) {
+        throw std::runtime_error(
+            "synthetic ratio must be one of 0,0.25,0.5,1,2,5 percent");
+    }
     if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY
         && options.noise != PackNoiseRecipe::NONE) {
         throw std::runtime_error(
             "identity-only training cannot be combined with sensor noise");
     }
-    const auto manifestDigest = sha256File(manifestPath);
-    const char *configuration = nullptr;
-    if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY) {
-        configuration =
-            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:train-identity:eval-augmentation-v1:noise-none";
-    } else if (options.noise == PackNoiseRecipe::SENSOR_V1) {
-        configuration =
-            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-sensor-v1-train-only-read8-shot64";
-    } else {
-        // Preserve the original production-v1/no-noise identity byte for byte.
-        configuration =
-            "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-none";
+    if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY
+        && (options.trainingForwardModel != NaturalForwardModel::DIRECT_V1
+            || options.syntheticBasisPoints != 0)) {
+        throw std::runtime_error(
+            "identity-only training cannot use a physical forward model or synthetic replacements");
     }
+    if (options.noise != PackNoiseRecipe::NONE
+        && (options.trainingForwardModel != NaturalForwardModel::DIRECT_V1
+            || options.evaluationForwardModel != NaturalForwardModel::DIRECT_V1
+            || options.syntheticBasisPoints != 0)) {
+        throw std::runtime_error(
+            "hard-case forward models cannot be combined with sensor-v1 noise");
+    }
+    if (options.splitOnly && options.syntheticBasisPoints != 0
+        && options.outputSplit != CorpusSplit::TRAIN) {
+        throw std::runtime_error(
+            "synthetic replacements require a training-only or complete corpus");
+    }
+    const auto manifestDigest = sha256File(manifestPath);
+    const auto configurationFor = [&](std::uint16_t syntheticBasisPoints) {
+        const bool legacyForwardPath =
+            options.trainingForwardModel == NaturalForwardModel::DIRECT_V1
+            && options.evaluationForwardModel == NaturalForwardModel::DIRECT_V1
+            && syntheticBasisPoints == 0;
+        std::string output;
+        if (options.trainingAugmentation == TrainingAugmentationRecipe::IDENTITY_ONLY) {
+            output =
+                "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:train-identity:eval-augmentation-v1:noise-none";
+        } else if (options.noise == PackNoiseRecipe::SENSOR_V1 && legacyForwardPath) {
+            output =
+                "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-sensor-v1-train-only-read8-shot64";
+        } else if (legacyForwardPath) {
+            // Preserve the original production-v1/no-noise identity byte for byte.
+            output =
+                "tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:exposure-wb:matrix-set-v1:noise-none";
+        } else {
+            const auto modelName = [](NaturalForwardModel model) {
+                return model == NaturalForwardModel::DIRECT_V1
+                    ? "direct-v1" : "sensor-physical-v1";
+            };
+            output =
+                std::string("tgpc-v1:linear-srgb:7x7:chw:uint16:clip:camera-matrix:")
+                + "exposure-wb:matrix-set-v1:noise-none:training-forward="
+                + modelName(options.trainingForwardModel)
+                + ":evaluation-forward=" + modelName(options.evaluationForwardModel)
+                + ":synthetic-hard-case-v1-basis-points="
+                + std::to_string(syntheticBasisPoints)
+                + ":synthetic-seed-v1";
+        }
+        if (options.splitOnly) {
+            const char *splitName = options.outputSplit == CorpusSplit::TRAIN
+                ? "train" : options.outputSplit == CorpusSplit::VALIDATION
+                    ? "validation" : "test";
+            output += std::string(":output-split=") + splitName;
+        }
+        return output;
+    };
+    const std::string configuration = configurationFor(options.syntheticBasisPoints);
     const std::uint64_t expectedRecords = std::accumulate(
         records.begin(), records.end(), std::uint64_t{0},
-        [](std::uint64_t count, const SourceRecord &record) {
-            return count + (record.selected ? record.patches.size() : 0U);
+        [&](std::uint64_t count, const SourceRecord &record) {
+            return count + (record.selected
+                && (!options.splitOnly || record.split == options.outputSplit)
+                ? record.patches.size() : 0U);
         });
+    const std::uint64_t trainingRecords = std::accumulate(
+        records.begin(), records.end(), std::uint64_t{0},
+        [&](std::uint64_t count, const SourceRecord &record) {
+            return count + (record.selected && record.split == CorpusSplit::TRAIN
+                && (!options.splitOnly || options.outputSplit == CorpusSplit::TRAIN)
+                ? record.patches.size() : 0U);
+        });
+    const std::uint64_t expectedSyntheticRecords = syntheticReplacementCount(
+        trainingRecords, options.syntheticBasisPoints);
+    if (!options.baseCorpusPath.empty()) {
+        if (options.splitOnly) {
+            throw std::runtime_error(
+                "base-corpus injection requires the complete split set");
+        }
+        if (options.syntheticBasisPoints == 0) {
+            throw std::runtime_error(
+                "a base corpus is useful only with a nonzero synthetic ratio");
+        }
+        if (std::filesystem::weakly_canonical(options.baseCorpusPath)
+            == std::filesystem::weakly_canonical(outputTgpc)) {
+            throw std::runtime_error("base corpus and output path must differ");
+        }
+        const CorpusInspection base = inspectCorpus(options.baseCorpusPath);
+        const auto baseConfiguration = configurationFor(0);
+        std::array<std::uint64_t, 3> expectedSplitCounts{};
+        for (const SourceRecord &record : records) {
+            if (!record.selected) continue;
+            const unsigned splitIndex = static_cast<unsigned>(record.split) - 1;
+            expectedSplitCounts[splitIndex] += record.patches.size();
+        }
+        if (base.header.manifestSha256 != manifestDigest
+            || base.header.configurationSha256
+                != sha256(baseConfiguration.data(), baseConfiguration.size())
+            || base.header.recordCount != expectedRecords
+            || base.header.splitCounts != expectedSplitCounts) {
+            throw std::runtime_error(
+                "base corpus does not match the no-synthetic manifest and forward model");
+        }
+        writeCorpusStream(outputTgpc, manifestDigest,
+            sha256(configuration.data(), configuration.size()),
+            [&](const CorpusRecordSink &sink) {
+                std::uint64_t trainingOrdinal = 0;
+                std::uint64_t emittedSyntheticRecords = 0;
+                const CorpusInspection streamed = inspectCorpus(
+                    options.baseCorpusPath,
+                    [&](const PatchRecord &baseRecord, std::uint64_t) {
+                        PatchRecord patch = baseRecord;
+                        std::uint64_t syntheticIndex = 0;
+                        const bool synthetic = patch.split == CorpusSplit::TRAIN
+                            && syntheticReplacementAt(
+                                trainingOrdinal, trainingRecords,
+                                options.syntheticBasisPoints, syntheticIndex);
+                        if (patch.split == CorpusSplit::TRAIN) ++trainingOrdinal;
+                        if (synthetic) {
+                            ++emittedSyntheticRecords;
+                            const SyntheticPatch generated = generateSyntheticPatch(
+                                syntheticIndex, HARD_CASE_TRAINING_SEED);
+                            const CameraMatrix &matrix = cameraMatrix(patch.matrixId);
+                            if (patch.matrixId != 0 && matrix.heldOut) {
+                                throw std::runtime_error(
+                                    "base corpus synthetic record uses a held-out camera matrix");
+                            }
+                            const double exposure = std::exp2(
+                                patch.exposureStopsQ8 / 256.0);
+                            for (unsigned y = 0; y < 7; ++y) {
+                                for (unsigned x = 0; x < 7; ++x) {
+                                    for (unsigned channel = 0; channel < 3; ++channel) {
+                                        double transformed = 0.0;
+                                        for (unsigned source = 0; source < 3; ++source) {
+                                            transformed += matrix.linearSrgbToCamera[
+                                                channel * 3 + source]
+                                                * generated.rgb[source * 49 + y * 7 + x];
+                                        }
+                                        const double value = std::max(0.0, std::min(1.0,
+                                            transformed * exposure
+                                            * gainFromQ12(patch.whiteBalanceQ12[channel])));
+                                        patch.rgb[channel * 49 + y * 7 + x] =
+                                            static_cast<std::uint16_t>(
+                                                std::llround(value * 65535.0));
+                                    }
+                                }
+                            }
+                            patch.augmentationKind = generated.opticallyFiltered ? 4 : 3;
+                            patch.augmentationSequence = static_cast<std::uint16_t>(
+                                syntheticIndex & 0xffffU);
+                            patch.patchSeed = HARD_CASE_TRAINING_SEED;
+                        }
+                        sink(patch);
+                    });
+                if (streamed.header.payloadSha256 != base.header.payloadSha256
+                    || trainingOrdinal != trainingRecords
+                    || emittedSyntheticRecords != expectedSyntheticRecords) {
+                    throw std::runtime_error(
+                        "base corpus changed or emitted the wrong synthetic schedule");
+                }
+            }, force);
+        return;
+    }
     writeCorpusStreamResumable(outputTgpc, manifestDigest,
-        sha256(configuration, std::strlen(configuration)),
+        sha256(configuration.data(), configuration.size()),
         expectedRecords,
         [&](std::uint64_t skipRecords, const CorpusRecordSink &sink) {
             std::uint32_t sourceOrdinal = 0;
             std::uint64_t recordOrdinal = 0;
+            std::uint64_t trainingOrdinal = 0;
+            std::uint64_t emittedSyntheticRecords = 0;
             for (const SourceRecord &record : records) {
                 if (!record.selected) continue;
+                if (options.splitOnly && record.split != options.outputSplit) {
+                    ++sourceOrdinal;
+                    continue;
+                }
                 if (recordOrdinal + record.patches.size() <= skipRecords) {
                     recordOrdinal += record.patches.size();
+                    if (record.split == CorpusSplit::TRAIN) {
+                        trainingOrdinal += record.patches.size();
+                        // Derive the dense count rather than iterating skipped
+                        // records, preserving restart efficiency.
+                        emittedSyntheticRecords = trainingOrdinal
+                            * expectedSyntheticRecords / trainingRecords;
+                    }
                     ++sourceOrdinal;
                     continue;
                 }
@@ -1786,8 +1967,39 @@ void packSourcesWithOptions(
                 const LinearImage image = loadLinearImage(path.string());
                 const ImageClassification classification = classifyImage(image);
                 verifyDecodedMetadata(record, image, classification, true);
+                const NaturalForwardModel splitForwardModel =
+                    record.split == CorpusSplit::TRAIN
+                    ? options.trainingForwardModel
+                    : options.evaluationForwardModel;
+                std::vector<std::array<double, 7 * 7 * 3>> physicalProxy;
+                if (splitForwardModel == NaturalForwardModel::SENSOR_PHYSICAL_V1) {
+                    physicalProxy = renderSensorPhysicalProxy(
+                        image, record.patches,
+                        sensorPhysicalParameters(
+                            sha256(record.sourceId.data(), record.sourceId.size())));
+                }
+                std::size_t patchIndex = 0;
                 for (const PatchSelection &selection : record.patches) {
-                    if (recordOrdinal++ < skipRecords) continue;
+                    const std::size_t currentPatchIndex = patchIndex++;
+                    if (recordOrdinal++ < skipRecords) {
+                        if (record.split == CorpusSplit::TRAIN) {
+                            std::uint64_t skippedSyntheticIndex = 0;
+                            if (syntheticReplacementAt(
+                                    trainingOrdinal, trainingRecords,
+                                    options.syntheticBasisPoints,
+                                    skippedSyntheticIndex)) {
+                                ++emittedSyntheticRecords;
+                            }
+                            ++trainingOrdinal;
+                        }
+                        continue;
+                    }
+                    std::uint64_t syntheticIndex = 0;
+                    const bool synthetic = record.split == CorpusSplit::TRAIN
+                        && syntheticReplacementAt(trainingOrdinal, trainingRecords,
+                            options.syntheticBasisPoints, syntheticIndex);
+                    if (record.split == CorpusSplit::TRAIN) ++trainingOrdinal;
+                    if (synthetic) ++emittedSyntheticRecords;
                     if (selection.x + 7 > image.width || selection.y + 7 > image.height) {
                         throw std::runtime_error(
                             "manifest patch is outside decoded image: " + record.sourceId);
@@ -1825,15 +2037,42 @@ void packSourcesWithOptions(
                     patch.augmentationSequence = selection.sequence;
                     patch.patchSeed = record.patchSamplingSeed;
                     const double exposure = std::exp2(exposureStopsQ8 / 256.0);
+                    std::array<double, 7 * 7 * 3> sourcePatch{};
+                    bool syntheticFiltered = false;
+                    if (synthetic) {
+                        const SyntheticPatch generated = generateSyntheticPatch(
+                            syntheticIndex, HARD_CASE_TRAINING_SEED);
+                        sourcePatch = generated.rgb;
+                        syntheticFiltered = generated.opticallyFiltered;
+                        patch.augmentationKind = syntheticFiltered ? 4 : 3;
+                        patch.augmentationSequence = static_cast<std::uint16_t>(
+                            syntheticIndex & 0xffffU);
+                        patch.patchSeed = HARD_CASE_TRAINING_SEED;
+                    } else if (splitForwardModel
+                                   == NaturalForwardModel::SENSOR_PHYSICAL_V1
+                               && selection.augmentationKind != 0) {
+                        sourcePatch = physicalProxy[currentPatchIndex];
+                        patch.augmentationKind = 5;
+                    } else {
+                        for (unsigned y = 0; y < 7; ++y) {
+                            for (unsigned x = 0; x < 7; ++x) {
+                                const std::size_t input =
+                                    ((selection.y + y) * image.width
+                                     + selection.x + x) * 3;
+                                for (unsigned channel = 0; channel < 3; ++channel) {
+                                    sourcePatch[channel * 49 + y * 7 + x]
+                                        = image.rgb[input + channel];
+                                }
+                            }
+                        }
+                    }
                     for (unsigned y = 0; y < 7; ++y) {
                         for (unsigned x = 0; x < 7; ++x) {
-                            const std::size_t input = ((selection.y + y) * image.width
-                                + selection.x + x) * 3;
                             for (unsigned channel = 0; channel < 3; ++channel) {
                                 double transformed = 0.0;
                                 for (unsigned source = 0; source < 3; ++source) {
                                     transformed += matrix.linearSrgbToCamera[channel * 3 + source]
-                                        * image.rgb[input + source];
+                                        * sourcePatch[source * 49 + y * 7 + x];
                                 }
                                 const double value = std::max(0.0, std::min(1.0,
                                     transformed * exposure
@@ -1854,6 +2093,10 @@ void packSourcesWithOptions(
                     sink(patch);
                 }
                 ++sourceOrdinal;
+            }
+            if (emittedSyntheticRecords != expectedSyntheticRecords) {
+                throw std::runtime_error(
+                    "synthetic replacement schedule emitted the wrong record count");
             }
         }, options.work, force);
 }

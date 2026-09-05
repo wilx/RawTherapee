@@ -1,6 +1,7 @@
 #include "tgmr/corpus.h"
 #include "tgmr/camera_matrices.h"
 #include "tgmr/corpus_analysis.h"
+#include "tgmr/hard_cases.h"
 #include "tgmr/image.h"
 #include "tgmr/manifest.h"
 #include "tgmr/model_v2.h"
@@ -161,6 +162,161 @@ void writeInterlacedPngFixture(const std::string &path, unsigned width, unsigned
     png_write_end(png, info);
     png_destroy_write_struct(&png, &info);
     require(std::fclose(stream) == 0, "cannot close interlaced PNG fixture");
+}
+
+void testHardCaseRendering()
+{
+    tgmr::LinearImage constant;
+    constant.width = 64;
+    constant.height = 64;
+    constant.sourceWidth = 64;
+    constant.sourceHeight = 64;
+    constant.rgb.resize(64 * 64 * 3);
+    const std::array<double, 3> expected{{0.2, 0.4, 0.7}};
+    for (std::size_t pixel = 0; pixel < 64 * 64; ++pixel) {
+        for (unsigned channel = 0; channel < 3; ++channel) {
+            constant.rgb[pixel * 3 + channel] = expected[channel];
+        }
+    }
+    std::vector<tgmr::PatchSelection> selections(2);
+    selections[0].x = 8;
+    selections[0].y = 11;
+    selections[1].x = 45;
+    selections[1].y = 40;
+    tgmr::SensorPhysicalParameters parameters;
+    parameters.scale = 2.0;
+    parameters.sigma = 0.5;
+    parameters.offsetXEighths = -1;
+    parameters.offsetYEighths = 3;
+    const auto rendered = tgmr::renderSensorPhysicalProxy(
+        constant, selections, parameters);
+    require(rendered.size() == selections.size(),
+        "physical renderer changed the requested patch count");
+    for (const auto &patch : rendered) {
+        for (unsigned channel = 0; channel < 3; ++channel) {
+            for (unsigned position = 0; position < 49; ++position) {
+                require(std::abs(patch[channel * 49 + position]
+                                 - expected[channel]) < 1e-12,
+                    "physical renderer does not conserve constant pixel area");
+            }
+        }
+    }
+    for (std::size_t index = 0; index < selections.size(); ++index) {
+        const auto isolated = tgmr::renderSensorPhysicalProxy(
+            constant, {selections[index]}, parameters);
+        require(isolated.size() == 1 && isolated[0] == rendered[index],
+            "batched and isolated physical patch rendering differ");
+    }
+
+    tgmr::LinearImage gradient = constant;
+    for (unsigned y = 0; y < gradient.height; ++y) {
+        for (unsigned x = 0; x < gradient.width; ++x) {
+            const std::size_t pixel = (static_cast<std::size_t>(y) * gradient.width + x) * 3;
+            gradient.rgb[pixel] = x / 63.0;
+            gradient.rgb[pixel + 1] = y / 63.0;
+            gradient.rgb[pixel + 2] = (x + y) / 126.0;
+        }
+    }
+    const auto gradientPatch = tgmr::renderSensorPhysicalProxy(
+        gradient, {selections[0]}, parameters).front();
+    for (unsigned channel = 0; channel < 3; ++channel) {
+        for (unsigned y = 0; y < 7; ++y) {
+            for (unsigned x = 1; x < 7; ++x) {
+                if (channel != 1) {
+                    require(gradientPatch[channel * 49 + y * 7 + x]
+                            > gradientPatch[channel * 49 + y * 7 + x - 1],
+                        "physical renderer broke horizontal gradient ordering");
+                }
+            }
+        }
+    }
+    tgmr::SensorPhysicalParameters shifted = parameters;
+    shifted.offsetXEighths = 3;
+    const auto shiftedPatch = tgmr::renderSensorPhysicalProxy(
+        gradient, {selections[0]}, shifted).front();
+    require(shiftedPatch != gradientPatch,
+        "quarter-pixel offset does not affect physical rendering");
+
+    const std::array<std::uint16_t, 6> ratios{{0,25,50,100,200,500}};
+    for (std::uint16_t ratio : ratios) {
+        constexpr std::uint64_t total = 1'024'000;
+        const std::uint64_t expectedCount =
+            tgmr::syntheticReplacementCount(total, ratio);
+        std::uint64_t observed = 0;
+        std::uint64_t priorIndex = 0;
+        for (std::uint64_t ordinal = 0; ordinal < total; ++ordinal) {
+            std::uint64_t index = 0;
+            if (tgmr::syntheticReplacementAt(ordinal, total, ratio, index)) {
+                require(index == observed && (observed == 0 || index == priorIndex + 1),
+                    "synthetic replacement indices are not dense and ordered");
+                priorIndex = index;
+                ++observed;
+            }
+        }
+        require(observed == expectedCount,
+            "synthetic replacement schedule emitted the wrong exact ratio");
+    }
+    bool rejectedRatio = false;
+    try {
+        (void)tgmr::syntheticReplacementCount(1000, 501);
+    } catch (const std::runtime_error &) {
+        rejectedRatio = true;
+    }
+    require(rejectedRatio, "synthetic replacement accepted more than five percent");
+    bool rejectedOversizedCorpus = false;
+    try {
+        std::uint64_t ignored = 0;
+        (void)tgmr::syntheticReplacementAt(0, 16'000'001, 25, ignored);
+    } catch (const std::runtime_error &) {
+        rejectedOversizedCorpus = true;
+    }
+    require(rejectedOversizedCorpus,
+        "synthetic replacement accepted more records than TGPC permits");
+
+    bool rejectedPhysicalParameters = false;
+    try {
+        tgmr::SensorPhysicalParameters invalid = parameters;
+        invalid.scale = 1.75;
+        (void)tgmr::renderSensorPhysicalProxy(constant, selections, invalid);
+    } catch (const std::runtime_error &) {
+        rejectedPhysicalParameters = true;
+    }
+    require(rejectedPhysicalParameters,
+        "physical renderer accepted a scale outside the frozen set");
+
+    std::array<unsigned, 8> familyCounts{};
+    std::array<unsigned, 8> filteredCounts{};
+    std::array<bool, 18> phases{};
+    std::array<std::array<double, 147>, 8> firstFamilyPatch{};
+    for (std::uint64_t caseIndex = 0; caseIndex < 72; ++caseIndex) {
+        for (unsigned family = 0; family < 8; ++family) {
+            const auto patch = tgmr::generateSyntheticPatch(
+                caseIndex * 8 + family, tgmr::HARD_CASE_CONTROL_SEED);
+            require(static_cast<unsigned>(patch.family) == family,
+                "synthetic families are not balanced in canonical order");
+            ++familyCounts[family];
+            filteredCounts[family] += patch.opticallyFiltered;
+            phases[patch.phasePlacement] = true;
+            for (double value : patch.rgb) {
+                require(std::isfinite(value),
+                    "synthetic generator produced a non-finite sample");
+            }
+            if (caseIndex == 0) firstFamilyPatch[family] = patch.rgb;
+            require(patch.rgb == tgmr::generateSyntheticPatch(
+                    caseIndex * 8 + family, tgmr::HARD_CASE_CONTROL_SEED).rgb,
+                "synthetic generation is not deterministic");
+        }
+    }
+    for (unsigned family = 0; family < 8; ++family) {
+        require(familyCounts[family] == 72 && filteredCounts[family] == 54,
+            "synthetic family does not contain exactly 25/75 digital/filtered cases");
+        if (family != 0) {
+            require(firstFamilyPatch[family] != firstFamilyPatch[0],
+                "synthetic families collapsed to identical patches");
+        }
+    }
+    require(std::all_of(phases.begin(), phases.end(), [](bool value) { return value; }),
+        "synthetic controls do not cover all 18 phase placements");
 }
 
 void writeJpegFixture(const std::string &path, unsigned width, unsigned height, unsigned seed)
@@ -626,13 +782,19 @@ void testImageManifestAndPack()
     const std::string multiPlainCorpus = temporary("-multi-plain.tgpc");
     const std::string multiNoiseCorpus = temporary("-multi-noise.tgpc");
     const std::string multiIdentityCorpus = temporary("-multi-identity.tgpc");
-    writePngFixture(imagePath, 10, 10);
-    writeInterlacedPngFixture(interlacedImagePath, 10, 10);
+    const std::string multiPhysicalCorpus = temporary("-multi-physical.tgpc");
+    const std::string evaluationPhysicalCorpus = temporary("-eval-physical.tgpc");
+    const std::string validationPhysicalCorpus = temporary("-validation-physical.tgpc");
+    const std::string syntheticBaseCorpus = temporary("-synthetic-base.tgpc");
+    const std::string syntheticCorpus = temporary("-synthetic.tgpc");
+    const std::string syntheticFastCorpus = temporary("-synthetic-fast.tgpc");
+    writePngFixture(imagePath, 30, 30);
+    writeInterlacedPngFixture(interlacedImagePath, 30, 30);
     const auto image = tgmr::loadLinearImage(imagePath);
     const auto interlacedImage = tgmr::loadLinearImage(interlacedImagePath);
     const auto classification = tgmr::classifyImage(image);
     const auto interlacedClassification = tgmr::classifyImage(interlacedImage);
-    require(image.width == 10 && image.height == 10 && image.fileType == "png",
+    require(image.width == 30 && image.height == 30 && image.fileType == "png",
             "PNG fixture decoded incorrectly");
     require(classification.decodedPixelSha256.size() == 64
         && classification.perceptualHash.size() == 16,
@@ -684,7 +846,7 @@ void testImageManifestAndPack()
         << "\"fallback_urls\":[],"
         << "\"file_type\":\"png\","
         << "\"format\":\"rawtherapee-tgmr-corpus-source-manifest-v1\","
-        << "\"height\":10,"
+        << "\"height\":30,"
         << "\"icc_identity\":\"assumed-srgb\","
         << "\"landing_page\":\"https://example.invalid/fixture\","
         << "\"license\":\"CC0-1.0\","
@@ -704,7 +866,7 @@ void testImageManifestAndPack()
         << "\"source_id\":\"fixture-png-1\","
         << "\"split\":\"train\","
         << "\"title\":\"fixture\","
-        << "\"width\":10}\n";
+        << "\"width\":30}\n";
     manifest.close();
     const auto records = tgmr::readSourceManifest(manifestPath);
     require(records.size() == 1 && records[0].patchSamplingSeed == 0x52545447,
@@ -785,6 +947,17 @@ void testImageManifestAndPack()
     }
     require(rejectedContradictoryRecipe,
         "packer accepted identity-only training combined with sensor noise");
+    tgmr::PackOptions invalidForward;
+    invalidForward.trainingForwardModel =
+        static_cast<tgmr::NaturalForwardModel>(255);
+    bool rejectedInvalidForward = false;
+    try {
+        tgmr::packSourcesWithOptions(records, manifestPath, cache.string(),
+                                     temporary("-invalid-forward.tgpc"), invalidForward);
+    } catch (const std::runtime_error &) {
+        rejectedInvalidForward = true;
+    }
+    require(rejectedInvalidForward, "packer accepted an unknown forward-model enum");
 
     std::vector<tgmr::SourceRecord> multiSplitRecords = records;
     tgmr::SourceRecord validation = records.front();
@@ -806,6 +979,21 @@ void testImageManifestAndPack()
                                  multiNoiseCorpus, noiseOptions);
     tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
                                  multiIdentityCorpus, identityOptions);
+    tgmr::PackOptions physicalOptions;
+    physicalOptions.trainingForwardModel =
+        tgmr::NaturalForwardModel::SENSOR_PHYSICAL_V1;
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 multiPhysicalCorpus, physicalOptions);
+    tgmr::PackOptions evaluationPhysicalOptions;
+    evaluationPhysicalOptions.evaluationForwardModel =
+        tgmr::NaturalForwardModel::SENSOR_PHYSICAL_V1;
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 evaluationPhysicalCorpus, evaluationPhysicalOptions);
+    tgmr::PackOptions validationPhysicalOptions = evaluationPhysicalOptions;
+    validationPhysicalOptions.splitOnly = true;
+    validationPhysicalOptions.outputSplit = tgmr::CorpusSplit::VALIDATION;
+    tgmr::packSourcesWithOptions(multiSplitRecords, manifestPath, cache.string(),
+                                 validationPhysicalCorpus, validationPhysicalOptions);
     auto loadRecords = [](const std::string &path) {
         std::vector<tgmr::PatchRecord> output;
         tgmr::inspectCorpus(path,
@@ -817,6 +1005,9 @@ void testImageManifestAndPack()
     const auto multiPlain = loadRecords(multiPlainCorpus);
     const auto multiNoise = loadRecords(multiNoiseCorpus);
     const auto multiIdentity = loadRecords(multiIdentityCorpus);
+    const auto multiPhysical = loadRecords(multiPhysicalCorpus);
+    const auto evaluationPhysical = loadRecords(evaluationPhysicalCorpus);
+    const auto validationPhysical = loadRecords(validationPhysicalCorpus);
     require(multiPlain.size() == 6 && multiNoise.size() == 6
         && multiIdentity.size() == 6,
         "multi-split augmentation fixture changed record count");
@@ -842,6 +1033,54 @@ void testImageManifestAndPack()
     require(multiPlain[1].rgb != multiNoise[1].rgb
         && multiPlain[1].rgb != multiIdentity[1].rgb,
         "training variants did not produce distinct train patches");
+    require(multiPhysical.size() == 6 && evaluationPhysical.size() == 6
+        && multiPhysical[0].rgb == multiPlain[0].rgb
+        && multiPhysical[1].rgb != multiPlain[1].rgb
+        && multiPhysical[1].augmentationKind == 5,
+        "physical training did not preserve identity records or render augmented records");
+    for (std::size_t index = 2; index < 6; ++index) {
+        require(multiPhysical[index].rgb == multiPlain[index].rgb,
+            "training physical renderer changed ordinary held-out records");
+    }
+    require(evaluationPhysical[0].rgb == multiPlain[0].rgb
+        && evaluationPhysical[1].rgb == multiPlain[1].rgb
+        && evaluationPhysical[2].rgb == multiPlain[2].rgb
+        && evaluationPhysical[3].rgb != multiPlain[3].rgb
+        && evaluationPhysical[4].rgb == multiPlain[4].rgb
+        && evaluationPhysical[5].rgb != multiPlain[5].rgb,
+        "explicit physical evaluation did not preserve identity and transform held-out records");
+    require(validationPhysical.size() == 2
+        && validationPhysical[0].sourceOrdinal == 1
+        && validationPhysical[0].split == tgmr::CorpusSplit::VALIDATION
+        && validationPhysical[0].rgb == multiPlain[2].rgb
+        && validationPhysical[1].rgb == evaluationPhysical[3].rgb,
+        "split-only physical control changed record identity or rendering");
+
+    std::vector<tgmr::SourceRecord> syntheticRecords = records;
+    syntheticRecords[0].patches.resize(20, syntheticRecords[0].patches.back());
+    for (std::size_t index = 0; index < syntheticRecords[0].patches.size(); ++index) {
+        syntheticRecords[0].patches[index].sequence = static_cast<std::uint16_t>(index);
+    }
+    tgmr::PackOptions syntheticOptions;
+    syntheticOptions.syntheticBasisPoints = 500;
+    tgmr::PackOptions syntheticBaseOptions;
+    tgmr::packSourcesWithOptions(syntheticRecords, manifestPath, cache.string(),
+                                 syntheticBaseCorpus, syntheticBaseOptions);
+    tgmr::packSourcesWithOptions(syntheticRecords, manifestPath, cache.string(),
+                                 syntheticCorpus, syntheticOptions);
+    tgmr::PackOptions syntheticFastOptions = syntheticOptions;
+    syntheticFastOptions.baseCorpusPath = syntheticBaseCorpus;
+    tgmr::packSourcesWithOptions(syntheticRecords, manifestPath, cache.string(),
+                                 syntheticFastCorpus, syntheticFastOptions);
+    const auto syntheticPacked = loadRecords(syntheticCorpus);
+    const std::size_t syntheticCount = std::count_if(
+        syntheticPacked.begin(), syntheticPacked.end(), [](const tgmr::PatchRecord &value) {
+            return value.augmentationKind == 3 || value.augmentationKind == 4;
+        });
+    require(syntheticPacked.size() == 20 && syntheticCount == 1,
+        "five-percent synthetic schedule did not replace exactly one of twenty records");
+    require(read(syntheticFastCorpus) == read(syntheticCorpus),
+        "base-corpus synthetic injection differs from complete source repacking");
     std::remove(imagePath.c_str());
     std::remove(interlacedImagePath.c_str());
     std::remove(manifestPath.c_str());
@@ -855,6 +1094,12 @@ void testImageManifestAndPack()
     std::remove(multiPlainCorpus.c_str());
     std::remove(multiNoiseCorpus.c_str());
     std::remove(multiIdentityCorpus.c_str());
+    std::remove(multiPhysicalCorpus.c_str());
+    std::remove(evaluationPhysicalCorpus.c_str());
+    std::remove(validationPhysicalCorpus.c_str());
+    std::remove(syntheticBaseCorpus.c_str());
+    std::remove(syntheticCorpus.c_str());
+    std::remove(syntheticFastCorpus.c_str());
     std::filesystem::remove_all(corpusPath + ".work");
     std::filesystem::remove_all(noisyCorpusA + ".work");
     std::filesystem::remove_all(noisyCorpusB + ".work");
@@ -862,6 +1107,12 @@ void testImageManifestAndPack()
     std::filesystem::remove_all(multiPlainCorpus + ".work");
     std::filesystem::remove_all(multiNoiseCorpus + ".work");
     std::filesystem::remove_all(multiIdentityCorpus + ".work");
+    std::filesystem::remove_all(multiPhysicalCorpus + ".work");
+    std::filesystem::remove_all(evaluationPhysicalCorpus + ".work");
+    std::filesystem::remove_all(validationPhysicalCorpus + ".work");
+    std::filesystem::remove_all(syntheticBaseCorpus + ".work");
+    std::filesystem::remove_all(syntheticCorpus + ".work");
+    std::filesystem::remove_all(syntheticFastCorpus + ".work");
 }
 
 void testTiff16Orientation()
@@ -1603,6 +1854,12 @@ void testValidation()
         rejected = true;
     }
     require(rejected, "TGMR validation accepted a corpus other than the model training corpus");
+    const auto externalReport = tgmr::validateModelOnExternalCorpus(
+        wrongModelPath, corpusPath, tgmr::CorpusSplit::VALIDATION);
+    require(externalReport.metrics.patches == 1
+        && externalReport.corpusPayloadSha256
+            == tgmr::hex(tgmr::inspectCorpus(corpusPath).header.payloadSha256),
+        "explicit external-control validation did not authenticate and evaluate its corpus");
     std::remove(corpusPath.c_str());
     std::remove(modelPath.c_str());
     std::remove(wrongModelPath.c_str());
@@ -1848,6 +2105,7 @@ int main()
     try {
         testSha256();
         testCameraMatrices();
+        testHardCaseRendering();
         testCorpus();
         testResumableCorpusWriter();
         testSourceLimitedTrainingMatrix();

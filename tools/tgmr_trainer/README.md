@@ -323,6 +323,19 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
     --training-augmentation identity-only
 "$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
     tgmr-corpus-v1-sensor-noise.tgpc --noise sensor-v1
+
+# Default-off hard-case experiment variants.
+"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
+    tgmr-hard-case-direct-1pct.tgpc --forward-model direct-v1 \
+    --synthetic-percent 1 --base-corpus tgmr-corpus-v1.tgpc
+"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
+    tgmr-hard-case-physical-1pct.tgpc --forward-model sensor-physical-v1 \
+    --synthetic-percent 1
+"$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
+    tgmr-hard-case-physical-validation.tgpc \
+    --evaluation-forward-model sensor-physical-v1 --only-split validation
+"$TOOL" corpus synthetic-controls tgmr-hard-case-controls.tgpc \
+    --records-per-family 128
 "$TOOL" corpus gzip tgmr-corpus-v1.tgpc tgmr-corpus-v1.tgpc.gz
 "$TOOL" corpus gzip-file corpus-v1.jsonl corpus-v1.jsonl.gz
 "$TOOL" corpus inspect tgmr-corpus-v1.tgpc.gz
@@ -486,6 +499,50 @@ records are byte-identical across all three candidates, so model comparisons
 use exactly the same held-out inputs. Identity-only plus sensor noise is
 rejected as a contradictory request. These are validation candidates, not a
 claim about a particular camera's calibrated noise model.
+
+The default-off hard-case experiment adds two orthogonal training controls.
+`--forward-model sensor-physical-v1` leaves the frozen 25-percent identity
+records direct and renders the other training records through a deterministic
+source-level physical model: 1.5x/2x/2.5x scale, a 0.25/0.50/0.75-output-pixel
+Gaussian point-spread function, one-pixel square sensor integration, and one
+of sixteen quarter-pixel placements. Camera-matrix, exposure, white-balance,
+clipping, and uint16 quantization remain later steps in the same order as the
+ordinary pack path. Rendering is bounded to the selected 7x7 neighborhoods;
+it does not materialize eighteen phase copies or a full-frame training tensor.
+
+`--synthetic-percent` accepts exactly `0`, `0.25`, `0.5`, `1`, `2`, or `5`.
+It replaces that exact fraction of training records without changing the
+record count. The fixed generator cycles evenly through steps, thin lines,
+intersections, dots/stars, saturated highlights, periodic detail, procedural
+strokes, and frame/matte borders. One quarter are mathematically sharp digital
+patterns and three quarters are generated oversampled and passed through the
+optical/pixel-integration model. The schedule is deterministic, independently
+seeded from evaluation controls, and covers all 18 X-Trans phase placements.
+Augmentation kinds 3, 4, and 5 identify direct-synthetic,
+optically-filtered synthetic, and sensor-physical natural records.
+
+Ordinary validation and test records remain byte-identical unless the
+explicit diagnostic `--evaluation-forward-model sensor-physical-v1` is used.
+`corpus synthetic-controls` creates an independently authenticated held-out
+TGPC with each synthetic family represented as one source ordinal. Such a
+corpus intentionally differs from the model's embedded training-corpus
+identity and therefore must be evaluated with `validate-external`; normal
+`validate` continues to reject an identity mismatch.
+
+`--only-split train|validation|test` creates a compact external control and
+retains the source ordinals from the full manifest. It is explicit in the
+configuration identity. The ordinary default always writes all three splits;
+synthetic replacements are rejected for a validation-only or test-only file.
+
+Ratio screening need not decode the same 5,000 originals for every synthetic
+percentage. `--base-corpus` accepts an already authenticated no-synthetic TGPC
+with the exact same source manifest and forward-model recipe, streams it, and
+replaces only the selected training records. The accelerated repack is
+byte-identical to complete source repacking and is covered by a native parity
+test. It scans and authenticates the base before use, refuses a zero synthetic
+ratio or an in-place output path, and never weakens source/configuration
+identity checks. Build the physical/no-synthetic base once; all six physical
+ratio candidates can then reuse it without reopening source images.
 
 `corpus finalize` and `corpus pack` are restartable. Finalization writes one
 authenticated immutable record file per completed source under its work
@@ -658,6 +715,8 @@ canonical companion manifest:
 "$TOOL" verify model.tgmr
 "$TOOL" validate model.tgmr tgmr-corpus-v1.tgpc.gz \
     --split validation > model.validation.json
+"$TOOL" validate-external model.tgmr tgmr-hard-case-controls.tgpc \
+    --split validation > model.synthetic-controls.json
 # Re-exporting the deterministic model bytes attaches the authenticated
 # validation result to the final companion manifest.
 "$TOOL" export --checkpoints /data/tgmr/checkpoints model.tgmr \

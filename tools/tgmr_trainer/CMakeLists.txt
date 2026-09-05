@@ -51,6 +51,7 @@ add_library(rt_tgmr_tooling STATIC
     src/camera_matrices.cc
     src/corpus.cc
     src/corpus_analysis.cc
+    src/hard_cases.cc
     src/image.cc
     src/manifest.cc
     src/model_v2.cc

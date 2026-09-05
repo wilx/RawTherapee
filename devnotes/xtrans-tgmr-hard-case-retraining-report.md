@@ -85,7 +85,8 @@ not regress.
 | --- | --- |
 | Preserve and inventory corpus-v1 outputs | complete |
 | Render current-model DSCF0771 assets | complete |
-| Forward-model and synthetic generator tooling | pending |
+| Forward-model and synthetic generator tooling | complete |
+| Independent physical/synthetic control support | complete |
 | 1,000-source ratio screen | pending |
 | Full 4,000-source factorial | pending |
 | Old-test diagnostic and RAF/control qualification | pending |
@@ -94,3 +95,77 @@ not regress.
 The renderer and synthetic recipes are default-off.  The previously frozen
 production-v1 pack path must remain byte-identical, including its configuration
 digest and held-out validation/test bytes.
+
+## Training and control generators
+
+The standalone C++ trainer now has two opt-in natural-patch forward models:
+`direct-v1` and `sensor-physical-v1`. The latter keeps the frozen 25-percent
+identity population direct and renders every other training patch through a
+deterministically selected scale (1.5x, 2x, or 2.5x), Gaussian PSF sigma (0.25,
+0.50, or 0.75 output pixels), and one of sixteen quarter-pixel placements.
+Gaussian filtering and square sensor-pixel integration are combined in a
+separable normalized kernel. Constant-color area conservation, gradient
+ordering, subpixel sensitivity, and batched/isolated rendering identity are
+covered by native tests. Camera transformation, exposure, white balance,
+clipping, and uint16 quantization are applied only after rendering.
+
+Synthetic replacement ratios are restricted to 0, 0.25, 0.5, 1, 2, and 5
+percent and change training records only. The schedule preserves exactly
+1,024,000 records and emits the exact rounded population at every ratio. It
+balances eight families—steps, thin lines, intersections, dots/stars,
+saturated highlights, periodic detail, procedural strokes, and frame/matte
+borders—with 25 percent sharp digital cases and 75 percent oversampled,
+optically filtered cases. Independent frozen seeds distinguish training from
+control generation, and every X-Trans phase placement is exercised.
+
+Held-out physical corpora can be packed explicitly without changing the
+ordinary validation/test path. The new `corpus synthetic-controls` command
+emits a separately authenticated TGPC, grouped by synthetic family, and the
+new `validate-external` command evaluates such a control without weakening the
+normal model/corpus identity check. Default packing still uses the exact
+legacy configuration string and record path; tests compare the public legacy
+wrapper byte-for-byte with the default option path and prove that default-off
+features do not change held-out records.
+
+Split-only packing can emit just validation, test, or training records while
+retaining their full-manifest source ordinals. This keeps authenticated
+physical-control artifacts compact and avoids reopening the 4,000 unrelated
+training sources for a validation-only render. The selected split is bound to
+the TGPC configuration identity and cannot be confused with the ordinary
+three-split corpus.
+
+For tractable screening, a synthetic-only fast path accepts an authenticated
+no-synthetic TGPC having the exact same manifest and forward-model
+configuration. It reuses every natural record and replaces only the frozen
+synthetic schedule. A native test requires this path to produce the exact same
+bytes as full source decoding and repacking. Thus the direct production TGPC
+can seed every direct ratio, and one newly rendered physical/no-synthetic TGPC
+can seed every physical ratio.
+
+The focused standalone build and both native/Python CTest cases pass. Ratio
+screening has not started, so this implementation status is not evidence that
+either new training input improves the model.
+
+The frozen control generator was exercised with 512 cases per family (4,096
+records total). The uncompressed TGPC is 1,573,120 bytes with file SHA-256
+`8b4bc67ffff42a94c599c0373d4c9adb291d471c39e447cb9662346519e88d5e`
+and payload SHA-256
+`88bf5c1cc1d47c9393a643a814a8898fd6a5785dc511f49760c42542a17e930f`.
+The permanent production-v1 baseline scores 20.107503 dB, p99 patch RMS
+0.320029, worst patch RMS 0.508530, and 1.599094 dB phase spread on this
+deliberately severe population. Per-family baseline PSNR is:
+
+| Family | PSNR (dB) |
+| --- | ---: |
+| steps | 24.224616 |
+| thin lines | 21.262420 |
+| intersections | 20.142810 |
+| dots/stars | 19.070781 |
+| saturated highlights | 17.655576 |
+| periodic detail | 19.940468 |
+| procedural strokes | 19.981200 |
+| frame/matte borders | 21.316265 |
+
+These values are a before-retraining reference, not a release gate by
+themselves. Candidate selection uses relative mean-MSE reduction plus the
+ordinary and physical validation safety gates.

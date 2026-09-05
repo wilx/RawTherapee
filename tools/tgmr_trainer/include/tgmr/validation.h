@@ -58,6 +58,15 @@ ValidationReport validateModelOnCorpus(
     CorpusSplit split,
     std::uint64_t patchLimit = 0);
 
+// Evaluate an independently authenticated control corpus whose payload is not
+// the training corpus embedded in the model identity.  This remains an
+// explicit development interface; ordinary validation keeps the binding gate.
+ValidationReport validateModelOnExternalCorpus(
+    const std::string &modelPath,
+    const std::string &corpusPath,
+    CorpusSplit split,
+    std::uint64_t patchLimit = 0);
+
 // Canonical validation JSON rounds both values to twelve digits after the
 // decimal point.  Authenticate their mathematical relationship using the
 // resulting MSE interval instead of applying an unrealistically small PSNR

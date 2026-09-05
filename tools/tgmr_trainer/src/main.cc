@@ -1,6 +1,7 @@
 #include "tgmr/camera_matrices.h"
 #include "tgmr/corpus.h"
 #include "tgmr/corpus_analysis.h"
+#include "tgmr/hard_cases.h"
 #include "tgmr/manifest.h"
 #include "tgmr/model_v2.h"
 #include "tgmr/patch_selection.h"
@@ -56,8 +57,15 @@ void usage(std::ostream &output)
            " [--work-dir DIR] [--progress-seconds N] [--force]\n"
         << "  rt-tgmr-train corpus pack MANIFEST CACHE OUTPUT.tgpc"
            " [--training-augmentation production-v1|identity-only]"
+           " [--forward-model direct-v1|sensor-physical-v1]"
+           " [--evaluation-forward-model direct-v1|sensor-physical-v1]"
+           " [--synthetic-percent 0|0.25|0.5|1|2|5]"
+           " [--base-corpus INPUT.tgpc[.gz]]"
+           " [--only-split train|validation|test]"
            " [--noise none|sensor-v1] [--work-dir DIR]"
            " [--checkpoint-records N] [--progress-seconds N] [--force]\n"
+        << "  rt-tgmr-train corpus synthetic-controls OUTPUT.tgpc"
+           " [--records-per-family N] [--seed N] [--force]\n"
         << "  rt-tgmr-train corpus release-files MANIFEST ATTRIBUTION.txt"
            " RIGHTS.json RECONSTRUCTION.tsv [--force]\n"
         << "  rt-tgmr-train corpus inspect FILE\n"
@@ -72,6 +80,8 @@ void usage(std::ostream &output)
         << "      --trainer-revision-sha256 HEX [--model-revision N] [--force]\n"
         << "  rt-tgmr-train verify MODEL.tgmr\n"
         << "  rt-tgmr-train validate MODEL.tgmr CORPUS.tgpc[.gz]"
+           " [--split validation|test|train] [--limit N]\n"
+        << "  rt-tgmr-train validate-external MODEL.tgmr CORPUS.tgpc[.gz]"
            " [--split validation|test|train] [--limit N]\n"
         << "  rt-tgmr-train benchmark CORPUS.tgpc[.gz] [--source-limit N] [options]\n"
         << "  rt-tgmr-train train CORPUS.tgpc[.gz] OUTPUT-DIR [--source-limit N] [options]\n"
@@ -399,10 +409,11 @@ int verifyCommand(int argc, char **argv)
     return 0;
 }
 
-int validateCommand(int argc, char **argv)
+int validateCommand(int argc, char **argv, bool external)
 {
     if (argc < 4) {
-        throw std::runtime_error("validate requires MODEL and CORPUS");
+        throw std::runtime_error(std::string(external ? "validate-external" : "validate")
+                                 + " requires MODEL and CORPUS");
     }
     tgmr::CorpusSplit split = tgmr::CorpusSplit::VALIDATION;
     std::uint64_t limit = 0;
@@ -421,7 +432,9 @@ int validateCommand(int argc, char **argv)
         }
     }
     std::cout << tgmr::canonicalValidationJson(
-        tgmr::validateModelOnCorpus(argv[2], argv[3], split, limit));
+        external
+        ? tgmr::validateModelOnExternalCorpus(argv[2], argv[3], split, limit)
+        : tgmr::validateModelOnCorpus(argv[2], argv[3], split, limit));
     return 0;
 }
 
@@ -1205,6 +1218,51 @@ int corpusCommand(int argc, char **argv)
                     throw std::runtime_error(
                         "--training-augmentation must be production-v1 or identity-only");
                 }
+            } else if ((option == "--forward-model"
+                        || option == "--evaluation-forward-model")
+                       && index + 1 < argc) {
+                const std::string value = argv[++index];
+                tgmr::NaturalForwardModel model;
+                if (value == "direct-v1") {
+                    model = tgmr::NaturalForwardModel::DIRECT_V1;
+                } else if (value == "sensor-physical-v1") {
+                    model = tgmr::NaturalForwardModel::SENSOR_PHYSICAL_V1;
+                } else {
+                    throw std::runtime_error(
+                        option + " must be direct-v1 or sensor-physical-v1");
+                }
+                if (option == "--forward-model") {
+                    options.trainingForwardModel = model;
+                } else {
+                    options.evaluationForwardModel = model;
+                }
+            } else if (option == "--synthetic-percent" && index + 1 < argc) {
+                const std::string value = argv[++index];
+                if (value == "0") options.syntheticBasisPoints = 0;
+                else if (value == "0.25") options.syntheticBasisPoints = 25;
+                else if (value == "0.5") options.syntheticBasisPoints = 50;
+                else if (value == "1") options.syntheticBasisPoints = 100;
+                else if (value == "2") options.syntheticBasisPoints = 200;
+                else if (value == "5") options.syntheticBasisPoints = 500;
+                else {
+                    throw std::runtime_error(
+                        "--synthetic-percent must be one of 0,0.25,0.5,1,2,5");
+                }
+            } else if (option == "--base-corpus" && index + 1 < argc) {
+                options.baseCorpusPath = argv[++index];
+            } else if (option == "--only-split" && index + 1 < argc) {
+                const std::string value = argv[++index];
+                options.splitOnly = true;
+                if (value == "train") {
+                    options.outputSplit = tgmr::CorpusSplit::TRAIN;
+                } else if (value == "validation") {
+                    options.outputSplit = tgmr::CorpusSplit::VALIDATION;
+                } else if (value == "test") {
+                    options.outputSplit = tgmr::CorpusSplit::TEST;
+                } else {
+                    throw std::runtime_error(
+                        "--only-split must be train, validation, or test");
+                }
             } else if (option == "--work-dir" && index + 1 < argc) {
                 options.work.workDirectory = argv[++index];
             } else if ((option == "--checkpoint-records"
@@ -1232,6 +1290,80 @@ int corpusCommand(int argc, char **argv)
         tgmr::validateProductionManifest(records);
         tgmr::packSourcesWithOptions(records, argv[3], argv[4], argv[5], options, force);
         std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[5]));
+        return 0;
+    }
+    if (command == "synthetic-controls") {
+        if (argc < 4) {
+            throw std::runtime_error(
+                "corpus synthetic-controls requires OUTPUT"
+                " [--records-per-family N] [--seed N] [--force]");
+        }
+        bool force = false;
+        std::uint64_t recordsPerFamily = 128;
+        std::uint64_t seed = tgmr::HARD_CASE_CONTROL_SEED;
+        for (int index = 4; index < argc; ++index) {
+            const std::string option = argv[index];
+            if (option == "--force") {
+                force = true;
+            } else if ((option == "--records-per-family" || option == "--seed")
+                       && index + 1 < argc) {
+                const std::string encoded = argv[++index];
+                std::size_t consumed = 0;
+                const std::uint64_t value = std::stoull(encoded, &consumed, 0);
+                if (consumed != encoded.size()) {
+                    throw std::runtime_error(option + " is malformed");
+                }
+                if (option == "--records-per-family") {
+                    if (value == 0 || value > 65536) {
+                        throw std::runtime_error(
+                            "--records-per-family is outside 1..65536");
+                    }
+                    recordsPerFamily = value;
+                } else {
+                    seed = value;
+                }
+            } else {
+                throw std::runtime_error(
+                    "unknown corpus synthetic-controls option: " + option);
+            }
+        }
+        std::vector<tgmr::PatchRecord> records;
+        records.reserve(static_cast<std::size_t>(recordsPerFamily * 8));
+        for (std::uint64_t caseIndex = 0; caseIndex < recordsPerFamily; ++caseIndex) {
+            for (unsigned family = 0; family < 8; ++family) {
+                const std::uint64_t syntheticIndex = caseIndex * 8 + family;
+                const tgmr::SyntheticPatch generated =
+                    tgmr::generateSyntheticPatch(syntheticIndex, seed);
+                tgmr::PatchRecord record;
+                const std::string sourceIdentity = std::string("tgmr-hard-case-v1:")
+                    + tgmr::syntheticFamilyName(generated.family) + ':'
+                    + std::to_string(caseIndex);
+                record.sourceIdSha256 = tgmr::sha256(
+                    sourceIdentity.data(), sourceIdentity.size());
+                record.sourceOrdinal = static_cast<std::uint32_t>(family);
+                record.x = generated.phasePlacement % 6;
+                record.y = generated.phasePlacement / 6;
+                record.split = tgmr::CorpusSplit::VALIDATION;
+                record.augmentationKind = generated.opticallyFiltered ? 4 : 3;
+                record.orientation = 1;
+                record.augmentationSequence = static_cast<std::uint16_t>(
+                    syntheticIndex & 0xffffU);
+                record.patchSeed = seed;
+                for (std::size_t sample = 0; sample < record.rgb.size(); ++sample) {
+                    const double value = std::max(
+                        0.0, std::min(1.0, generated.rgb[sample]));
+                    record.rgb[sample] = static_cast<std::uint16_t>(
+                        std::llround(value * 65535.0));
+                }
+                records.push_back(record);
+            }
+        }
+        const std::string identity = std::string("tgmr-hard-case-control-v1:seed=")
+            + std::to_string(seed) + ":records-per-family="
+            + std::to_string(recordsPerFamily);
+        tgmr::writeCorpus(argv[3], tgmr::sha256(identity.data(), identity.size()),
+            tgmr::sha256(identity.data(), identity.size()), records, force);
+        std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[3]));
         return 0;
     }
     if (command == "release-files") {
@@ -1403,7 +1535,10 @@ int main(int argc, char **argv)
             return verifyCommand(argc, argv);
         }
         if (argc >= 2 && std::string(argv[1]) == "validate") {
-            return validateCommand(argc, argv);
+            return validateCommand(argc, argv, false);
+        }
+        if (argc >= 2 && std::string(argv[1]) == "validate-external") {
+            return validateCommand(argc, argv, true);
         }
         if (argc >= 2 && std::string(argv[1]) == "export") {
             return exportCommand(argc, argv);

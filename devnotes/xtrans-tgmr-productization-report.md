@@ -858,3 +858,10 @@ The current production-v1 model has also been rendered on DSCF0771 and recorded
 separately from the older research TGMR assets.  See
 [the hard-case retraining report](xtrans-tgmr-hard-case-retraining-report.md)
 for artifact identities, progress, and the complete decision protocol.
+
+The first implementation stage is complete. The default-off C++ corpus packer
+now provides the sensor-physical natural renderer, exact 0--5-percent balanced
+synthetic replacement schedules, independently seeded synthetic controls, and
+an explicit external-control validation path. Frozen corpus-v1 defaults and
+ordinary held-out bytes remain unchanged. These facilities enable the
+1,000-source ratio screen; no quality conclusion has yet been drawn from them.

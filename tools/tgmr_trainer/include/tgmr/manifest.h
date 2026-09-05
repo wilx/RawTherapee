@@ -115,10 +115,32 @@ enum class TrainingAugmentationRecipe : std::uint8_t {
     IDENTITY_ONLY = 1,
 };
 
+enum class NaturalForwardModel : std::uint8_t {
+    DIRECT_V1 = 0,
+    SENSOR_PHYSICAL_V1 = 1,
+};
+
 struct PackOptions final {
     PackNoiseRecipe noise = PackNoiseRecipe::NONE;
     TrainingAugmentationRecipe trainingAugmentation =
         TrainingAugmentationRecipe::PRODUCTION_V1;
+    // Forward-model changes are training-only by default so every ordinary
+    // validation/test record remains byte-identical to corpus-v1.  The
+    // separate evaluation selector is explicit and intended only for
+    // authenticated diagnostic corpora.
+    NaturalForwardModel trainingForwardModel = NaturalForwardModel::DIRECT_V1;
+    NaturalForwardModel evaluationForwardModel = NaturalForwardModel::DIRECT_V1;
+    // One basis point is 0.01 percent.  Only 0,25,50,100,200,500 are accepted.
+    std::uint16_t syntheticBasisPoints = 0;
+    // Optional authenticated no-synthetic TGPC with the same manifest and
+    // forward-model recipe.  It avoids decoding every source again when only
+    // the synthetic ratio changes; it never changes the resulting identity.
+    std::string baseCorpusPath;
+    // External controls may contain a single split so physical validation does
+    // not reopen or copy unrelated source populations. Default remains the
+    // complete production corpus.
+    bool splitOnly = false;
+    CorpusSplit outputSplit = CorpusSplit::VALIDATION;
     CorpusWriteOptions work;
 };
 
