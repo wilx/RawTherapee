@@ -766,7 +766,31 @@ per-source safety gate. Control-suite, RAF, publication, bundled-model, and
 clean-branch work stop here rather than tuning against the untouched test
 sources or weakening a threshold after observing it.
 
-## Incomplete plan items
+## Experimental feature decision after hard-case screening
+
+The hard-case screen is closed as NO-GO. On the owner's subsequent explicit
+decision, the unchanged production-v1 model is accepted for an experimental
+feature branch, with its failed original quality gates still recorded above.
+Sparse digitally sharp borders, one-pixel structures, and isolated chromatic
+highlights can produce false colour or ringing. Synthetic replacement up to
+5% did not improve these cases sufficiently; there is no further retraining
+requirement for this experimental port. This does not establish that such
+structures are impossible in camera images.
+
+Markesteijn three-pass remains the default. Runtime fallback handles loading
+and execution failures; it cannot detect or repair these image-quality
+limitations. The clean branch excludes the physical renderer, synthetic
+generator, screening commands, and their tests. The existing experiment and
+external baseline files remain preserved.
+
+The input revisions and artifact digests are frozen in
+[the clean-port inventory](tgmr-clean-port-inventory.json). The clean branch
+is based on freshly fetched upstream/dev, with selective integration into its
+current parameter implementation. Corpus publication and wider platform
+qualification follow on that branch. Copyright/redistribution review remains
+required before publishing a branch containing the bundled model.
+
+## Incomplete plan items (original release gate)
 
 The following remain deliberately open rather than being represented as done:
 
