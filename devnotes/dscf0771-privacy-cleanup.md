@@ -26,9 +26,9 @@ The separate model redistribution gate remains in force.
   were not changed by the rewrite.
 - Public comparison generators now emit only the established earring crops.
   Crop manifests retain the original hashes and no longer advertise portraits.
-- A standard-library privacy guard checks tracked files, exact crop identities,
-  known prohibited blobs throughout reachable history, and embedded base64 copies.
-  A regression test proves that a deletion commit alone cannot pass that audit.
+- The one-off audit checked tracked files, exact crop identities, known prohibited
+  blobs throughout reachable history, and embedded base64 copies. Its regression
+  test verified that a deletion commit alone could not pass that audit.
 - Changed opaque papers/reports require explicit image review. The TGMR paper's
   HTML embeds charts only; its six PDF raster figures match those chart shapes.
   The PDF, HTML, figure hashes, and paper-claim verification remain unchanged.
@@ -36,9 +36,10 @@ The separate model redistribution gate remains in force.
   branch, and whitespace validation are run separately from history inspection.
   No native rebuild is needed: runtime, trainer, and model contents are unchanged.
 
-Run `python3 tools/privacy/check_dscf0771.py --history` from the repository root.
-The check is also registered in the DSCF0771 privacy GitHub Actions workflow.
-It is an identity/publication guard, not an automatic face detector.
+The cleanup was a one-off operation. Its audit tooling and dedicated CI workflow
+were removed on 6 September 2026 after completion; no ongoing automated privacy
+gate or document-hash allowlist is maintained. The crop-only publication policy
+and sanitized history remain unchanged.
 
 ## Exposure that a branch rewrite cannot erase
 
@@ -55,4 +56,4 @@ GitHub-side removal and deletion from third-party clones cannot be guaranteed.
 
 Fresh-clone verification and remote head identities are recorded in the private
 execution receipt. Do not describe historical cache removal as complete merely
-because the current public branch passes the audit.
+because the sanitized public branch passed the one-off audit.

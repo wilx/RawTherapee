@@ -211,7 +211,7 @@ earring derivative is distributable; its original PNG bytes are preserved:
   `(3510,1930,140,160)` enlarged to 700×800 by nearest neighbour.
 - [Crop-only derivative identity manifest](images/xtrans-neural/DSCF0771/tgmr-production-v1-manifest.json).
 
-The DSCF0771 privacy gate also removes the complete portrait from the branch's
+The one-off DSCF0771 privacy cleanup removed the complete portrait from the branch's
 history, rather than relying on a deletion commit. See the
 [privacy closeout](dscf0771-privacy-cleanup.md). Private source hashes and
 numerical measurements are retained; neither the model nor its corpus changes.
@@ -262,9 +262,11 @@ Fifteen evidence-binding tests now check the manuscript's generated tables,
 abstract, metric contracts and pinned model/evidence identities. The 20-page
 PDF and self-contained HTML were rebuilt with Pandoc 3.10.2; independent final
 renders have identical HTML bytes and PDF text/rasterized pages, but not PDF
-bytes. Only chart/diagram imagery is embedded. The new opaque render hashes
-were reviewed and added narrowly to the privacy policy. Prior paper revisions
-remain in Git. No training inputs, model bytes or earring crops changed.
+bytes. Only chart/diagram imagery is embedded. The new renders were reviewed
+for image content and their hashes are recorded in the paper manifest. The
+one-off cleanup tooling and dedicated CI workflow were subsequently retired;
+there is no ongoing document-hash allowlist. Prior paper revisions remain in
+Git. No training inputs, model bytes or earring crops changed.
 
 ## Remaining public-release work
 

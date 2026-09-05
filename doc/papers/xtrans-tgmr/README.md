@@ -82,9 +82,10 @@ renders. Compare repeated HTML bytes, extracted PDF text, page geometry, and
 rasterized pages separately.
 
 Only diagrams and a research quality–cost plot are embedded. No DSCF0771
-full-frame photograph or new portrait is included. A changed PDF/HTML must be
-visually reviewed before its hash is added to the privacy policy's reviewed
-document allowlist. This paper-only workflow does not modify the model,
+full-frame photograph or new portrait is included. Future PDF/HTML revisions
+should retain this crop-only publication boundary during visual review; the
+completed one-off cleanup has no ongoing automated privacy gate or document
+allowlist. This paper-only workflow does not modify the model,
 corpus, trainer, runtime, or existing earring pixels.
 
 ## Verification of this revision
@@ -100,8 +101,8 @@ corpus, trainer, runtime, or existing earring pixels.
   entries, two embedded images, no scripts and no broken internal links.
   Browser-level local-file preview was blocked by the app policy; HTML visual
   browser QA is not claimed.
-- The current render hashes are recorded in `manifest.sha256` and explicitly
-  added to the privacy policy only after image-content review. Historical
-  document identities remain allowed for history audits.
+- The current render hashes are recorded in `manifest.sha256`; image content
+  was reviewed before publication. The one-off privacy cleanup tooling and CI
+  workflow have been retired without changing the sanitized history.
 - No new fitting, native benchmark, corpus modification, model change, or
   photographic derivative was performed for this revision.
