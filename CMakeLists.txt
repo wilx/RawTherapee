@@ -459,6 +459,7 @@ if(APPLE AND OPTION_OMP)
 endif()
 
 include(cmake/Compile.cmake)
+include(cmake/TgmrModel.cmake)
 add_subdirectory(rtengine)
 if(BUILD_TGMR_TRAINER)
     add_subdirectory(tools/tgmr_trainer)
