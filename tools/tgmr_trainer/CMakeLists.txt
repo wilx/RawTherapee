@@ -21,6 +21,32 @@ option(TGMR_ENABLE_OMP_TARGET
 set(TGMR_OMP_TARGET_FLAGS "" CACHE STRING
     "Compiler/linker flags for the selected AMDGCN or NVPTX OpenMP target")
 
+# The exported model binds the exact trainer implementation, not an arbitrary
+# revision label supplied on the command line.  Relative paths plus individual
+# file digests make the aggregate independent of the checkout location.
+file(GLOB_RECURSE TGMR_TRAINER_REVISION_INPUTS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc")
+list(APPEND TGMR_TRAINER_REVISION_INPUTS
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/training_identity_config.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../rtengine/cJSON.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../rtengine/cJSON.h")
+list(SORT TGMR_TRAINER_REVISION_INPUTS)
+set(TGMR_TRAINER_REVISION_MANIFEST "")
+foreach(TGMR_REVISION_INPUT IN LISTS TGMR_TRAINER_REVISION_INPUTS)
+    file(RELATIVE_PATH TGMR_REVISION_PATH
+        "${CMAKE_CURRENT_SOURCE_DIR}/../.." "${TGMR_REVISION_INPUT}")
+    file(SHA256 "${TGMR_REVISION_INPUT}" TGMR_REVISION_FILE_SHA256)
+    string(APPEND TGMR_TRAINER_REVISION_MANIFEST
+        "${TGMR_REVISION_PATH}:${TGMR_REVISION_FILE_SHA256}\n")
+endforeach()
+string(SHA256 TGMR_TRAINER_REVISION_SHA256 "${TGMR_TRAINER_REVISION_MANIFEST}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    ${TGMR_TRAINER_REVISION_INPUTS})
+configure_file(src/training_identity_config.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/tgmr/training_identity_config.h" @ONLY)
+
 add_library(rt_tgmr_tooling STATIC
     src/camera_matrices.cc
     src/corpus.cc
@@ -32,12 +58,13 @@ add_library(rt_tgmr_tooling STATIC
     src/sha256.cc
     src/source_selection.cc
     src/training.cc
+    src/training_identity.cc
     src/validation.cc
     src/xtrans_training.cc
     ../../rtengine/cJSON.c)
 target_include_directories(rt_tgmr_tooling
     PUBLIC include
-    PRIVATE ../../rtengine)
+    PRIVATE ../../rtengine "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_features(rt_tgmr_tooling PUBLIC cxx_std_17)
 target_link_libraries(rt_tgmr_tooling PUBLIC
     ZLIB::ZLIB OpenMP::OpenMP_CXX JPEG::JPEG PNG::PNG TIFF::TIFF PkgConfig::TGMR_LCMS)

@@ -110,20 +110,39 @@ class PreparationTests(unittest.TestCase):
                 path = root / name
                 path.write_bytes(f"artifact-{index}\n".encode())
                 artifacts.append(path)
+            optional = {}
+            for index, (option, name) in enumerate((
+                ("--source-manifest-gzip", "corpus.jsonl.gz"),
+                ("--statistics-csv", "statistics.csv"),
+                ("--statistics-html", "statistics.html"),
+                ("--reconstruction", "reconstruction.tsv"),
+            ), start=len(artifacts)):
+                path = root / name
+                path.write_bytes(f"artifact-{index}\n".encode())
+                optional[option] = path
+            checksums = root / "SHA256SUMS"
             release = root / "release.json"
             arguments = [
                 "release-manifest", *(str(path) for path in artifacts), str(release),
                 "--zenodo-doi", "10.5281/zenodo.fixture",
                 "--github-release-url", "https://example.invalid/release",
             ]
+            for option, path in optional.items():
+                arguments.extend((option, str(path)))
+            arguments.extend(("--checksums-output", str(checksums)))
             self.assertEqual(prepare_corpus.main(arguments), 0)
             first_bytes = release.read_bytes()
+            first_checksums = checksums.read_bytes()
             release.unlink()
+            checksums.unlink()
             self.assertEqual(prepare_corpus.main(arguments), 0)
             self.assertEqual(release.read_bytes(), first_bytes)
+            self.assertEqual(checksums.read_bytes(), first_checksums)
             value = json.loads(first_bytes)
             self.assertEqual(value["corpus_id"], "tgmr-corpus-v1")
-            self.assertEqual(len(value["artifacts"]), 6)
+            self.assertEqual(len(value["artifacts"]), 11)
+            self.assertEqual(value["artifacts"][-1]["role"], "checksums")
+            self.assertEqual(len(checksums.read_text().splitlines()), 10)
 
     def test_merge_accepts_raw_snapshot_ids_without_record_format(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

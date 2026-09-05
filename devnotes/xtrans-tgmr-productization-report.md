@@ -136,7 +136,9 @@ The automatic loader additionally requires the compiled official digest.
   corpus. The deterministic `.tgpc.gz` form uses existing required zlib,
   `mtime=0`, no original name/comment, fixed level, and canonical header bytes.
   The reader streams compressed or uncompressed data and authenticates the
-  complete structure and payload.
+  complete structure and payload. Inspection also hashes each encoded split
+  separately, making the required validation/test identity across the three
+  training-augmentation candidates directly auditable.
 - Corpus inspection, brightness/chroma/texture balance, and canonical JSON,
   CSV, and self-contained HTML statistics are implemented in `rt-tgmr-train`.
 - Canonical attribution, per-source rights/evidence JSON, and reconstruction
@@ -150,7 +152,11 @@ The automatic loader additionally requires the compiled official digest.
 - `--source-limit` selects the first N authenticated training sources without
   repacking the corpus, records the limit in checkpoints/manifests, and makes
   the mandated 250/500/1000/2000/4000 source-count curve reproducible from one
-  TGPC identity. Resume rejects a conflicting limit.
+  TGPC identity. `corpus order-training` first freezes nested prefixes with
+  exact 80/12/8 Open Images/Commons/Smithsonian counts at every milestone and
+  deterministic interleaving of the 27 source-level brightness/chroma/texture
+  cells. Its order manifest binds the reviewed selected-source digest and the
+  reordered manifest digest. Resume rejects a conflicting limit.
 - It fits 18 phase-conditioned, 51-dimensional K=32 models with nu=3,
   covariance floor 1e-6, stable log-domain responsibilities, Cholesky solves,
   deterministic component ordering, and atomic authenticated iteration
@@ -170,15 +176,29 @@ The automatic loader additionally requires the compiled official digest.
   sample counts, seeds, covariance settings, backends, or convergence counts,
   as well as malformed or non-finite fitted arrays; a mixed checkpoint
   directory therefore cannot silently become one model.
+  The trainer-configuration digest is derived from the authenticated phase
+  checkpoints. The trainer-revision digest is generated at build time from a
+  sorted relative-path/SHA-256 manifest of every trainer source, header, CMake
+  input, and the embedded cJSON implementation; release export no longer
+  trusts caller-supplied arbitrary identity strings.
   A final re-export accepts only a native validation report bound to that exact
   model and corpus and embeds it in the companion manifest; release CMake
-  rejects an absent or limited/non-validation object. The standalone timing is
-  retained in its validation report but omitted from the deterministic
-  companion-manifest identity.
+  rejects an absent or limited/non-validation object. Canonical validation JSON
+  omits wall-clock timing so independent canonical results can be byte-identical.
 - Native model validation applies the exact scalar K32/S9/q8 inference
   equations to every selected patch through all 18 CFA phases, restores the
-  measured component, and emits pooled, per-phase, and median-source PSNR plus
-  p99/worst patch RMS. This keeps corpus/model selection inside the C++ tool.
+  measured component, and emits pooled, per-phase, per-source, median-source,
+  phase-spread, fixed corpus-v1 brightness/chroma/texture strata, and p99/worst
+  patch metrics. This keeps corpus/model selection
+  inside the C++ tool.
+- A non-installed native population evaluator is built with the trainer and
+  tests. It reconstructs the exact held-out linear augmentation around each
+  frozen source coordinate, proves padded-crop Markesteijn center parity
+  against a deterministic full-image run, assigns phases evenly, and compares
+  TGMR with RawTherapee's actual three-pass Markesteijn implementation. It
+  reports the same fixed signal strata separately for both methods. This
+  closes the previous release gap where trainer validation had ground-truth
+  TGMR metrics but no native Markesteijn population baseline.
 - A native benchmark command measures selected phases and sample counts. On
   the Ryzen 9 5900X with 24 OpenMP workers, the external 102,400-patch research
   population completed one phase of the full 10-Gaussian/30-Student iteration
@@ -564,28 +584,202 @@ selected-source JSONL has SHA-256
 the 14,000-position recipe has SHA-256
 `b13250f271c07ed638ed15060a51cc3f3d3d8e916519561f1d73683edbc20ff1`.
 
+## Production corpus freeze
+
+The selected training population was reordered before patch finalization so
+every learning-curve prefix is nested and catalog-proportional. The ordered
+selected-source manifest has SHA-256
+`cb703713bec1d373bd41b01c5b98f311b93513dd4a813966414aa03cc78bd909`;
+its canonical order record has SHA-256
+`981316001ad70d53abee3d41f6341f0efa0bb96997cee4f81a16f998f0854d81`.
+The 250/500/1,000/2,000/4,000 prefixes contain exactly 80% Open Images, 12%
+Commons, and 8% Smithsonian sources. Within each catalog, sources are
+deterministically interleaved across the 27 training-derived
+brightness/chroma/texture cells.
+
+Two source-finalization runs used separate empty checkpoint directories and
+produced byte-identical 5,000-line, 238,521,201-byte manifests. The canonical
+expanded `corpus-v1.jsonl` has SHA-256
+`70d87ed392b23b46c2b5e34ab0bd704261ae174aea555a31a4eab05905129749`.
+The production validator accepts it with exactly 4,000/500/500 sources and
+1,024,000/64,000/64,000 unique in-bounds patch coordinates. A separate pass
+reauthenticated all 5,000 original files: zero were missing or changed.
+
+The independent identity-only pack runs are also byte-identical. Each
+uncompressed TGPC is exactly 442,368,256 bytes with SHA-256
+`3f84e2e58f1c6a01d721168ca5e7d5ae4b3e7547be633c78db67b31350f7d357`;
+each independently generated deterministic gzip is 220,511,678 bytes with
+SHA-256
+`a683ab9b76e00b782229670b2bf42f62c2d6a281a817294a8c5939412337fd27`.
+The authenticated payload SHA-256 is
+`7e7164cbf6ad888f234f717c8e9066720817c6707798551cae93675349114593`.
+Its fixed-v1 balance report has no deficient brightness, chroma, or texture
+stratum. The common held-out split identities are
+`76e1ef73ca5f7ac590f97c0846b13300bb070630a2cce81e4e79b11bef5babe9`
+for validation and
+`658576612d7bf5e07e550a57f2dd153adadf1568e79374d4ac3eab0f8346cc12`
+for test; the augmented pack candidates must reproduce both exactly.
+
+The two augmented recipes also reproduced byte-for-byte in independent clean
+pack runs. The production/no-noise TGPC has SHA-256
+`acf8483c21e4d8b6f01679e92663d4345fd13244beb853e94a2b799827fd3c35`
+and its 251,806,462-byte deterministic gzip has SHA-256
+`e073c59d362df9ffb57e96d48acdb0d0347dc607da872bd9b9376d544532a59a`.
+The production/sensor-noise TGPC has SHA-256
+`c372673325a831d9d55b8267ac5b310f02120ec0a21817733608eccc9c7853f2`
+and its 293,549,581-byte gzip has SHA-256
+`e422430b7b9caabaee1b1cdc27b04f01d7efd78943e7f87af3ff18bed9dc4cea`.
+All six uncompressed pack runs contain exactly 1,152,000 authenticated records
+and satisfy the fixed brightness/chroma/texture balance gate. Their validation
+and test split payload digests are identical; augmentation and noise affect
+training records only.
+
+The common release metadata was generated from the frozen source manifest.
+The attribution notice, rights report, and reconstruction URL/checksum list
+have SHA-256 values
+`67c386e1046e250894c3e7c2867bdb1760211a43bc16c219c8a6bc6e19dbd1ad`,
+`fd010f21852b946d42b9803d2b112ec9c001f54ecd006c91104ac9d119e79b40`,
+and
+`5864a39d2bd621703501668b131dc686a1376a07ff5b310001c20870c4b67b14`,
+respectively. The deterministic compressed 5,000-source manifest is
+18,651,262 bytes with SHA-256
+`e84efc9ff0c87f6084f933b235e812a44416795dfdcbb4d6169b53cc925e5dd4`.
+
+## Augmentation selection
+
+All three pack candidates were trained with the same optimized CPU K32/D51
+fit: ten Gaussian iterations, thirty fixed-nu Student-t iterations, nu=3,
+covariance floor 1e-6, batch size 4,096, an 8 GiB ceiling, and all eighteen
+X-Trans phases. Evaluation used the complete common validation split.
+
+| Candidate | PSNR (dB) | p99 RMS | Worst RMS | Median source PSNR | Phase spread (dB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| identity-only | 33.323200 | 0.102573 | 0.328938 | 35.070346 | 0.786502 |
+| production-v1, no noise | **34.127307** | **0.095750** | 0.250287 | 36.032642 | **0.811888** |
+| production-v1, sensor-v1 | 34.095935 | 0.096155 | **0.245970** | **36.096526** | 0.907601 |
+
+Production-v1 without synthetic noise is frozen as the corpus recipe. It wins
+the primary pooled-PSNR ranking, has lower p99 error and phase spread than the
+sensor-noise candidate, and is the simpler of the two augmented recipes. The
+sensor candidate's 0.00532 lower worst RMS does not overturn those preceding
+criteria. Identity-only is 0.804 dB behind and is not competitive.
+
+The winning candidate model has SHA-256
+`c795420c0517596cf304ca92f32fdcd4d2719f6d752febf52375691481bab993`;
+its validation report has SHA-256
+`935d6faf48ecaff620bc082bc113a55a9fa499602c8192f7011c00598faff517`.
+These CPU-fit files are selection evidence, not official release weights.
+
+## Source-count convergence
+
+The selected production corpus was trained at every frozen nested milestone.
+Each model used the same complete validation split; the sample count shown is
+the number of distinct training patches supplied to each of the eighteen phase
+fits.
+
+| Sources | Patches/phase | Train time (s) | PSNR (dB) | p99 RMS | Worst RMS | Median source PSNR | Phase spread (dB) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 250 | 64,000 | 334.81 | 33.857031 | 0.098426 | 0.269474 | 35.671266 | 0.914878 |
+| 500 | 128,000 | 597.19 | 34.026833 | 0.097076 | 0.261106 | 36.032155 | 0.748686 |
+| 1,000 | 256,000 | 1,109.74 | 34.021443 | 0.096168 | 0.266298 | 36.042833 | 0.907544 |
+| 2,000 | 512,000 | 2,082.15 | 34.068286 | 0.096865 | 0.245439 | 36.130428 | 0.743218 |
+| 4,000 | 1,024,000 | about 4,029* | 34.127307 | 0.095750 | 0.250287 | 36.032642 | 0.811888 |
+
+\*The original 4,000-source selection run predated explicit `/usr/bin/time`
+capture. Its 4,029-second figure is the phase-00-first-checkpoint to
+phase-17-final-checkpoint span and is therefore a small lower bound. The later
+canonical release runs record complete wall time directly.
+
+The decisive 2,000-to-4,000 change is 0.059021 dB in pooled PSNR and 1.1519%
+in p99 RMS. Both are below the frozen absolute 0.1 dB and relative 2% limits,
+so `tgmr-corpus-v1` passes the convergence gate. The non-monotonic smaller
+milestones are retained rather than hidden; the gate was defined on the final
+doubling before any results were observed.
+
+The 250/500/1,000/2,000 model SHA-256 values are, respectively,
+`ddbb953c1bcd729d9db124e1cb4fea5f7ab43a2441ada136558c5fc6ed74047f`,
+`fed97775410226eaa7cf35ebd20a96338386080ea5b5551d412dc44a79143f0a`,
+`6abd542542511678795c29013a22f459bc346d647d63f1e98a2b97bdee43f20c`,
+and
+`ce45a3cf67fc4171a13490c28527f699f6e525a2d112a87ababca2a08fddced9`.
+
+## Canonical model and untouched-test gate
+
+Two clean canonical fits used the pinned GCC 13.3.0 Release trainer, classic
+locale, one canonical worker per independently fitted phase, disabled floating
+point contraction, the complete 4,000-source nested order, and the frozen
+production-v1/no-noise corpus. Six independent phases were scheduled at once;
+this changes only phase completion order because phases share no mutable state
+and every phase retains the canonical single-thread reduction order.
+
+The A and B output trees contain 738 checkpoints each: ten Gaussian, thirty
+Student-t, and one final checkpoint for each of eighteen phases. A recursive
+byte comparison found no difference in any checkpoint. The complete runs took
+6,235.26 and 6,232.96 seconds. `/usr/bin/time` reported about 529 MiB maximum
+RSS for an individual phase process; six phase processes were active at once.
+
+The final authenticated identities are:
+
+- model: `5707fbd67d1998ed3bac646ecce967297a2022776821d62944a24dbbb8615285`;
+- payload: `276b42a099de7ecfacdcb403d63e2bc8c5b0fa9f21ef4a63c9d82ff6ada4f4eb`;
+- canonical configuration:
+  `13bf483df2104617785cd0c9be5eeb9386a841a00b2e30087881811e7f19bcbf`;
+- trainer revision:
+  `df0fc05b7b62f35c87a8ad42caf07e219721bddc81307cbf2756c9ba14d71ee6`;
+- validation report:
+  `7a0be89dee806586c74e413db307d48c8797e16aa773e6ad5de59d3a8acc574d`;
+- validation-attached companion manifest:
+  `d753847f9389d5dd07a04d10013f81ffe85c4cfda1dd5120f90eb3e6e46d79af`.
+
+Both model files and both companion manifests are byte-identical. Two complete
+validation runs are also byte-identical and report 34.127307 dB pooled PSNR,
+0.095750 p99 patch RMS, 0.250287 worst patch RMS, 36.032642 dB median source
+PSNR, and 0.811888 dB phase spread over all 64,000 validation patches. Strict
+TGMR v2 verification accepts the final model and all embedded identities.
+
+Only after those identities were frozen was the 64,000-patch, 500-source test
+split opened. The direct TGMR validation reports 34.055553 dB. The native
+RawTherapee population evaluator then decoded the reviewed source images,
+synthesized every X-Trans phase, and compared the same coordinates with real
+three-pass Markesteijn. Its one full-image/cropped-center proof has exactly
+zero difference, and its balanced phase assignment gives 3,556 patches to ten
+phases and 3,555 to the other eight.
+
+| Test metric | TGMR | Markesteijn | Result |
+| --- | ---: | ---: | ---: |
+| Pooled PSNR | 34.063575 dB | 32.316274 dB | +1.747301 dB |
+| p99 patch RMS | 0.095072 | 0.115206 | 17.48% lower |
+| Worst patch RMS | 0.408201 | 0.483703 | lower |
+| Median source PSNR | 36.312600 dB | 34.701333 dB | +1.611267 dB |
+
+TGMR wins 408 of 500 sources, and the median paired source gain is
+1.625443 dB. It also wins every pooled low/middle/high brightness, chroma, and
+texture stratum. However, 92 sources lose, 65 lose by more than 0.5 dB, and
+the worst source loses 6.169889 dB. The native report has SHA-256
+`9e2b799fa829d8cac33576a113594891caf0396a1f30037f6164474aff8a6dba`;
+the run took 267.80 seconds and peaked at 3,675,560 KiB RSS.
+
+The release gate therefore **fails** for two independent reasons: the pooled
+advantage is below the required 2 dB, and the worst source loss is far beyond
+the permitted 0.5 dB. The improved aggregate tail does not override a frozen
+per-source safety gate. Control-suite, RAF, publication, bundled-model, and
+clean-branch work stop here rather than tuning against the untouched test
+sources or weakening a threshold after observing it.
+
 ## Incomplete plan items
 
 The following remain deliberately open rather than being represented as done:
 
-- Running the implemented restartable patch finalization and three fair
-  augmentation pack recipes on the frozen 5,000-source selection, then
-  publishing `corpus-v1.jsonl`, TGPC, deterministic gzip, reconstruction list,
-  rights report, and attribution notice. The generators are implemented; the
-  production artifacts have not yet been created or frozen.
-- Source-count convergence and augmentation/noise selection.
-- Canonical two-clean-run production training and the official ~6 MiB model.
-- Production quality evaluation on the untouched licensed test set, every
-  stratum, synthetic controls, X-Trans generation I-V RAFs, and `DSCF0771`.
+- Synthetic-control and real-RAF qualification was not run because the earlier
+  untouched licensed-population gate failed.
+- Publication, model bundling, installed-data selection, and GUI release status
+  remain blocked by the failed quality gate and the still-required legal review.
 - Full production-corpus validation of the OpenMP-target AMDGCN backend and a
   physical NVPTX run. No production GPU speed claim is made from the tiny smoke
   fixture.
-- Confirmed all-phase and million-patch trainer performance on the final
-  production corpus (the current 6.47-minute and 63.2-minute figures are
-  projections from one measured research-corpus phase).
 - Cross-compiler x86-64/ARM64 release matrix and physical ARM64 NEON execution.
-- The final clean `codex/xtrans-tgmr-productization` branch from current
-  `upstream/dev`.
+- The final clean `codex/xtrans-tgmr-productization` branch was not created,
+  because the plan requires a passing release candidate before that port.
 
 The clean branch is intentionally last. It must port only the frozen trainer,
 corpus tools, runtime, official reviewed model/notice, GUI/package integration,

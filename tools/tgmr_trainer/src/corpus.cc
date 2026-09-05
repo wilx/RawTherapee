@@ -720,12 +720,15 @@ CorpusInspection inspectCorpus(
     inspection.header = decodeHeader(headerBytes);
     inspection.compressed = input.compressed();
     Sha256 payload;
+    std::array<Sha256, 3> splitPayload;
     for (std::uint64_t index = 0; index < inspection.header.recordCount; ++index) {
         std::array<std::uint8_t, TGPC_RECORD_BYTES> bytes{};
         input.exact(bytes.data(), bytes.size());
         payload.update(bytes.data(), bytes.size());
         const PatchRecord record = decodeRecord(bytes);
-        ++inspection.observedSplitCounts[static_cast<unsigned>(record.split) - 1];
+        const unsigned split = static_cast<unsigned>(record.split) - 1;
+        ++inspection.observedSplitCounts[split];
+        splitPayload[split].update(bytes.data(), bytes.size());
         if (visitor) {
             visitor(record, index);
         }
@@ -739,6 +742,9 @@ CorpusInspection inspectCorpus(
     }
     if (payload.finish() != inspection.header.payloadSha256) {
         throw std::runtime_error("TGPC payload SHA-256 mismatch");
+    }
+    for (unsigned split = 0; split < splitPayload.size(); ++split) {
+        inspection.splitPayloadSha256[split] = splitPayload[split].finish();
     }
     return inspection;
 }
@@ -833,6 +839,10 @@ std::string canonicalInspectionJson(const CorpusInspection &inspection)
         << "  \"split_counts\": {\"test\": " << inspection.header.splitCounts[2]
         << ", \"train\": " << inspection.header.splitCounts[0]
         << ", \"validation\": " << inspection.header.splitCounts[1] << "},\n"
+        << "  \"split_payload_sha256\": {\"test\": \""
+        << hex(inspection.splitPayloadSha256[2]) << "\", \"train\": \""
+        << hex(inspection.splitPayloadSha256[0]) << "\", \"validation\": \""
+        << hex(inspection.splitPayloadSha256[1]) << "\"},\n"
         << "  \"uncompressed_bytes\": " << inspection.fileBytes << "\n"
         << "}\n";
     return output.str();

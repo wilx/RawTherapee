@@ -50,6 +50,7 @@ struct PatchRecord final {
 struct CorpusInspection final {
     CorpusHeader header;
     std::array<std::uint64_t, 3> observedSplitCounts{};
+    std::array<std::array<std::uint8_t, 32>, 3> splitPayloadSha256{};
     std::uint64_t fileBytes = 0;
     bool compressed = false;
 };

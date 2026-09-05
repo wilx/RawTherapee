@@ -2,6 +2,7 @@
 
 #include "tgmr/corpus.h"
 #include "tgmr/sha256.h"
+#include "tgmr/training_identity.h"
 
 #include <algorithm>
 #include <array>
@@ -463,6 +464,8 @@ std::vector<std::uint8_t> exportPhasePayload(
     std::vector<std::uint8_t> output;
     const std::array<std::uint32_t, 9> coarse{{16,17,18,23,24,25,30,31,32}};
     const PhaseCheckpoint &reference = checkpoints.front();
+    const auto referenceConfiguration =
+        fitConfigurationSha256(reference.configuration);
     for (std::size_t phaseIndex = 0; phaseIndex < checkpoints.size(); ++phaseIndex) {
         const PhaseCheckpoint &checkpoint = checkpoints[phaseIndex];
         const MixtureModel &model = checkpoint.model;
@@ -472,6 +475,8 @@ std::vector<std::uint8_t> exportPhasePayload(
         }
         if (checkpoint.sampleCount != reference.sampleCount
             || checkpoint.corpusPayloadSha256 != reference.corpusPayloadSha256
+            || fitConfigurationSha256(checkpoint.configuration)
+                != referenceConfiguration
             || checkpoint.configuration.components != reference.configuration.components
             || checkpoint.configuration.covarianceFloor
                 != reference.configuration.covarianceFloor

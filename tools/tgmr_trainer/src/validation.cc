@@ -1,5 +1,6 @@
 #include "tgmr/validation.h"
 
+#include "tgmr/corpus_analysis.h"
 #include "tgmr/model_v2.h"
 #include "tgmr/sha256.h"
 
@@ -321,6 +322,7 @@ ValidationReport validateModelOnCorpus(
     std::vector<double> patchErrors;
     std::array<double, PHASES> phaseSquared{};
     std::array<std::uint64_t, PHASES> phaseValues{};
+    std::array<std::array<double, 3>, 3> stratumSquared{};
     struct SourceAccumulator { double squared = 0.0; std::uint64_t values = 0; };
     std::map<std::uint32_t, SourceAccumulator> sourceErrors;
     const CorpusInspection corpus = inspectCorpus(corpusPath,
@@ -348,6 +350,16 @@ ValidationReport validateModelOnCorpus(
             patchErrors.push_back(std::sqrt(patchSquared / values));
             sourceErrors[record.sourceOrdinal].squared += patchSquared;
             sourceErrors[record.sourceOrdinal].values += values;
+            const PatchSignalStrata strata = fixedCorpusV1PatchStrata(record);
+            const std::array<unsigned, 3> levels{{
+                strata.brightness, strata.chroma, strata.texture}};
+            for (unsigned metric = 0; metric < levels.size(); ++metric) {
+                StratumValidationMetrics &cell =
+                    report.metrics.strata[metric][levels[metric]];
+                ++cell.patches;
+                cell.scalarValues += values;
+                stratumSquared[metric][levels[metric]] += patchSquared;
+            }
         });
     if (modelInspection.identity.corpusSha256 != corpus.header.payloadSha256) {
         throw std::runtime_error(
@@ -369,16 +381,61 @@ ValidationReport validateModelOnCorpus(
     std::vector<double> sourcePsnr;
     sourcePsnr.reserve(sourceErrors.size());
     for (const auto &entry : sourceErrors) {
-        sourcePsnr.push_back(psnr(entry.second.squared / entry.second.values));
+        SourceValidationMetrics metrics;
+        metrics.sourceOrdinal = entry.first;
+        metrics.scalarValues = entry.second.values;
+        metrics.patches = entry.second.values / (PHASES * 3);
+        metrics.mse = entry.second.squared / entry.second.values;
+        metrics.psnr = psnr(metrics.mse);
+        sourcePsnr.push_back(metrics.psnr);
+        report.metrics.sources.push_back(metrics);
     }
     std::sort(sourcePsnr.begin(), sourcePsnr.end());
     report.metrics.medianSourcePsnr = sourcePsnr[sourcePsnr.size() / 2];
     for (unsigned phase = 0; phase < PHASES; ++phase) {
         report.metrics.phasePsnr[phase] = psnr(phaseSquared[phase] / phaseValues[phase]);
     }
+    const auto phaseRange = std::minmax_element(
+        report.metrics.phasePsnr.begin(), report.metrics.phasePsnr.end());
+    report.metrics.phasePsnrSpread = *phaseRange.second - *phaseRange.first;
+    for (unsigned metric = 0; metric < report.metrics.strata.size(); ++metric) {
+        for (unsigned level = 0; level < report.metrics.strata[metric].size(); ++level) {
+            StratumValidationMetrics &cell = report.metrics.strata[metric][level];
+            if (cell.scalarValues == 0) {
+                // Limited development validations can legitimately omit a
+                // stratum. The complete production splits are separately
+                // required to satisfy the corpus balance gate.
+                cell.mse = 0.0;
+                cell.psnr = 0.0;
+                continue;
+            }
+            cell.mse = stratumSquared[metric][level] / cell.scalarValues;
+            cell.psnr = psnr(cell.mse);
+        }
+    }
     report.elapsedSeconds = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - start).count();
     return report;
+}
+
+bool canonicalMsePsnrConsistent(double mse, double psnrValue)
+{
+    if (!(mse > 0.0) || !std::isfinite(mse) || !std::isfinite(psnrValue)) {
+        return false;
+    }
+
+    // std::fixed/setprecision(12) introduces at most half a unit in the last
+    // emitted decimal for each value.  Include the much smaller error obtained
+    // by mapping the rounded PSNR back into MSE, plus floating-point evaluation
+    // slack.  This remains tight enough to reject any material report change.
+    constexpr double halfDecimalUnit = 0.5e-12;
+    const double psnrMse = std::pow(10.0, -psnrValue / 10.0);
+    const double mappedPsnrRounding = psnrMse
+        * (std::log(10.0) / 10.0) * halfDecimalUnit;
+    const double arithmeticSlack = 8.0 * std::numeric_limits<double>::epsilon()
+        * std::max(std::abs(mse), std::abs(psnrMse));
+    return std::abs(psnrMse - mse)
+        <= halfDecimalUnit + mappedPsnrRounding + arithmeticSlack;
 }
 
 std::string canonicalValidationJson(const ValidationReport &report)
@@ -388,7 +445,6 @@ std::string canonicalValidationJson(const ValidationReport &report)
     output << std::fixed << std::setprecision(12)
         << "{\n"
         << "  \"corpus_payload_sha256\": \"" << report.corpusPayloadSha256 << "\",\n"
-        << "  \"elapsed_seconds\": " << report.elapsedSeconds << ",\n"
         << "  \"format\": \"rawtherapee-tgmr-validation-report-v1\",\n"
         << "  \"median_source_psnr\": " << report.metrics.medianSourcePsnr << ",\n"
         << "  \"model_sha256\": \"" << report.modelSha256 << "\",\n"
@@ -401,10 +457,41 @@ std::string canonicalValidationJson(const ValidationReport &report)
         output << report.metrics.phasePsnr[phase];
     }
     output << "],\n"
+        << "  \"phase_psnr_spread\": " << report.metrics.phasePsnrSpread << ",\n"
         << "  \"psnr\": " << report.metrics.psnr << ",\n"
         << "  \"requested_limit\": " << report.requestedLimit << ",\n"
         << "  \"scalar_values\": " << report.metrics.scalarValues << ",\n"
+        << "  \"sources\": [";
+    for (std::size_t index = 0; index < report.metrics.sources.size(); ++index) {
+        const SourceValidationMetrics &source = report.metrics.sources[index];
+        if (index) output << ',';
+        output << "\n    {\"mse\": " << source.mse
+            << ", \"patches\": " << source.patches
+            << ", \"psnr\": " << source.psnr
+            << ", \"scalar_values\": " << source.scalarValues
+            << ", \"source_ordinal\": " << source.sourceOrdinal << '}';
+    }
+    if (!report.metrics.sources.empty()) output << '\n';
+    output
+        << "  ],\n"
         << "  \"split\": \"" << splitName(report.split) << "\",\n"
+        << "  \"strata\": {\n";
+    static const char *metricNames[] = {"brightness", "chroma", "texture"};
+    static const char *levelNames[] = {"low", "middle", "high"};
+    for (unsigned metric = 0; metric < report.metrics.strata.size(); ++metric) {
+        output << "    \"" << metricNames[metric] << "\": [";
+        for (unsigned level = 0; level < report.metrics.strata[metric].size(); ++level) {
+            const StratumValidationMetrics &cell = report.metrics.strata[metric][level];
+            if (level) output << ',';
+            output << "\n      {\"level\": \"" << levelNames[level]
+                << "\", \"mse\": " << cell.mse
+                << ", \"patches\": " << cell.patches
+                << ", \"psnr\": " << cell.psnr
+                << ", \"scalar_values\": " << cell.scalarValues << '}';
+        }
+        output << "\n    ]" << (metric == 2 ? "\n" : ",\n");
+    }
+    output << "  },\n"
         << "  \"worst_patch_rms\": " << report.metrics.worstPatchRms << "\n"
         << "}\n";
     return output.str();

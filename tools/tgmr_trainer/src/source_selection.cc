@@ -369,6 +369,235 @@ std::string canonicalSourceRecordV2(const SourceRecord &record)
     return canonicalRecord(record);
 }
 
+void freezeProductionTrainingOrder(
+    const std::vector<SourceRecord> &records,
+    const std::string &inputManifest,
+    const std::string &outputManifest,
+    const std::string &orderManifest,
+    bool force)
+{
+    if (outputManifest == orderManifest || outputManifest == inputManifest
+        || orderManifest == inputManifest) {
+        throw std::runtime_error("training-order inputs and outputs must be distinct");
+    }
+    if (!force && (std::filesystem::exists(outputManifest)
+                   || std::filesystem::exists(orderManifest))) {
+        throw std::runtime_error("refusing to replace training-order output");
+    }
+
+    static const std::array<std::size_t, 5> milestones{{250,500,1000,2000,4000}};
+    // Open Images, Wikimedia Commons, Smithsonian.  PASS deliberately has no
+    // production-v1 allocation.
+    static const std::array<std::array<std::size_t, 3>, 5> cumulative{{
+        {{200,30,20}}, {{400,60,40}}, {{800,120,80}},
+        {{1600,240,160}}, {{3200,480,320}},
+    }};
+    static const std::array<std::size_t, 3> catalogs{{0,2,3}};
+    static const char seed[] = "rawtherapee-tgmr-corpus-v1-training-order";
+
+    std::array<std::size_t, SPLITS> splitCounts{};
+    std::array<std::array<std::size_t, SPLITS>, CATALOGS> catalogCounts{};
+    std::vector<double> luminance;
+    std::vector<double> chroma;
+    std::vector<double> texture;
+    for (const SourceRecord &record : records) {
+        if (!record.manifestV2 || !record.selected || !record.splitAssigned) {
+            throw std::runtime_error(
+                "training order requires selected assigned v2 source records");
+        }
+        const std::size_t split = splitIndex(record.split);
+        ++splitCounts[split];
+        ++catalogCounts[catalogIndex(record.catalogName)][split];
+        if (record.split == CorpusSplit::TRAIN) {
+            luminance.push_back(record.classification.luminanceMean);
+            chroma.push_back(record.classification.chromaRatioMean);
+            texture.push_back(record.classification.gradientRms);
+        }
+    }
+    if (splitCounts != std::array<std::size_t, SPLITS>{{4000,500,500}}) {
+        throw std::runtime_error("training order requires the frozen 4000/500/500 split");
+    }
+    for (std::size_t catalog = 0; catalog < CATALOGS; ++catalog) {
+        for (std::size_t split = 0; split < SPLITS; ++split) {
+            if (catalogCounts[catalog][split] != FROZEN_QUOTAS[catalog][split]) {
+                throw std::runtime_error("training order requires frozen catalog quotas");
+            }
+        }
+    }
+
+    const std::array<double, 2> luminanceThresholds{{
+        quantile(luminance, 1.0 / 3.0), quantile(luminance, 2.0 / 3.0)}};
+    const std::array<double, 2> chromaThresholds{{
+        quantile(chroma, 1.0 / 3.0), quantile(chroma, 2.0 / 3.0)}};
+    const std::array<double, 2> textureThresholds{{
+        quantile(texture, 1.0 / 3.0), quantile(texture, 2.0 / 3.0)}};
+
+    struct OrderedSource final {
+        const SourceRecord *record = nullptr;
+        std::uint64_t order = 0;
+    };
+    std::array<std::array<std::vector<OrderedSource>, 27>, 3> buckets;
+    for (const SourceRecord &record : records) {
+        if (record.split != CorpusSplit::TRAIN) continue;
+        const std::size_t catalog = catalogIndex(record.catalogName);
+        const auto entry = std::find(catalogs.begin(), catalogs.end(), catalog);
+        if (entry == catalogs.end()) {
+            throw std::runtime_error("training source belongs to a zero-quota catalog");
+        }
+        const std::size_t compactCatalog = static_cast<std::size_t>(entry - catalogs.begin());
+        const unsigned brightness = tertile(
+            record.classification.luminanceMean,
+            luminanceThresholds[0], luminanceThresholds[1]);
+        const unsigned color = tertile(
+            record.classification.chromaRatioMean,
+            chromaThresholds[0], chromaThresholds[1]);
+        const unsigned detail = tertile(
+            record.classification.gradientRms,
+            textureThresholds[0], textureThresholds[1]);
+        const unsigned stratum = brightness * 9U + color * 3U + detail;
+        buckets[compactCatalog][stratum].push_back(
+            {&record, stableOrder(seed, record.sourceId)});
+    }
+
+    std::array<std::vector<const SourceRecord *>, 3> catalogOrder;
+    for (std::size_t catalog = 0; catalog < catalogOrder.size(); ++catalog) {
+        std::array<std::size_t, 27> selected{};
+        std::array<std::size_t, 27> totals{};
+        std::size_t total = 0;
+        for (std::size_t stratum = 0; stratum < 27; ++stratum) {
+            auto &values = buckets[catalog][stratum];
+            std::sort(values.begin(), values.end(), [](const OrderedSource &left,
+                                                       const OrderedSource &right) {
+                return std::tie(left.order, left.record->sourceId)
+                    < std::tie(right.order, right.record->sourceId);
+            });
+            totals[stratum] = values.size();
+            total += values.size();
+        }
+        catalogOrder[catalog].reserve(total);
+        for (std::size_t position = 1; position <= total; ++position) {
+            std::size_t best = 27;
+            std::int64_t bestDeficit = std::numeric_limits<std::int64_t>::min();
+            for (std::size_t stratum = 0; stratum < 27; ++stratum) {
+                if (selected[stratum] == totals[stratum]) continue;
+                const std::int64_t deficit = static_cast<std::int64_t>(
+                    position * totals[stratum] - selected[stratum] * total);
+                if (best == 27 || deficit > bestDeficit) {
+                    best = stratum;
+                    bestDeficit = deficit;
+                }
+            }
+            if (best == 27) throw std::runtime_error("training stratum ordering stalled");
+            catalogOrder[catalog].push_back(
+                buckets[catalog][best][selected[best]++].record);
+        }
+    }
+
+    std::vector<const SourceRecord *> trainingOrder;
+    trainingOrder.reserve(4000);
+    std::array<std::size_t, 3> consumed{};
+    std::array<std::size_t, 3> previous{};
+    for (std::size_t milestone = 0; milestone < milestones.size(); ++milestone) {
+        std::array<std::size_t, 3> target{};
+        std::size_t segmentSize = 0;
+        for (std::size_t catalog = 0; catalog < target.size(); ++catalog) {
+            target[catalog] = cumulative[milestone][catalog] - previous[catalog];
+            segmentSize += target[catalog];
+        }
+        std::array<std::size_t, 3> emitted{};
+        for (std::size_t position = 1; position <= segmentSize; ++position) {
+            std::size_t best = target.size();
+            std::int64_t bestDeficit = std::numeric_limits<std::int64_t>::min();
+            for (std::size_t catalog = 0; catalog < target.size(); ++catalog) {
+                if (emitted[catalog] == target[catalog]) continue;
+                const std::int64_t deficit = static_cast<std::int64_t>(
+                    position * target[catalog] - emitted[catalog] * segmentSize);
+                if (best == target.size() || deficit > bestDeficit) {
+                    best = catalog;
+                    bestDeficit = deficit;
+                }
+            }
+            if (best == target.size()
+                || consumed[best] >= catalogOrder[best].size()) {
+                throw std::runtime_error("training catalog ordering stalled");
+            }
+            trainingOrder.push_back(catalogOrder[best][consumed[best]++]);
+            ++emitted[best];
+        }
+        previous = cumulative[milestone];
+        if (trainingOrder.size() != milestones[milestone]) {
+            throw std::runtime_error("training milestone size is inconsistent");
+        }
+    }
+
+    std::set<std::string> identities;
+    std::vector<SourceRecord> ordered;
+    ordered.reserve(records.size());
+    for (const SourceRecord *record : trainingOrder) {
+        if (!identities.insert(record->sourceId).second) {
+            throw std::runtime_error("training order contains a duplicate source");
+        }
+        ordered.push_back(*record);
+    }
+    for (const SourceRecord &record : records) {
+        if (record.split != CorpusSplit::TRAIN) ordered.push_back(record);
+    }
+    if (ordered.size() != records.size()) {
+        throw std::runtime_error("training order lost source records");
+    }
+
+    const std::string temporaryManifest = outputManifest + ".tmp-order";
+    const std::string temporaryOrder = orderManifest + ".tmp";
+    try {
+        writeSourceManifestV2(ordered, temporaryManifest, true);
+        const std::string outputDigest = hex(sha256File(temporaryManifest));
+        std::ostringstream report;
+        report.imbue(std::locale::classic());
+        report << std::fixed << std::setprecision(10)
+            << "{\n  \"format\": \"rawtherapee-tgmr-training-order-v1\",\n"
+            << "  \"input_manifest_sha256\": \"" << hex(sha256File(inputManifest))
+            << "\",\n  \"milestones\": [\n";
+        for (std::size_t index = 0; index < milestones.size(); ++index) {
+            report << "    {\"catalog_counts\": {\"openimages-cvdf-v5-boxable\": "
+                << cumulative[index][0] << ", \"smithsonian-open-access\": "
+                << cumulative[index][2] << ", \"wikimedia-commons\": "
+                << cumulative[index][1] << "}, \"sources\": " << milestones[index]
+                << '}' << (index + 1 == milestones.size() ? "\n" : ",\n");
+        }
+        report << "  ],\n  \"ordered_source_ids\": [\n";
+        for (std::size_t index = 0; index < trainingOrder.size(); ++index) {
+            report << "    " << jsonString(trainingOrder[index]->sourceId)
+                << (index + 1 == trainingOrder.size() ? "\n" : ",\n");
+        }
+        report << "  ],\n  \"output_manifest_sha256\": \"" << outputDigest
+            << "\",\n  \"strata\": {\n"
+            << "    \"chroma\": [" << chromaThresholds[0] << ", "
+            << chromaThresholds[1] << "],\n"
+            << "    \"luminance\": [" << luminanceThresholds[0] << ", "
+            << luminanceThresholds[1] << "],\n"
+            << "    \"texture_gradient_rms\": [" << textureThresholds[0] << ", "
+            << textureThresholds[1] << "]\n  }\n}\n";
+        {
+            std::ofstream output(temporaryOrder, std::ios::binary);
+            output << report.str();
+            output.flush();
+            if (!output) throw std::runtime_error("cannot write training-order manifest");
+        }
+        if (force) {
+            std::filesystem::remove(orderManifest);
+            std::filesystem::remove(outputManifest);
+        }
+        // The source manifest is the completion marker: a consumer never sees
+        // it before the order record it is bound to.
+        std::filesystem::rename(temporaryOrder, orderManifest);
+        std::filesystem::rename(temporaryManifest, outputManifest);
+    } catch (...) {
+        std::filesystem::remove(temporaryOrder);
+        std::filesystem::remove(temporaryManifest);
+        throw;
+    }
+}
+
 std::string canonicalAttributionNotice(const std::vector<SourceRecord> &records)
 {
     validateProductionManifest(records);

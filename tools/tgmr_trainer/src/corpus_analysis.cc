@@ -147,6 +147,16 @@ CorpusStatistics analyzeCorpus(const std::string &path)
     return analyzeWithThresholds(path, {{0.08,0.65}}, {{0.03,0.15}}, {{0.01,0.05}});
 }
 
+PatchSignalStrata fixedCorpusV1PatchStrata(const PatchRecord &record)
+{
+    const PatchMetrics value = metrics(record);
+    PatchSignalStrata output;
+    output.brightness = bucket(value.luminance, 0.08, 0.65);
+    output.chroma = bucket(value.chroma, 0.03, 0.15);
+    output.texture = bucket(value.gradient, 0.01, 0.05);
+    return output;
+}
+
 CorpusStatistics analyzeCorpusTrainingTertiles(const std::string &path)
 {
     std::vector<double> brightness;

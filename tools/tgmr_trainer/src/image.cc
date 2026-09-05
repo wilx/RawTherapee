@@ -273,6 +273,10 @@ Decoded decodePng(const std::string &path)
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     png_set_swap(png);
 #endif
+    // png_read_image() expects the application to request all Adam7 passes
+    // before png_read_update_info().  Without this call libpng warns and an
+    // interlaced source may expose only one pass to the canonical decoder.
+    png_set_interlace_handling(png);
     png_read_update_info(png, info);
     if (png_get_bit_depth(png, info) != 16 || png_get_channels(png, info) != 3) {
         throw std::runtime_error("PNG normalization did not produce RGB16");

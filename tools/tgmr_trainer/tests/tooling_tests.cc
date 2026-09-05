@@ -7,9 +7,11 @@
 #include "tgmr/patch_selection.h"
 #include "tgmr/sha256.h"
 #include "tgmr/training.h"
+#include "tgmr/training_identity.h"
 #include "tgmr/validation.h"
 #include "tgmr/xtrans_training.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -129,6 +131,36 @@ void writePngFixture(const std::string &path, unsigned width, unsigned height)
     }
     require(png_image_write_to_file(&image, path.c_str(), 0, pixels.data(), 0, nullptr) != 0,
             "cannot write PNG fixture");
+}
+
+void writeInterlacedPngFixture(const std::string &path, unsigned width, unsigned height)
+{
+    std::FILE *stream = std::fopen(path.c_str(), "wb");
+    require(stream != nullptr, "cannot create interlaced PNG fixture");
+    png_structp png = png_create_write_struct(
+        PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    png_infop info = png ? png_create_info_struct(png) : nullptr;
+    require(png && info, "cannot create interlaced PNG writer");
+    png_init_io(png, stream);
+    png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB,
+                 PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(width) * height * 3);
+    std::vector<png_bytep> rows(height);
+    for (unsigned y = 0; y < height; ++y) {
+        rows[y] = pixels.data() + static_cast<std::size_t>(y) * width * 3;
+        for (unsigned x = 0; x < width; ++x) {
+            const std::size_t index = (static_cast<std::size_t>(y) * width + x) * 3;
+            pixels[index] = static_cast<unsigned char>(17 * x);
+            pixels[index + 1] = static_cast<unsigned char>(13 * y);
+            pixels[index + 2] = static_cast<unsigned char>(7 * (x + y));
+        }
+    }
+    png_write_info(png, info);
+    png_write_image(png, rows.data());
+    png_write_end(png, info);
+    png_destroy_write_struct(&png, &info);
+    require(std::fclose(stream) == 0, "cannot close interlaced PNG fixture");
 }
 
 void writeJpegFixture(const std::string &path, unsigned width, unsigned height, unsigned seed)
@@ -397,6 +429,11 @@ void testCorpus()
     require(plain.header.recordCount == 3
         && plain.header.splitCounts == std::array<std::uint64_t, 3>{{1, 1, 1}},
         "corpus counts changed");
+    require(plain.splitPayloadSha256[0] != plain.splitPayloadSha256[1]
+        && plain.splitPayloadSha256[1] != plain.splitPayloadSha256[2]
+        && tgmr::canonicalInspectionJson(plain).find("split_payload_sha256")
+            != std::string::npos,
+        "corpus split payload identities are absent or collapsed");
     require(plain.fileBytes == tgmr::TGPC_HEADER_BYTES
         + records.size() * tgmr::TGPC_RECORD_BYTES,
         "corpus size changed");
@@ -404,7 +441,9 @@ void testCorpus()
     tgmr::deterministicGzip(corpus, gzipB, 9);
     require(read(gzipA) == read(gzipB), "deterministic gzip output changed");
     const auto compressed = tgmr::inspectCorpus(gzipA);
-    require(compressed.compressed && compressed.header.payloadSha256 == plain.header.payloadSha256,
+    require(compressed.compressed
+        && compressed.header.payloadSha256 == plain.header.payloadSha256
+        && compressed.splitPayloadSha256 == plain.splitPayloadSha256,
             "compressed/uncompressed corpus parity failed");
     const auto statistics = tgmr::analyzeCorpus(corpus);
     const auto derivedStatistics = tgmr::analyzeCorpusTrainingTertiles(corpus);
@@ -576,6 +615,7 @@ void testSourceLimitedTrainingMatrix()
 void testImageManifestAndPack()
 {
     const std::string imagePath = temporary(".png");
+    const std::string interlacedImagePath = temporary("-interlaced.png");
     const std::string manifestPath = temporary(".jsonl");
     const std::string classificationPath = temporary("-classification.jsonl");
     const std::string corpusPath = temporary(".tgpc");
@@ -587,13 +627,20 @@ void testImageManifestAndPack()
     const std::string multiNoiseCorpus = temporary("-multi-noise.tgpc");
     const std::string multiIdentityCorpus = temporary("-multi-identity.tgpc");
     writePngFixture(imagePath, 10, 10);
+    writeInterlacedPngFixture(interlacedImagePath, 10, 10);
     const auto image = tgmr::loadLinearImage(imagePath);
+    const auto interlacedImage = tgmr::loadLinearImage(interlacedImagePath);
     const auto classification = tgmr::classifyImage(image);
+    const auto interlacedClassification = tgmr::classifyImage(interlacedImage);
     require(image.width == 10 && image.height == 10 && image.fileType == "png",
             "PNG fixture decoded incorrectly");
     require(classification.decodedPixelSha256.size() == 64
         && classification.perceptualHash.size() == 16,
         "image classification identities are malformed");
+    require(interlacedImage.rgb == image.rgb
+        && interlacedClassification.decodedPixelSha256
+            == classification.decodedPixelSha256,
+        "Adam7 PNG decoding differs from the equivalent non-interlaced image");
     const auto proposedA = tgmr::proposePatches(image, 1234, 12);
     const auto proposedB = tgmr::proposePatches(image, 1234, 12);
     require(proposedA.size() == 12 && proposedB.size() == 12,
@@ -796,6 +843,7 @@ void testImageManifestAndPack()
         && multiPlain[1].rgb != multiIdentity[1].rgb,
         "training variants did not produce distinct train patches");
     std::remove(imagePath.c_str());
+    std::remove(interlacedImagePath.c_str());
     std::remove(manifestPath.c_str());
     std::remove(classificationPath.c_str());
     std::filesystem::remove_all(classificationPath + ".work");
@@ -1297,6 +1345,10 @@ void testProductionSourceSelection()
     const std::string recipe = temporary("-selection.json");
     const std::string output = temporary("-selected.jsonl");
     const std::string outputSecond = temporary("-selected-second.jsonl");
+    const std::string orderedOutput = temporary("-ordered.jsonl");
+    const std::string orderedOutputSecond = temporary("-ordered-second.jsonl");
+    const std::string orderManifest = temporary("-training-order.json");
+    const std::string orderManifestSecond = temporary("-training-order-second.json");
     {
         std::ofstream stream(recipe, std::ios::binary);
         stream << "{\"author_image_cap\":5,"
@@ -1351,6 +1403,49 @@ void testProductionSourceSelection()
     require(std::all_of(authors.begin(), authors.end(), [](const auto &entry) {
         return entry.second <= 5;
     }), "production selector exceeded its author cap");
+
+    tgmr::freezeProductionTrainingOrder(
+        selected, output, orderedOutput, orderManifest);
+    tgmr::freezeProductionTrainingOrder(
+        selected, output, orderedOutputSecond, orderManifestSecond);
+    require(read(orderedOutput) == read(orderedOutputSecond)
+        && read(orderManifest) == read(orderManifestSecond),
+        "production training order is not byte deterministic");
+    const auto orderedSelected = tgmr::readSourceManifest(orderedOutput);
+    const auto orderBytes = read(orderManifest);
+    const std::string orderText(orderBytes.begin(), orderBytes.end());
+    require(orderedSelected.size() == selected.size()
+        && orderText.find("rawtherapee-tgmr-training-order-v1")
+            != std::string::npos
+        && orderText.find(tgmr::hex(tgmr::sha256File(output)))
+            != std::string::npos,
+        "training-order manifest omitted its contract or input binding");
+    static const std::array<std::size_t, 5> milestoneSizes{{250,500,1000,2000,4000}};
+    static const std::array<std::array<std::size_t, 3>, 5> milestoneCatalogs{{
+        {{200,30,20}}, {{400,60,40}}, {{800,120,80}},
+        {{1600,240,160}}, {{3200,480,320}},
+    }};
+    std::set<std::string> orderedIds;
+    for (std::size_t index = 0; index < 4000; ++index) {
+        require(orderedSelected[index].split == tgmr::CorpusSplit::TRAIN
+            && orderedIds.insert(orderedSelected[index].sourceId).second,
+            "training order is not a unique training-only prefix");
+        const auto milestone = std::find(
+            milestoneSizes.begin(), milestoneSizes.end(), index + 1);
+        if (milestone != milestoneSizes.end()) {
+            const std::size_t milestoneIndex = static_cast<std::size_t>(
+                milestone - milestoneSizes.begin());
+            std::array<std::size_t, 3> counts{};
+            for (std::size_t source = 0; source <= index; ++source) {
+                const std::string &catalog = orderedSelected[source].catalogName;
+                if (catalog == "openimages-cvdf-v5-boxable") ++counts[0];
+                else if (catalog == "wikimedia-commons") ++counts[1];
+                else if (catalog == "smithsonian-open-access") ++counts[2];
+            }
+            require(counts == milestoneCatalogs[milestoneIndex],
+                "training-order milestone changed its proportional catalog quota");
+        }
+    }
     const std::string sourceReport = tgmr::canonicalSourceReportJson(selected);
     require(sourceReport.find("rawtherapee-tgmr-source-statistics-v1")
             != std::string::npos
@@ -1359,7 +1454,7 @@ void testProductionSourceSelection()
         && tgmr::sourceReportHtml(selected).find("<!doctype html>") == 0,
         "source-corpus report formats changed");
 
-    std::vector<tgmr::SourceRecord> finalized = selected;
+    std::vector<tgmr::SourceRecord> finalized = orderedSelected;
     for (auto &record : finalized) {
         const std::size_t count = record.split == tgmr::CorpusSplit::TRAIN ? 256 : 128;
         record.patches.resize(count);
@@ -1401,6 +1496,10 @@ void testProductionSourceSelection()
     std::remove(recipe.c_str());
     std::remove(output.c_str());
     std::remove(outputSecond.c_str());
+    std::remove(orderedOutput.c_str());
+    std::remove(orderedOutputSecond.c_str());
+    std::remove(orderManifest.c_str());
+    std::remove(orderManifestSecond.c_str());
 }
 
 void testModelV2()
@@ -1443,6 +1542,19 @@ void testModelV2()
 
 void testValidation()
 {
+    // These pairs are emitted by a real full validation run.  Their underlying
+    // unrounded values are consistent, but independently rounding MSE and PSNR
+    // to twelve decimal places creates a PSNR discrepancy far above 2e-9 dB.
+    require(tgmr::canonicalMsePsnrConsistent(
+                0.000502141202, 32.991741417391)
+            && tgmr::canonicalMsePsnrConsistent(
+                0.000016980741, 47.700433509911),
+        "canonical validation rounding was rejected");
+    require(!tgmr::canonicalMsePsnrConsistent(
+                0.000502141202, 32.991841417391)
+            && !tgmr::canonicalMsePsnrConsistent(0.0, 0.0),
+        "materially inconsistent validation metrics were accepted");
+
     const std::string corpusPath = temporary("-validation.tgpc");
     const std::string modelPath = temporary("-validation.tgmr");
     tgmr::PatchRecord patch;
@@ -1463,10 +1575,22 @@ void testValidation()
         modelPath, corpusPath, tgmr::CorpusSplit::VALIDATION);
     require(report.metrics.patches == 1 && report.metrics.scalarValues == 54,
             "TGMR validation did not exercise every phase/channel");
+    require(report.metrics.sources.size() == 1
+            && report.metrics.sources[0].sourceOrdinal == 7
+            && report.metrics.sources[0].patches == 1,
+            "TGMR validation did not preserve per-source metrics");
+    require(report.metrics.strata[1][0].patches == 1
+            && report.metrics.strata[0][1].patches == 1
+            && report.metrics.strata[2][0].patches == 1,
+            "TGMR validation did not preserve fixed signal strata");
     require(report.metrics.mse < 1e-14 && report.metrics.patchRmsP99 < 1e-7,
             "constant-gray TGMR validation fixture was not reconstructed exactly");
-    require(tgmr::canonicalValidationJson(report).find(
-        "rawtherapee-tgmr-validation-report-v1") != std::string::npos,
+    const std::string validationJson = tgmr::canonicalValidationJson(report);
+    require(validationJson.find("rawtherapee-tgmr-validation-report-v1")
+            != std::string::npos
+            && validationJson.find("\"phase_psnr_spread\"") != std::string::npos
+            && validationJson.find("\"strata\"") != std::string::npos
+            && validationJson.find("\"source_ordinal\": 7") != std::string::npos,
         "TGMR validation JSON contract changed");
     const std::string wrongModelPath = temporary("-wrong-corpus.tgmr");
     identity.corpusSha256 = tgmr::sha256("different-corpus", 16);
@@ -1486,6 +1610,20 @@ void testValidation()
 
 void testTraining()
 {
+    tgmr::FitConfiguration identityConfiguration;
+    const std::string identityJson = tgmr::canonicalTrainingIdentityJson(
+        identityConfiguration);
+    const auto identityDigest = tgmr::fitConfigurationSha256(identityConfiguration);
+    tgmr::FitConfiguration limitedIdentity = identityConfiguration;
+    limitedIdentity.sourceLimit = 250;
+    require(identityJson.find("rawtherapee-tgmr-training-identity-v1")
+            != std::string::npos
+        && identityJson.find(tgmr::hex(identityDigest)) != std::string::npos
+        && tgmr::fitConfigurationSha256(limitedIdentity) != identityDigest
+        && tgmr::trainerRevisionSha256()
+            != std::array<std::uint8_t, 32>{},
+        "canonical training configuration or trainer revision identity changed");
+
     const double matrix[] = {4.0, 2.0, 2.0, 3.0};
     double lower[4];
     require(tgmr::choleskyLower(matrix, lower, 2), "Cholesky factorization failed");
@@ -1679,6 +1817,17 @@ void testXTransTrainingContract()
     require(rejectedMixedTraining,
             "export accepted phase checkpoints with different training settings");
     exportModels[7].configuration.sourceLimit = 0;
+
+    exportModels[7].configuration.batchSize += 1;
+    rejectedMixedTraining = false;
+    try {
+        (void)tgmr::exportPhasePayload(exportModels);
+    } catch (const std::runtime_error &) {
+        rejectedMixedTraining = true;
+    }
+    require(rejectedMixedTraining,
+            "export accepted phase checkpoints with different fit identities");
+    exportModels[7].configuration.batchSize -= 1;
 
     exportModels[11].model.means[0] =
         std::numeric_limits<double>::quiet_NaN();

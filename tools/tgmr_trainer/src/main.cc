@@ -6,6 +6,7 @@
 #include "tgmr/patch_selection.h"
 #include "tgmr/sha256.h"
 #include "tgmr/training.h"
+#include "tgmr/training_identity.h"
 #include "tgmr/validation.h"
 #include "tgmr/xtrans_training.h"
 #include "cJSON.h"
@@ -48,6 +49,8 @@ void usage(std::ostream &output)
            " [--progress-seconds N] [--retries N] [--force]\n"
         << "  rt-tgmr-train corpus select CANDIDATES.jsonl RECIPE.json OUTPUT.jsonl"
            " [--force]\n"
+        << "  rt-tgmr-train corpus order-training INPUT.jsonl OUTPUT.jsonl"
+           " ORDER.json [--force]\n"
         << "  rt-tgmr-train corpus propose-patches MANIFEST CACHE OUTPUT.jsonl [--force]\n"
         << "  rt-tgmr-train corpus finalize MANIFEST CACHE OUTPUT.jsonl"
            " [--work-dir DIR] [--progress-seconds N] [--force]\n"
@@ -63,6 +66,7 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train corpus report FILE [--sources]"
            " [--fixed-v1-thresholds] [--json P] [--csv P] [--html P] [--force]\n"
         << "  rt-tgmr-train corpus gzip INPUT.tgpc OUTPUT.tgpc.gz [--level N] [--force]\n"
+        << "  rt-tgmr-train corpus gzip-file INPUT OUTPUT.gz [--level N] [--force]\n"
         << "  rt-tgmr-train export --legacy-v1 INPUT OUTPUT --corpus-sha256 HEX\n"
         << "      --configuration-sha256 HEX --attribution-sha256 HEX\n"
         << "      --trainer-revision-sha256 HEX [--model-revision N] [--force]\n"
@@ -74,6 +78,7 @@ void usage(std::ostream &output)
         << "  rt-tgmr-train resume CORPUS CHECKPOINT OUTPUT [options]\n"
         << "  rt-tgmr-train export --checkpoints DIR OUTPUT [identity options]"
            " [--validation-report FILE]\n"
+        << "  rt-tgmr-train training-identity [fitting options]\n"
         << "  rt-tgmr-train --version\n\n"
         << "The production commands corpus verify-sources, classify, finalize, pack,\n"
         << "balance, report, release-files, train, resume, export, verify, and benchmark are\n"
@@ -113,12 +118,7 @@ tgmr::TrainingBackend parseBackend(const std::string &value)
 
 const char *backendName(tgmr::TrainingBackend value)
 {
-    switch (value) {
-        case tgmr::TrainingBackend::CANONICAL: return "canonical";
-        case tgmr::TrainingBackend::CPU: return "cpu";
-        case tgmr::TrainingBackend::OMP_TARGET: return "omp-target";
-    }
-    return "unknown";
+    return tgmr::trainingBackendName(value);
 }
 
 std::string phasePath(
@@ -466,6 +466,22 @@ std::string canonicalTrainingManifest(
         output << "  ";
     }
     output << "],\n"
+        << "  \"trainer_configuration\": ";
+    if (!phases) {
+        output << "null,\n";
+    } else {
+        std::string configuration = tgmr::canonicalFitConfigurationJson(
+            (*phases)[0].configuration);
+        if (!configuration.empty() && configuration.back() == '\n') {
+            configuration.pop_back();
+        }
+        for (std::size_t index = 0; index < configuration.size(); ++index) {
+            output << configuration[index];
+            if (configuration[index] == '\n') output << "  ";
+        }
+        output << ",\n";
+    }
+    output
         << "  \"trainer_configuration_sha256\": \""
         << tgmr::hex(inspection.identity.trainerConfigurationSha256) << "\",\n"
         << "  \"trainer_revision_sha256\": \""
@@ -522,6 +538,7 @@ std::string checkedValidationReport(
     const double mse = number("mse");
     const double patchRmsP99 = number("patch_rms_p99");
     const double patches = number("patches");
+    const double phasePsnrSpread = number("phase_psnr_spread");
     const double psnr = number("psnr");
     const double requestedLimit = number("requested_limit");
     const double scalarValues = number("scalar_values");
@@ -538,6 +555,166 @@ std::string checkedValidationReport(
             if (finitePhases) phaseValues[phase] = value->valuedouble;
         }
     }
+    struct SourceValidation final {
+        std::uint64_t ordinal = 0;
+        std::uint64_t patches = 0;
+        std::uint64_t scalarValues = 0;
+        double mse = 0.0;
+        double psnr = 0.0;
+    };
+    struct StratumValidation final {
+        std::string level;
+        std::uint64_t patches = 0;
+        std::uint64_t scalarValues = 0;
+        double mse = 0.0;
+        double psnr = 0.0;
+    };
+    const cJSON *sources = cJSON_GetObjectItemCaseSensitive(root, "sources");
+    std::vector<SourceValidation> sourceValues;
+    bool validSources = cJSON_IsArray(sources)
+        && cJSON_GetArraySize(sources) > 0
+        && cJSON_GetArraySize(sources) <= 5000;
+    std::uint64_t sourcePatchSum = 0;
+    std::uint64_t sourceScalarSum = 0;
+    double sourceSquaredSum = 0.0;
+    std::vector<double> sourcePsnrValues;
+    if (validSources) {
+        for (int index = 0; index < cJSON_GetArraySize(sources); ++index) {
+            const cJSON *entry = cJSON_GetArrayItem(sources, index);
+            auto sourceNumber = [&](const char *key, double &value) {
+                const cJSON *field = cJSON_GetObjectItemCaseSensitive(entry, key);
+                if (!cJSON_IsNumber(field) || !std::isfinite(field->valuedouble)) {
+                    validSources = false;
+                    value = 0.0;
+                } else {
+                    value = field->valuedouble;
+                }
+            };
+            double ordinal = 0.0;
+            double sourcePatches = 0.0;
+            double sourceScalars = 0.0;
+            SourceValidation value;
+            if (!cJSON_IsObject(entry)) validSources = false;
+            sourceNumber("source_ordinal", ordinal);
+            sourceNumber("patches", sourcePatches);
+            sourceNumber("scalar_values", sourceScalars);
+            sourceNumber("mse", value.mse);
+            sourceNumber("psnr", value.psnr);
+            const bool entryValid = cJSON_IsObject(entry)
+                && ordinal >= 0.0 && ordinal == std::floor(ordinal)
+                && ordinal <= std::numeric_limits<std::uint32_t>::max()
+                && sourcePatches > 0.0 && sourcePatches == std::floor(sourcePatches)
+                && sourcePatches <= 64'000.0
+                && sourceScalars > 0.0 && sourceScalars == std::floor(sourceScalars)
+                && sourceScalars == sourcePatches * 54.0
+                && value.mse >= 0.0
+                && (sourceValues.empty()
+                    || ordinal > static_cast<double>(sourceValues.back().ordinal));
+            if (!entryValid) {
+                validSources = false;
+                continue;
+            }
+            value.ordinal = static_cast<std::uint64_t>(ordinal);
+            value.patches = static_cast<std::uint64_t>(sourcePatches);
+            value.scalarValues = static_cast<std::uint64_t>(sourceScalars);
+            sourcePatchSum += value.patches;
+            sourceScalarSum += value.scalarValues;
+            sourceSquaredSum += value.mse * value.scalarValues;
+            sourcePsnrValues.push_back(value.psnr);
+            sourceValues.push_back(value);
+        }
+    }
+    static const std::array<const char *, 3> metricNames{{
+        "brightness", "chroma", "texture"}};
+    static const std::array<const char *, 3> levelNames{{
+        "low", "middle", "high"}};
+    std::array<std::array<StratumValidation, 3>, 3> stratumValues;
+    const cJSON *strata = cJSON_GetObjectItemCaseSensitive(root, "strata");
+    bool validStrata = cJSON_IsObject(strata);
+    for (unsigned metric = 0; metric < metricNames.size(); ++metric) {
+        const cJSON *values = validStrata
+            ? cJSON_GetObjectItemCaseSensitive(strata, metricNames[metric]) : nullptr;
+        if (!cJSON_IsArray(values) || cJSON_GetArraySize(values) != 3) {
+            validStrata = false;
+            continue;
+        }
+        std::uint64_t stratumPatchSum = 0;
+        std::uint64_t stratumScalarSum = 0;
+        double stratumSquaredSum = 0.0;
+        for (unsigned level = 0; level < levelNames.size(); ++level) {
+            const cJSON *entry = cJSON_GetArrayItem(values, level);
+            const cJSON *levelValue = cJSON_IsObject(entry)
+                ? cJSON_GetObjectItemCaseSensitive(entry, "level") : nullptr;
+            auto stratumNumber = [&](const char *key, double &value) {
+                const cJSON *field = cJSON_IsObject(entry)
+                    ? cJSON_GetObjectItemCaseSensitive(entry, key) : nullptr;
+                if (!cJSON_IsNumber(field) || !std::isfinite(field->valuedouble)) {
+                    validStrata = false;
+                    value = 0.0;
+                } else {
+                    value = field->valuedouble;
+                }
+            };
+            double stratumPatches = 0.0;
+            double stratumScalars = 0.0;
+            StratumValidation &value = stratumValues[metric][level];
+            stratumNumber("patches", stratumPatches);
+            stratumNumber("scalar_values", stratumScalars);
+            stratumNumber("mse", value.mse);
+            stratumNumber("psnr", value.psnr);
+            const bool entryValid = cJSON_IsString(levelValue)
+                && levelValue->valuestring
+                && std::string(levelValue->valuestring) == levelNames[level]
+                && stratumPatches >= 0.0
+                && stratumPatches == std::floor(stratumPatches)
+                && stratumScalars == stratumPatches * 54.0
+                && value.mse >= 0.0
+                && (stratumPatches != 0.0 || (value.mse == 0.0 && value.psnr == 0.0));
+            if (!entryValid) {
+                validStrata = false;
+                continue;
+            }
+            value.level = levelNames[level];
+            value.patches = static_cast<std::uint64_t>(stratumPatches);
+            value.scalarValues = static_cast<std::uint64_t>(stratumScalars);
+            stratumPatchSum += value.patches;
+            stratumScalarSum += value.scalarValues;
+            stratumSquaredSum += value.mse * value.scalarValues;
+        }
+        if (stratumPatchSum != static_cast<std::uint64_t>(patches)
+            || stratumScalarSum != static_cast<std::uint64_t>(scalarValues)
+            || (stratumScalarSum != 0
+                && std::abs(stratumSquaredSum / stratumScalarSum - mse) > 2e-12)) {
+            validStrata = false;
+        }
+    }
+    auto close = [](double left, double right, double tolerance) {
+        return std::abs(left - right) <= tolerance;
+    };
+    bool consistentSubmetrics = true;
+    for (const SourceValidation &source : sourceValues) {
+        consistentSubmetrics = consistentSubmetrics
+            && tgmr::canonicalMsePsnrConsistent(source.mse, source.psnr);
+    }
+    for (const auto &metric : stratumValues) {
+        for (const StratumValidation &value : metric) {
+            if (value.patches == 0) continue;
+            consistentSubmetrics = consistentSubmetrics
+                && tgmr::canonicalMsePsnrConsistent(value.mse, value.psnr);
+        }
+    }
+    double phaseMseSum = 0.0;
+    for (double value : phaseValues) {
+        phaseMseSum += std::pow(10.0, -value / 10.0);
+    }
+    const auto phaseRange = std::minmax_element(
+        phaseValues.begin(), phaseValues.end());
+    std::sort(sourcePsnrValues.begin(), sourcePsnrValues.end());
+    const double reconstructedSourceMse = sourceScalarSum == 0 ? 0.0
+        : sourceSquaredSum / sourceScalarSum;
+    const double reconstructedPhaseMse = phaseMseSum / phaseValues.size();
+    const double reconstructedMedianSource = sourcePsnrValues.empty() ? 0.0
+        : sourcePsnrValues[sourcePsnrValues.size() / 2];
     const bool valid = exactText("format", "rawtherapee-tgmr-validation-report-v1")
         && exactText("model_sha256", tgmr::hex(inspection.fileSha256))
         && exactText("corpus_payload_sha256",
@@ -547,7 +724,16 @@ std::string checkedValidationReport(
         && patches > 0.0 && patches == std::floor(patches)
         && scalarValues > 0.0 && scalarValues == std::floor(scalarValues)
         && mse >= 0.0 && patchRmsP99 >= 0.0 && worstPatchRms >= 0.0
-        && finitePhases;
+        && phasePsnrSpread >= 0.0 && finitePhases && validSources && validStrata
+        && consistentSubmetrics
+        && sourcePatchSum == static_cast<std::uint64_t>(patches)
+        && sourceScalarSum == static_cast<std::uint64_t>(scalarValues)
+        && patchRmsP99 <= worstPatchRms
+        && close(reconstructedSourceMse, mse, 2e-12)
+        && close(reconstructedPhaseMse, mse, 2e-12)
+        && tgmr::canonicalMsePsnrConsistent(mse, psnr)
+        && close(*phaseRange.second - *phaseRange.first, phasePsnrSpread, 2e-9)
+        && close(reconstructedMedianSource, medianSourcePsnr, 2e-9);
     if (!valid) {
         cJSON_Delete(root);
         throw std::runtime_error(
@@ -571,10 +757,38 @@ std::string checkedValidationReport(
         canonical << phaseValues[phase];
     }
     canonical << "],\n"
+        << "  \"phase_psnr_spread\": " << phasePsnrSpread << ",\n"
         << "  \"psnr\": " << psnr << ",\n"
         << "  \"requested_limit\": 0,\n"
         << "  \"scalar_values\": " << static_cast<std::uint64_t>(scalarValues) << ",\n"
+        << "  \"sources\": [";
+    for (std::size_t index = 0; index < sourceValues.size(); ++index) {
+        const SourceValidation &source = sourceValues[index];
+        if (index) canonical << ',';
+        canonical << "\n    {\"mse\": " << source.mse
+            << ", \"patches\": " << source.patches
+            << ", \"psnr\": " << source.psnr
+            << ", \"scalar_values\": " << source.scalarValues
+            << ", \"source_ordinal\": " << source.ordinal << '}';
+    }
+    canonical << '\n'
+        << "  ],\n"
         << "  \"split\": \"validation\",\n"
+        << "  \"strata\": {\n";
+    for (unsigned metric = 0; metric < metricNames.size(); ++metric) {
+        canonical << "    \"" << metricNames[metric] << "\": [";
+        for (unsigned level = 0; level < levelNames.size(); ++level) {
+            const StratumValidation &value = stratumValues[metric][level];
+            if (level) canonical << ',';
+            canonical << "\n      {\"level\": \"" << value.level
+                << "\", \"mse\": " << value.mse
+                << ", \"patches\": " << value.patches
+                << ", \"psnr\": " << value.psnr
+                << ", \"scalar_values\": " << value.scalarValues << '}';
+        }
+        canonical << "\n    ]" << (metric == 2 ? "\n" : ",\n");
+    }
+    canonical << "  },\n"
         << "  \"worst_patch_rms\": " << worstPatchRms << "\n"
         << "}\n";
     cJSON_Delete(root);
@@ -624,8 +838,12 @@ int exportCommand(int argc, char **argv)
             throw std::runtime_error("unknown export option: " + option);
         }
     }
-    if (!corpus || !configuration || !attribution || !revision) {
-        throw std::runtime_error("export requires all four identity SHA-256 values");
+    if (!corpus || !attribution
+        || (!checkpoints && (!configuration || !revision))) {
+        throw std::runtime_error(
+            checkpoints
+                ? "checkpoint export requires corpus and attribution SHA-256 values"
+                : "legacy export requires all four identity SHA-256 values");
     }
     std::vector<std::uint8_t> payload;
     std::array<tgmr::PhaseCheckpoint, 18> phaseCheckpoints;
@@ -644,6 +862,20 @@ int exportCommand(int argc, char **argv)
             throw std::runtime_error("--corpus-sha256 differs from phase checkpoints");
         }
         payload = tgmr::exportPhasePayload(phaseCheckpoints);
+        const auto derivedConfiguration = tgmr::fitConfigurationSha256(
+            phaseCheckpoints[0].configuration);
+        if (configuration
+            && identity.trainerConfigurationSha256 != derivedConfiguration) {
+            throw std::runtime_error(
+                "--configuration-sha256 differs from authenticated checkpoints");
+        }
+        identity.trainerConfigurationSha256 = derivedConfiguration;
+        const auto derivedRevision = tgmr::trainerRevisionSha256();
+        if (revision && identity.trainerRevisionSha256 != derivedRevision) {
+            throw std::runtime_error(
+                "--trainer-revision-sha256 differs from this trainer build");
+        }
+        identity.trainerRevisionSha256 = derivedRevision;
         havePhaseCheckpoints = true;
     } else {
         const auto legacy = readFile(input);
@@ -742,6 +974,20 @@ int corpusCommand(int argc, char **argv)
         tgmr::validateProductionManifest(records);
         std::cout << "{\"format\":\"rawtherapee-tgmr-production-manifest-validation-v1\","
                      "\"selected_sources\":5000,\"status\":\"valid\"}\n";
+        return 0;
+    }
+    if (command == "order-training") {
+        if (argc != 6 && argc != 7) {
+            throw std::runtime_error(
+                "corpus order-training requires INPUT OUTPUT ORDER [--force]");
+        }
+        const bool force = argc == 7 && std::string(argv[6]) == "--force";
+        if (argc == 7 && !force) {
+            throw std::runtime_error("unknown corpus order-training option");
+        }
+        const auto records = tgmr::readSourceManifest(argv[3]);
+        tgmr::freezeProductionTrainingOrder(
+            records, argv[3], argv[4], argv[5], force);
         return 0;
     }
     if (command == "classify") {
@@ -1021,7 +1267,7 @@ int corpusCommand(int argc, char **argv)
         std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[3]));
         return 0;
     }
-    if (command == "gzip") {
+    if (command == "gzip" || command == "gzip-file") {
         if (argc < 5) {
             throw std::runtime_error("corpus gzip requires input and output paths");
         }
@@ -1038,7 +1284,19 @@ int corpusCommand(int argc, char **argv)
             }
         }
         tgmr::deterministicGzip(argv[3], argv[4], level, force);
-        std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[4]));
+        if (command == "gzip") {
+            std::cout << tgmr::canonicalInspectionJson(tgmr::inspectCorpus(argv[4]));
+        } else {
+            std::cout << "{\n"
+                << "  \"compressed_bytes\": " << std::filesystem::file_size(argv[4]) << ",\n"
+                << "  \"compressed_sha256\": \""
+                << tgmr::hex(tgmr::sha256File(argv[4])) << "\",\n"
+                << "  \"format\": \"rawtherapee-deterministic-gzip-v1\",\n"
+                << "  \"uncompressed_bytes\": " << std::filesystem::file_size(argv[3]) << ",\n"
+                << "  \"uncompressed_sha256\": \""
+                << tgmr::hex(tgmr::sha256File(argv[3])) << "\"\n"
+                << "}\n";
+        }
         return 0;
     }
     if (command == "balance") {
@@ -1124,6 +1382,18 @@ int main(int argc, char **argv)
         std::cerr.imbue(std::locale::classic());
         if (argc == 2 && std::string(argv[1]) == "--version") {
             std::cout << "rt-tgmr-train 0.1.0 corpus-abi=1 model-abi=2\n";
+            return 0;
+        }
+        if (argc >= 2 && std::string(argv[1]) == "training-identity") {
+            bool force = false;
+            int selectedPhase = -1;
+            const tgmr::FitConfiguration configuration = parseFitOptions(
+                argc, argv, 2, force, selectedPhase);
+            if (force || selectedPhase != -1) {
+                throw std::runtime_error(
+                    "training-identity does not accept --force or --phase");
+            }
+            std::cout << tgmr::canonicalTrainingIdentityJson(configuration);
             return 0;
         }
         if (argc >= 2 && std::string(argv[1]) == "corpus") {

@@ -25,6 +25,18 @@ struct CorpusStatistics final {
     std::array<double, 2> textureThresholds{{0.01,0.05}};
 };
 
+// The fixed corpus-v1 signal strata are also used by validation and release
+// qualification. Keeping this calculation shared ensures that a patch counted
+// as, for example, high-chroma during the balance gate has the same meaning in
+// the model-error report.
+struct PatchSignalStrata final {
+    unsigned brightness = 0;
+    unsigned chroma = 0;
+    unsigned texture = 0;
+};
+
+PatchSignalStrata fixedCorpusV1PatchStrata(const PatchRecord &record);
+
 CorpusStatistics analyzeCorpus(const std::string &path);
 CorpusStatistics analyzeCorpusTrainingTertiles(const std::string &path);
 std::string canonicalCorpusReportJson(const CorpusStatistics &statistics);

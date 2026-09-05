@@ -1367,6 +1367,7 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
     std::array<std::uint64_t, 3> sourceCounts{};
     std::array<std::array<std::uint64_t, 3>, 4> catalogCounts{};
     std::array<std::uint64_t, 3> peopleCounts{};
+    std::array<std::uint64_t, 3> astronomyCounts{};
     std::map<std::string, std::size_t> authorCounts;
     static const std::array<std::string, 4> catalogs{{
         "openimages-cvdf-v5-boxable", "pass-v3", "wikimedia-commons",
@@ -1395,6 +1396,10 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
                 throw std::runtime_error("production people source lacks explicit approval");
             }
             ++peopleCounts[splitIndex];
+        }
+        if (std::find(record.contentTags.begin(), record.contentTags.end(),
+                      "astronomy-star-field") != record.contentTags.end()) {
+            ++astronomyCounts[splitIndex];
         }
         const std::size_t required = record.split == CorpusSplit::TRAIN ? 256 : 128;
         if (record.patches.size() != required) {
@@ -1438,6 +1443,11 @@ void validateProductionManifest(const std::vector<SourceRecord> &records)
     }
     if (peopleCounts[0] < 600 || peopleCounts[1] < 75 || peopleCounts[2] < 75) {
         throw std::runtime_error("production manifest lacks the controlled people share");
+    }
+    if (astronomyCounts[0] < 12 || astronomyCounts[1] < 1
+        || astronomyCounts[2] < 1) {
+        throw std::runtime_error(
+            "production manifest lacks the astronomy star-field guardrail");
     }
 }
 

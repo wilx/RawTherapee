@@ -160,6 +160,19 @@ void writeSourceManifestV2(
 
 std::string canonicalSourceRecordV2(const SourceRecord &record);
 
+// Reorder only the selected training population into the frozen nested
+// 250/500/1000/2000/4000 learning-curve schedule.  Catalog proportions are
+// exact at every milestone and each catalog is interleaved across the 27
+// training-derived luminance/chroma/texture strata.  Validation and test
+// records retain their input order.  The canonical order manifest binds both
+// the reviewed input and reordered source-manifest identities.
+void freezeProductionTrainingOrder(
+    const std::vector<SourceRecord> &records,
+    const std::string &inputManifest,
+    const std::string &outputManifest,
+    const std::string &orderManifest,
+    bool force = false);
+
 void finalizeSources(
     const std::vector<SourceRecord> &records,
     const std::string &inputManifest,

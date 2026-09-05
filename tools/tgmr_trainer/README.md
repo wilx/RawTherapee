@@ -303,9 +303,15 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
     tools/tgmr_trainer/corpus-selection-v1.json selected-sources.jsonl \
     > selection-report.json
 
+# Freeze nested, catalog-proportional 250/500/1000/2000/4000 training
+# prefixes before patch coordinates are generated. The order manifest binds
+# the reviewed selected-source input and reordered output identities.
+"$TOOL" corpus order-training selected-sources.jsonl \
+    selected-sources-ordered.jsonl training-order.json
+
 # Finalization creates 256 train or 128 validation/test fixed coordinates per
 # source, with 75% spatial and 25% coverage samples and frozen augmentations.
-"$TOOL" corpus finalize selected-sources.jsonl "$CACHE" corpus-v1.jsonl \
+"$TOOL" corpus finalize selected-sources-ordered.jsonl "$CACHE" corpus-v1.jsonl \
     --work-dir /var/tmp/tgmr-finalize-work --progress-seconds 15
 "$TOOL" corpus validate-manifest corpus-v1.jsonl
 "$TOOL" corpus verify-sources corpus-v1.jsonl "$CACHE"
@@ -318,6 +324,7 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
 "$TOOL" corpus pack corpus-v1.jsonl "$CACHE" \
     tgmr-corpus-v1-sensor-noise.tgpc --noise sensor-v1
 "$TOOL" corpus gzip tgmr-corpus-v1.tgpc tgmr-corpus-v1.tgpc.gz
+"$TOOL" corpus gzip-file corpus-v1.jsonl corpus-v1.jsonl.gz
 "$TOOL" corpus inspect tgmr-corpus-v1.tgpc.gz
 "$TOOL" corpus balance tgmr-corpus-v1.tgpc.gz
 "$TOOL" corpus report tgmr-corpus-v1.tgpc.gz \
@@ -329,8 +336,18 @@ python3 "$PREP" apply-duplicate-decisions reviewed-pending-duplicates.jsonl \
 python3 "$PREP" release-manifest corpus-v1.jsonl tgmr-corpus-v1.tgpc \
     tgmr-corpus-v1.tgpc.gz CORPUS-NOTICE.txt corpus-statistics.json \
     rights-report.json tgmr-corpus-v1.release.json \
+    --source-manifest-gzip corpus-v1.jsonl.gz \
+    --statistics-csv corpus-statistics.csv \
+    --statistics-html corpus-statistics.html \
+    --reconstruction corpus-v1-reconstruction.tsv \
+    --checksums-output SHA256SUMS \
     --zenodo-doi DOI --github-release-url URL
 ```
+
+`corpus inspect` reports SHA-256 values for the encoded train, validation, and
+test record streams independently. The validation and test digests must match
+across augmentation candidates; augmentation and sensor-noise choices are
+training-only experiments.
 
 `prepare-openimages-review` authenticates its V7 boxable class-description,
 V5 human-image-label, V6 bounding-box, and tracked content-rule inputs before
@@ -489,6 +506,11 @@ fallback, and archive-member reconstruction route with its required digest.
 The command validates the complete 5,000-source production contract first and
 refuses to replace any output unless `--force` is explicit.
 
+`corpus gzip-file` applies the same zero-timestamp, filename-free canonical
+gzip encoding to non-TGPC release inputs such as the expanded source JSONL. It
+reports both compressed and uncompressed sizes and SHA-256 identities; unlike
+`corpus gzip`, it does not try to parse the result as a patch corpus.
+
 `corpus classify-file` remains a useful intake/debugging form for one image.
 `corpus classify --candidates` is the canonical batch path: it authenticates
 the Python fetch output, decodes every available candidate, and produces the
@@ -605,11 +627,14 @@ valid manifest into a legal conclusion.
 ```
 
 The frozen 250/500/1000/2000/4000-source convergence curve is generated from
-the same TGPC by passing `--source-limit N` to `train`. Sources are selected in
-their first-appearance order in the authenticated corpus; the limit and actual
-sample count are stored in every checkpoint and companion manifest. `resume`
-rejects a different limit. This avoids repacking subtly different curve
-corpora while retaining one corpus payload identity.
+the same TGPC by passing `--source-limit N` to `train`. Before finalization,
+`corpus order-training` makes those prefixes nested and fixes their cumulative
+Open Images/Commons/Smithsonian counts to 200/30/20, 400/60/40, 800/120/80,
+1600/240/160, and 3200/480/320. Within each catalog it interleaves the 27
+training-derived brightness/chroma/texture cells deterministically. The limit
+and actual sample count are stored in every checkpoint and companion manifest;
+`resume` rejects a different limit. This avoids repacking subtly different
+curve corpora while retaining one corpus payload identity.
 
 For a target build, replace `--backend cpu` with `--backend omp-target` and add
 `--device N`. A physical-device smoke test is not the release performance gate:
@@ -624,25 +649,49 @@ tau=0.0003, temperature-4 inference contract and emits the TGMR v2 model plus a
 canonical companion manifest:
 
 ```sh
+"$TOOL" training-identity --backend cpu --components 32 \
+    --gaussian-iterations 10 --student-iterations 30 \
+    --covariance-floor 1e-6 --degrees-of-freedom 3 \
+    --batch-size 4096 --maximum-memory-mib 8192
 "$TOOL" export --checkpoints /data/tgmr/checkpoints model.tgmr \
-    --corpus-sha256 HEX --configuration-sha256 HEX \
-    --attribution-sha256 HEX --trainer-revision-sha256 HEX
+    --corpus-sha256 HEX --attribution-sha256 HEX
 "$TOOL" verify model.tgmr
 "$TOOL" validate model.tgmr tgmr-corpus-v1.tgpc.gz \
     --split validation > model.validation.json
 # Re-exporting the deterministic model bytes attaches the authenticated
 # validation result to the final companion manifest.
 "$TOOL" export --checkpoints /data/tgmr/checkpoints model.tgmr \
-    --corpus-sha256 HEX --configuration-sha256 HEX \
-    --attribution-sha256 HEX --trainer-revision-sha256 HEX \
+    --corpus-sha256 HEX --attribution-sha256 HEX \
     --validation-report model.validation.json --force
 ```
 
+Checkpoint export derives the canonical configuration digest from the
+authenticated phase checkpoints and the trainer-revision digest from a sorted
+manifest of the trainer sources, headers, CMake input, and embedded cJSON
+implementation. Optional explicit digest arguments are accepted only as
+assertions and are rejected when they differ from those derived identities.
+
 `validate` applies the exact scalar K32/S9/q8 inference equations to every
 selected patch through all 18 X-Trans phases, restores the measured center
-sample, and reports pooled/phase/source PSNR plus p99 and worst patch RMS. This
-is the native measurement used for source-count curves, augmentation selection,
+sample, and reports pooled/phase/per-source PSNR, phase spread, fixed corpus-v1
+brightness/chroma/texture error strata, plus p99 and worst patch RMS. Its
+canonical JSON deliberately excludes elapsed time so two
+clean canonical runs can be compared byte-for-byte. This is the native
+measurement used for source-count curves, augmentation selection,
 canonical/accelerated parity, and the frozen validation/test record.
+
+When built with both `BUILD_TESTING` and `BUILD_TGMR_TRAINER`, the non-installed
+`rawtherapee-xtrans-tgmr-evaluate` target compares a TGMR v2 model with the real
+three-pass Markesteijn implementation at frozen validation or test coordinates.
+It rebuilds sufficiently padded camera-linear crops from the reviewed source
+images, verifies one deterministic crop center against a full-image
+Markesteijn run, assigns all 18 phases evenly, and reports pooled, tail,
+per-source, and fixed brightness/chroma/texture results for both methods:
+
+```sh
+rawtherapee-xtrans-tgmr-evaluate model.tgmr tgmr-corpus-v1.tgpc.gz \
+    corpus-v1.jsonl "$CACHE" --split test > model.test-comparison.json
+```
 
 The release model must be produced twice in clean pinned canonical environments
 with byte-identical corpus, checkpoint/export inputs, model, and manifest. An
@@ -650,9 +699,10 @@ optimized CPU or future OpenMP-target fit is acceptable only after the specified
 PSNR/image-quality parity tests; it can never publish the official artifact.
 Release CMake configuration rejects a companion manifest whose validation
 object is absent or whose model/corpus identities do not match.
-The standalone validation report records elapsed time, but the final companion
-manifest deliberately canonicalizes only its deterministic quality fields;
-wall-clock time is excluded from the reproducible release identity.
+The canonical validation report contains only deterministic quality fields so
+two clean canonical fits can require byte-identical results. Wall-clock time is
+measured separately by the benchmark and release orchestration rather than
+being included in an authenticated quality report.
 
 ## RawTherapee integration
 

@@ -2739,18 +2739,48 @@ def apply_duplicate_decisions(arguments: argparse.Namespace) -> int:
 
 
 def release_manifest(arguments: argparse.Namespace) -> int:
-    artifacts = []
-    for role, path in (
+    if not arguments.force and (
+        arguments.output.exists()
+        or (arguments.checksums_output is not None and arguments.checksums_output.exists())
+    ):
+        raise CorpusPreparationError("refusing to replace release output")
+    inputs = [
         ("source-manifest", arguments.source_manifest),
         ("tgpc", arguments.tgpc),
         ("tgpc-gzip", arguments.tgpc_gzip),
         ("attribution-notice", arguments.attribution),
         ("corpus-statistics", arguments.statistics),
         ("rights-report", arguments.rights_report),
-    ):
+    ]
+    inputs.extend((role, path) for role, path in (
+        ("source-manifest-gzip", arguments.source_manifest_gzip),
+        ("corpus-statistics-csv", arguments.statistics_csv),
+        ("corpus-statistics-html", arguments.statistics_html),
+        ("reconstruction-list", arguments.reconstruction),
+    ) if path is not None)
+    filenames = [path.name for _, path in inputs]
+    if arguments.checksums_output is not None:
+        filenames.append(arguments.checksums_output.name)
+    if len(filenames) != len(set(filenames)):
+        raise CorpusPreparationError("release artifacts must have unique filenames")
+    artifacts = []
+    for role, path in inputs:
         digest, size = sha256_file(path)
         artifacts.append({
             "bytes": size, "filename": path.name, "role": role, "sha256": digest,
+        })
+    if arguments.checksums_output is not None:
+        checksum_bytes = "".join(
+            f"{artifact['sha256']}  {artifact['filename']}\n"
+            for artifact in artifacts
+        ).encode("utf-8")
+        atomic_bytes(arguments.checksums_output, checksum_bytes, arguments.force)
+        digest, size = sha256_file(arguments.checksums_output)
+        artifacts.append({
+            "bytes": size,
+            "filename": arguments.checksums_output.name,
+            "role": "checksums",
+            "sha256": digest,
         })
     value = {
         "artifacts": artifacts,
@@ -3036,6 +3066,11 @@ def parser() -> argparse.ArgumentParser:
     release_parser.add_argument("statistics", type=Path)
     release_parser.add_argument("rights_report", type=Path)
     release_parser.add_argument("output", type=Path)
+    release_parser.add_argument("--source-manifest-gzip", type=Path)
+    release_parser.add_argument("--statistics-csv", type=Path)
+    release_parser.add_argument("--statistics-html", type=Path)
+    release_parser.add_argument("--reconstruction", type=Path)
+    release_parser.add_argument("--checksums-output", type=Path)
     release_parser.add_argument("--zenodo-doi", required=True)
     release_parser.add_argument("--github-release-url", required=True)
     release_parser.add_argument("--force", action="store_true")
