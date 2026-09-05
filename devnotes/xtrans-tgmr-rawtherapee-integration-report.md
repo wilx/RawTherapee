@@ -326,3 +326,23 @@ successful and CPU-viable Student-t GMR remains useful when placed at
 RawTherapee's real camera-RAW demosaic stage.  It should remain explicitly
 experimental while broader RAF evaluation and model licensing/distribution
 are unresolved.
+
+## Production-v1 corpus model comparison
+
+The later corpus-productization work produced a separately authenticated model
+from 4,000 licensed training sources.  Its SHA-256 is
+`5707fbd67d1998ed3bac646ecce967297a2022776821d62944a24dbbb8615285`.
+It has now been run on DSCF0771 using the same neutral PP3 and derivative
+geometry as the research model:
+
+- [production-v1 one-third full frame](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-full-third.png);
+- [production-v1 500-percent earring crop](images/xtrans-neural/DSCF0771/DSCF0771-tgmr-production-v1-earring-500.png);
+- [production-v1 asset manifest](images/xtrans-neural/DSCF0771/tgmr-production-v1-manifest.json).
+
+The complete TIFF authenticated the production-v1 model and did not fall back.
+It remains external under the hard-case experiment directory.  These assets do
+not replace the existing research-model pair: both generations remain available
+for direct visual comparison.  The production-v1 earring remains coherent and
+substantially less segmented than Markesteijn, with a few isolated colored
+pixels still visible on the hoop.  Later hard-case retraining candidates must
+preserve or improve this result.

@@ -834,3 +834,27 @@ behavior without undefined behavior.
 RawTherapee builds used `-j4`.
 The generated `Testing/` directory is unrelated workspace content and remains
 untracked and untouched.
+
+## Hard-case retraining follow-up
+
+The failed release gate is being investigated without altering or replacing
+the corpus-v1 evidence.  Every one of the 16,789 retained files under the
+external release directory has been recorded in a canonical size/SHA-256
+inventory.  The inventory digest is
+`06eb9550e378a8075f5ca67064a08e25aa69508a6036b6379645a989c633ee73`.
+Both `official-a.tgmr` and `official-b.tgmr` remain byte-identical with model
+SHA-256
+`5707fbd67d1998ed3bac646ecce967297a2022776821d62944a24dbbb8615285`.
+
+The 500-source test is now diagnostic rather than eligible for selecting the
+next model: its digital-frame failure directly motivated the follow-up.  The
+new controlled experiment compares direct versus sensor-realistic natural
+patch rendering, each with and without balanced synthetic hard cases.  It will
+select only from validation and independent control corpora.  A candidate that
+passes those gates must subsequently face a newly frozen author- and
+duplicate-isolated 500-source test before release qualification.
+
+The current production-v1 model has also been rendered on DSCF0771 and recorded
+separately from the older research TGMR assets.  See
+[the hard-case retraining report](xtrans-tgmr-hard-case-retraining-report.md)
+for artifact identities, progress, and the complete decision protocol.
