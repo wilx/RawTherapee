@@ -11,7 +11,12 @@
 .env
 .venv
 __pycache__/
-*.pyc
+*.py[cod]
+*.tgpc
+*.tgmr
+*.tgmr.json
+!rtdata/models/*.tgmr
+!rtdata/models/*.tgmr.json
 
 CMakeUserPresets.json
 CMakeCache.txt
